@@ -1,0 +1,1696 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.school_domains": {
+      "name": "school_domains",
+      "schema": "",
+      "columns": {
+        "domain": {
+          "name": "domain",
+          "type": "citext",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "school_name": {
+          "name": "school_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "school_slug": {
+          "name": "school_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "school_domains_active_idx": {
+          "name": "school_domains_active_idx",
+          "columns": [
+            {
+              "expression": "is_active",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "bool_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "is_active",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "school_domains_school_slug_key": {
+          "columns": [
+            "school_slug"
+          ],
+          "nullsNotDistinct": false,
+          "name": "school_domains_school_slug_key"
+        }
+      },
+      "checkConstraints": {
+        "school_domains_school_slug_check": {
+          "name": "school_domains_school_slug_check",
+          "value": "school_slug ~ '^[a-z0-9\\-]+$'::text"
+        }
+      },
+      "policies": {
+        "school_domains_select_auth": {
+          "name": "school_domains_select_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "true"
+        },
+        "school_domains_write_admin": {
+          "name": "school_domains_write_admin",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.profiles": {
+      "name": "profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "google_email": {
+          "name": "google_email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_name": {
+          "name": "preferred_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "student_email": {
+          "name": "student_email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "student_email_domain": {
+          "name": "student_email_domain",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "\nCASE\n    WHEN (student_email IS NULL) THEN NULL::citext\n    ELSE (split_part((student_email)::text, '@'::text, 2))::citext\nEND",
+            "type": "stored"
+          }
+        },
+        "student_email_verified": {
+          "name": "student_email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "student_email_verified_at": {
+          "name": "student_email_verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verification_method": {
+          "name": "verification_method",
+          "type": "verification_method_t",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "school": {
+          "name": "school",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "major": {
+          "name": "major",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "minor": {
+          "name": "minor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "class_standing": {
+          "name": "class_standing",
+          "type": "class_standing_t",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grad_year": {
+          "name": "grad_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grad_term": {
+          "name": "grad_term",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interested_roles": {
+          "name": "interested_roles",
+          "type": "interested_role_t[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"\"}'"
+        },
+        "linkedin_url": {
+          "name": "linkedin_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "github_url": {
+          "name": "github_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "portfolio_url": {
+          "name": "portfolio_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone_number": {
+          "name": "phone_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_admin": {
+          "name": "is_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "profile_completed": {
+          "name": "profile_completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "open_to_recruiters": {
+          "name": "open_to_recruiters",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_archived": {
+          "name": "is_archived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "profiles_archived_idx": {
+          "name": "profiles_archived_idx",
+          "columns": [
+            {
+              "expression": "is_archived",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "archived_at",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "bool_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "profiles_class_standing_idx": {
+          "name": "profiles_class_standing_idx",
+          "columns": [
+            {
+              "expression": "class_standing",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "profiles_first_name_trgm": {
+          "name": "profiles_first_name_trgm",
+          "columns": [
+            {
+              "expression": "first_name",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "gin_trgm_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "profiles_google_email_idx": {
+          "name": "profiles_google_email_idx",
+          "columns": [
+            {
+              "expression": "google_email",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "citext_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "profiles_grad_year_idx": {
+          "name": "profiles_grad_year_idx",
+          "columns": [
+            {
+              "expression": "grad_year",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int4_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "profiles_interested_roles_gin": {
+          "name": "profiles_interested_roles_gin",
+          "columns": [
+            {
+              "expression": "interested_roles",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "array_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "profiles_is_admin_idx": {
+          "name": "profiles_is_admin_idx",
+          "columns": [
+            {
+              "expression": "is_admin",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "bool_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "is_admin",
+          "with": {}
+        },
+        "profiles_last_name_trgm": {
+          "name": "profiles_last_name_trgm",
+          "columns": [
+            {
+              "expression": "last_name",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "gin_trgm_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "profiles_recruiter_export_idx": {
+          "name": "profiles_recruiter_export_idx",
+          "columns": [
+            {
+              "expression": "student_email_verified",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "bool_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "open_to_recruiters",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "bool_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "(student_email_verified AND open_to_recruiters AND (NOT is_archived))",
+          "with": {}
+        },
+        "profiles_student_domain_idx": {
+          "name": "profiles_student_domain_idx",
+          "columns": [
+            {
+              "expression": "student_email_domain",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "citext_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "profiles_student_email_idx": {
+          "name": "profiles_student_email_idx",
+          "columns": [
+            {
+              "expression": "student_email",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "citext_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "where": "(student_email IS NOT NULL)",
+          "with": {}
+        },
+        "profiles_student_email_trgm": {
+          "name": "profiles_student_email_trgm",
+          "columns": [
+            {
+              "expression": "((student_email)::text)",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "gin_trgm_ops",
+              "isExpression": true
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "profiles_id_fkey": {
+          "name": "profiles_id_fkey",
+          "tableFrom": "profiles",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "profiles_grad_year_check": {
+          "name": "profiles_grad_year_check",
+          "value": "(grad_year IS NULL) OR ((grad_year >= 2000) AND (grad_year <= 2100))"
+        },
+        "profiles_grad_term_check": {
+          "name": "profiles_grad_term_check",
+          "value": "(grad_term IS NULL) OR (grad_term ~ '^(Spring|Summer|Fall|Winter) [0-9]{4}$'::text)"
+        },
+        "profiles_linkedin_url_check": {
+          "name": "profiles_linkedin_url_check",
+          "value": "(linkedin_url IS NULL) OR (linkedin_url ~* '^https?://([a-z0-9-]+\\.)*linkedin\\.com/'::text)"
+        },
+        "profiles_github_url_check": {
+          "name": "profiles_github_url_check",
+          "value": "(github_url IS NULL) OR (github_url ~* '^https?://([a-z0-9-]+\\.)*github\\.com/'::text)"
+        },
+        "profiles_portfolio_url_check": {
+          "name": "profiles_portfolio_url_check",
+          "value": "(portfolio_url IS NULL) OR (portfolio_url ~* '^https?://'::text)"
+        },
+        "profiles_phone_number_check": {
+          "name": "profiles_phone_number_check",
+          "value": "(phone_number IS NULL) OR (phone_number ~ '^\\+?[0-9\\-\\(\\) ]{7,20}$'::text)"
+        },
+        "profiles_interested_roles_max_six": {
+          "name": "profiles_interested_roles_max_six",
+          "value": "cardinality(interested_roles) <= 6"
+        }
+      },
+      "policies": {
+        "profiles_select_own": {
+          "name": "profiles_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() = id)"
+        },
+        "profiles_update_own": {
+          "name": "profiles_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "profiles_select_admin": {
+          "name": "profiles_select_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "profiles_update_admin": {
+          "name": "profiles_update_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.consent_versions": {
+      "name": "consent_versions",
+      "schema": "",
+      "columns": {
+        "consent_type": {
+          "name": "consent_type",
+          "type": "consent_type_t",
+          "typeSchema": "public",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "consent_versions_version_check": {
+          "name": "consent_versions_version_check",
+          "value": "version ~ '^v[0-9]+(\\.[0-9]+)?$'::text"
+        }
+      },
+      "policies": {
+        "consent_versions_select_auth": {
+          "name": "consent_versions_select_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "true"
+        },
+        "consent_versions_write_admin": {
+          "name": "consent_versions_write_admin",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.email_verification_codes": {
+      "name": "email_verification_codes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "citext",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_hash": {
+          "name": "code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_attempts": {
+          "name": "max_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 5
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "email_verification_codes_expires_idx": {
+          "name": "email_verification_codes_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "(consumed_at IS NULL)",
+          "with": {}
+        },
+        "email_verification_codes_user_email_idx": {
+          "name": "email_verification_codes_user_email_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "email",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "(consumed_at IS NULL)",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "email_verification_codes_user_id_fkey": {
+          "name": "email_verification_codes_user_id_fkey",
+          "tableFrom": "email_verification_codes",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "evc_email_has_at": {
+          "name": "evc_email_has_at",
+          "value": "POSITION(('@'::text) IN ((email)::text)) > 0"
+        },
+        "evc_attempts_range": {
+          "name": "evc_attempts_range",
+          "value": "(attempts >= 0) AND (attempts <= (max_attempts + 1))"
+        }
+      },
+      "policies": {
+        "evc_no_select": {
+          "name": "evc_no_select",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "false"
+        },
+        "evc_no_insert": {
+          "name": "evc_no_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "evc_no_update": {
+          "name": "evc_no_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "evc_no_delete": {
+          "name": "evc_no_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.resumes": {
+      "name": "resumes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "storage_path": {
+          "name": "storage_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_size": {
+          "name": "file_size",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "resume_status_t",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "is_current": {
+          "name": "is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "resumes_one_current_per_user": {
+          "name": "resumes_one_current_per_user",
+          "columns": [
+            {
+              "expression": "user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "where": "is_current",
+          "with": {}
+        },
+        "resumes_user_status_idx": {
+          "name": "resumes_user_status_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "resumes_user_uploaded_idx": {
+          "name": "resumes_user_uploaded_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "uploaded_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "resumes_user_id_fkey": {
+          "name": "resumes_user_id_fkey",
+          "tableFrom": "resumes",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "resumes_storage_path_unique": {
+          "columns": [
+            "storage_path"
+          ],
+          "nullsNotDistinct": false,
+          "name": "resumes_storage_path_unique"
+        }
+      },
+      "checkConstraints": {
+        "resumes_file_name_check": {
+          "name": "resumes_file_name_check",
+          "value": "(length(file_name) >= 1) AND (length(file_name) <= 255)"
+        },
+        "resumes_file_size_check": {
+          "name": "resumes_file_size_check",
+          "value": "(file_size > 0) AND (file_size <= ((10 * 1024) * 1024))"
+        },
+        "resumes_mime_type_check": {
+          "name": "resumes_mime_type_check",
+          "value": "mime_type = 'application/pdf'::text"
+        },
+        "resumes_current_requires_active": {
+          "name": "resumes_current_requires_active",
+          "value": "(NOT is_current) OR (status = 'active'::resume_status_t)"
+        },
+        "resumes_deleted_not_current": {
+          "name": "resumes_deleted_not_current",
+          "value": "(deleted_at IS NULL) OR (NOT is_current)"
+        }
+      },
+      "policies": {
+        "resumes_select_own": {
+          "name": "resumes_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() = user_id)"
+        },
+        "resumes_insert_own": {
+          "name": "resumes_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "resumes_select_admin": {
+          "name": "resumes_select_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "resumes_no_update_client": {
+          "name": "resumes_no_update_client",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "resumes_delete_own_noncurrent": {
+          "name": "resumes_delete_own_noncurrent",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.consents": {
+      "name": "consents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consent_type": {
+          "name": "consent_type",
+          "type": "consent_type_t",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted": {
+          "name": "accepted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "consents_type_accepted_idx": {
+          "name": "consents_type_accepted_idx",
+          "columns": [
+            {
+              "expression": "consent_type",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "bool_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "accepted",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "accepted",
+          "with": {}
+        },
+        "consents_user_type_version_idx": {
+          "name": "consents_user_type_version_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "consent_type",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "accepted_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "enum_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "id",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "consents_user_id_fkey": {
+          "name": "consents_user_id_fkey",
+          "tableFrom": "consents",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "consents_version_check": {
+          "name": "consents_version_check",
+          "value": "version ~ '^v[0-9]+(\\.[0-9]+)?$'::text"
+        }
+      },
+      "policies": {
+        "consents_select_own": {
+          "name": "consents_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() = user_id)"
+        },
+        "consents_insert_own": {
+          "name": "consents_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "consents_select_admin": {
+          "name": "consents_select_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "consents_no_update": {
+          "name": "consents_no_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "consents_no_delete": {
+          "name": "consents_no_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.audit_log": {
+      "name": "audit_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_user_id": {
+          "name": "target_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "audit_log_action_idx": {
+          "name": "audit_log_action_idx",
+          "columns": [
+            {
+              "expression": "action",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_log_actor_idx": {
+          "name": "audit_log_actor_idx",
+          "columns": [
+            {
+              "expression": "actor_user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_log_metadata_gin": {
+          "name": "audit_log_metadata_gin",
+          "columns": [
+            {
+              "expression": "metadata",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "jsonb_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "audit_log_target_idx": {
+          "name": "audit_log_target_idx",
+          "columns": [
+            {
+              "expression": "target_user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "audit_log_actor_user_id_fkey": {
+          "name": "audit_log_actor_user_id_fkey",
+          "tableFrom": "audit_log",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "audit_log_target_user_id_fkey": {
+          "name": "audit_log_target_user_id_fkey",
+          "tableFrom": "audit_log",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "target_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {
+        "audit_log_select_admin": {
+          "name": "audit_log_select_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "is_admin(auth.uid())"
+        },
+        "audit_log_no_client_write": {
+          "name": "audit_log_no_client_write",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.account_deletion_requests": {
+      "name": "account_deletion_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "deletion_request_status_t",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processed_by": {
+          "name": "processed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "account_deletion_requests_one_pending_per_user": {
+          "name": "account_deletion_requests_one_pending_per_user",
+          "columns": [
+            {
+              "expression": "user_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "where": "(status = ANY (ARRAY['pending'::deletion_request_status_t, 'processing'::deletion_request_status_t]))",
+          "with": {}
+        },
+        "account_deletion_requests_status_idx": {
+          "name": "account_deletion_requests_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "requested_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "account_deletion_requests_user_id_fkey": {
+          "name": "account_deletion_requests_user_id_fkey",
+          "tableFrom": "account_deletion_requests",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "account_deletion_requests_processed_by_fkey": {
+          "name": "account_deletion_requests_processed_by_fkey",
+          "tableFrom": "account_deletion_requests",
+          "tableTo": "profiles",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "processed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "account_deletion_requests_reason_check": {
+          "name": "account_deletion_requests_reason_check",
+          "value": "(reason IS NULL) OR (length(reason) <= 2000)"
+        }
+      },
+      "policies": {
+        "account_deletion_select_own": {
+          "name": "account_deletion_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() = user_id)"
+        },
+        "account_deletion_insert_own": {
+          "name": "account_deletion_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "account_deletion_select_admin": {
+          "name": "account_deletion_select_admin",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "account_deletion_update_admin": {
+          "name": "account_deletion_update_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ]
+        },
+        "account_deletion_no_client_delete": {
+          "name": "account_deletion_no_client_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {
+    "public.class_standing_t": {
+      "name": "class_standing_t",
+      "values": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior",
+        "graduate",
+        "phd",
+        "alumni"
+      ],
+      "schema": "public"
+    },
+    "public.consent_type_t": {
+      "name": "consent_type_t",
+      "values": [
+        "privacy_policy",
+        "terms_of_service",
+        "recruiter_resume_sharing",
+        "email_marketing",
+        "sms_marketing"
+      ],
+      "schema": "public"
+    },
+    "public.deletion_request_status_t": {
+      "name": "deletion_request_status_t",
+      "values": [
+        "pending",
+        "processing",
+        "completed",
+        "cancelled"
+      ],
+      "schema": "public"
+    },
+    "public.interested_role_t": {
+      "name": "interested_role_t",
+      "values": [
+        "software_engineering",
+        "data_science",
+        "data_engineering",
+        "machine_learning",
+        "product_management",
+        "ui_ux_design",
+        "devops_sre",
+        "cybersecurity",
+        "research",
+        "consulting",
+        "quant_finance",
+        "other"
+      ],
+      "schema": "public"
+    },
+    "public.resume_status_t": {
+      "name": "resume_status_t",
+      "values": [
+        "pending",
+        "active",
+        "deleted"
+      ],
+      "schema": "public"
+    },
+    "public.verification_method_t": {
+      "name": "verification_method_t",
+      "values": [
+        "email_otp",
+        "admin_manual"
+      ],
+      "schema": "public"
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {
+      "profiles": {
+        "columns": {
+          "interested_roles": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "interested_role_t"
+          }
+        }
+      }
+    }
+  }
+}

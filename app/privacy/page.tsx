@@ -1,0 +1,106 @@
+import Link from "next/link";
+
+export const metadata = {
+  title: "Privacy Policy · Progsu",
+};
+
+export default function PrivacyPage() {
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <header className="mb-8 space-y-2">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          Draft · v1
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
+        <p className="text-sm text-muted-foreground">
+          Last reviewed: pre-launch. This draft needs attorney sign-off before
+          any external recruiter export ships.
+        </p>
+      </header>
+
+      <article className="prose prose-sm max-w-none space-y-4 text-sm leading-6">
+        <h2 className="text-lg font-semibold">Who we are</h2>
+        <p>
+          Progsu is a programming and builders community at Georgia State
+          University. The Progsu member platform is operated by Progsu
+          leadership as a student organization, not by GSU itself.
+        </p>
+
+        <h2 className="text-lg font-semibold">What we collect</h2>
+        <p>When you sign up, we collect:</p>
+        <ul className="list-disc pl-6">
+          <li>Your Google identity (email, name, avatar) for login.</li>
+          <li>A student email at an allowlisted school domain, which we verify with a 6-digit code.</li>
+          <li>Profile information you enter: name, school, major, class standing, graduation term, and up to six role interests.</li>
+          <li>Optional contact info: phone, LinkedIn, GitHub, portfolio URL.</li>
+          <li>Your resume PDF, if you upload one.</li>
+          <li>Your consent choices (privacy, terms, age, recruiter sharing, email, SMS), with version and timestamp.</li>
+        </ul>
+        <p>We do not collect date of birth, SSN, home address, GPA, gender, or race.</p>
+
+        <h2 className="text-lg font-semibold">How we use it</h2>
+        <ul className="list-disc pl-6">
+          <li>To run your member account.</li>
+          <li>To let Progsu admins help you with problems (e.g. manual verification).</li>
+          <li>To share with sponsors and recruiters Progsu works with — only if you toggle &quot;open to recruiters&quot; AND accept the recruiter-sharing consent.</li>
+          <li>To send event and opportunity emails or text messages, if you opt in.</li>
+        </ul>
+
+        <h2 className="text-lg font-semibold">Recruiter sharing</h2>
+        <p>
+          If you opt in, the recruiter CSV can include your name, preferred name,
+          google email, student email, phone, school, major, minor, class
+          standing, graduation term, role interests, LinkedIn/GitHub/portfolio
+          links, and a 15-minute signed link to your current resume.
+        </p>
+        <p>
+          We do not sell your data. You can withdraw consent at any time from
+          your{" "}
+          <Link href="/dashboard/settings" className="text-primary underline underline-offset-4">
+            dashboard settings
+          </Link>
+          . CSVs already downloaded before you withdraw remain out of our reach
+          — regenerating the export will exclude you immediately.
+        </p>
+
+        <h2 className="text-lg font-semibold">How we protect it</h2>
+        <ul className="list-disc pl-6">
+          <li>All data is stored in Supabase Postgres with row-level security policies denying cross-user reads.</li>
+          <li>Resumes live in a private storage bucket; download links are short-lived signed URLs.</li>
+          <li>Admin exports are recorded in an audit log with the acting admin, the export ID, and row count.</li>
+          <li>OTP codes are hashed (bcrypt) before storage and never logged.</li>
+        </ul>
+
+        <h2 className="text-lg font-semibold">Retention and deletion</h2>
+        <p>
+          We keep your data while you&apos;re an active member. If you request
+          deletion, Progsu will process it within 30 days. Consent rows are
+          retained (with name and email redacted) so we can prove what you
+          agreed to at what time.
+        </p>
+
+        <h2 className="text-lg font-semibold">Your rights</h2>
+        <p>
+          You can view, edit, or ask to delete your data by emailing Progsu
+          leadership or using the settings page. If you&apos;re in a jurisdiction
+          with stronger rights (GDPR, CCPA), we will honor them even though our
+          users are primarily in Georgia, USA.
+        </p>
+
+        <h2 className="text-lg font-semibold">Changes to this policy</h2>
+        <p>
+          If we make a material change, we&apos;ll prompt you to re-accept the new
+          version the next time you sign in. Minor cleanups are applied silently
+          with a new version number.
+        </p>
+
+        <h2 className="text-lg font-semibold">Contact</h2>
+        <p>
+          Email Progsu leadership at{" "}
+          <span className="font-mono text-xs">hello@progsu.org</span> with any
+          privacy questions.
+        </p>
+      </article>
+    </main>
+  );
+}
