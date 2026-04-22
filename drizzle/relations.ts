@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { profiles, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests } from "./schema";
+import { profiles, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, domainRequests } from "./schema";
 
 // auth.users relation intentionally omitted — auth schema is filtered out of
 // introspection. profiles.id still FK's to auth.users in Postgres.
@@ -20,6 +20,7 @@ export const profilesRelations = relations(profiles, ({many}) => ({
 	accountDeletionRequests_processedBy: many(accountDeletionRequests, {
 		relationName: "accountDeletionRequests_processedBy_profiles_id"
 	}),
+	domainRequests: many(domainRequests),
 }));
 
 export const emailVerificationCodesRelations = relations(emailVerificationCodes, ({one}) => ({
@@ -66,5 +67,12 @@ export const accountDeletionRequestsRelations = relations(accountDeletionRequest
 		fields: [accountDeletionRequests.processedBy],
 		references: [profiles.id],
 		relationName: "accountDeletionRequests_processedBy_profiles_id"
+	}),
+}));
+
+export const domainRequestsRelations = relations(domainRequests, ({one}) => ({
+	profile: one(profiles, {
+		fields: [domainRequests.userId],
+		references: [profiles.id]
 	}),
 }));

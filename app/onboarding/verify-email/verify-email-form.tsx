@@ -30,13 +30,14 @@ type FormState = {
 const ERROR_COPY: Record<string, string> = {
   UNAUTHORIZED: "Please sign in again.",
   DOMAIN_NOT_ALLOWED:
-    "That school isn't in our allowlist yet. Contact an admin if this is a mistake.",
+    "We can't send a code to that school yet — it's not on our allowlist. Click \"Verify later\" to save your email and we'll let you know when we add it.",
   EMAIL_TAKEN:
     "That email is already in use on another Progsu account. Contact an admin if this is a mistake.",
   RATE_LIMITED: "Please wait before requesting another code.",
   OTP_INVALID: "Incorrect code.",
   OTP_EXPIRED: "That code expired. Send yourself a new one.",
   OTP_LOCKED: "Too many attempts. Request a new code later.",
+  CONFLICT: "You're already verified. Sign out and back in if this looks wrong.",
   INVALID_INPUT: "Please check the input and try again.",
   INTERNAL: "Something went wrong. Please try again.",
 };

@@ -51,7 +51,7 @@ export default async function AdminMembersPage({
   let builder = admin
     .from("profiles")
     .select(
-      `id, first_name, last_name, school, major, class_standing, grad_year, grad_term, student_email, student_email_verified, open_to_recruiters, is_archived, is_admin, interested_roles,
+      `id, first_name, last_name, school, major, class_standing, grad_year, grad_term, student_email, student_email_verified, pending_domain_name, open_to_recruiters, is_archived, is_admin, interested_roles,
        resumes!inner(id)`,
       { count: "exact" }
     );
@@ -80,7 +80,7 @@ export default async function AdminMembersPage({
     builder = admin
       .from("profiles")
       .select(
-        `id, first_name, last_name, school, major, class_standing, grad_year, grad_term, student_email, student_email_verified, open_to_recruiters, is_archived, is_admin, interested_roles`,
+        `id, first_name, last_name, school, major, class_standing, grad_year, grad_term, student_email, student_email_verified, pending_domain_name, open_to_recruiters, is_archived, is_admin, interested_roles`,
         { count: "exact" }
       );
 
@@ -283,14 +283,21 @@ export default async function AdminMembersPage({
                     {r.student_email ?? "—"}
                     {r.student_email_verified ? (
                       <span
-                        title="Verified"
+                        title="Verified via OTP"
                         className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
                       >
                         ✓ Verified
                       </span>
+                    ) : r.pending_domain_name ? (
+                      <span
+                        title={`${r.pending_domain_name} isn't in the allowlist yet — admin needs to add it.`}
+                        className="ml-1 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-400 cursor-help"
+                      >
+                        Pending school
+                      </span>
                     ) : r.student_email ? (
                       <span
-                        title="Student email pending verification"
+                        title="Student email pending OTP verification"
                         className="ml-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
                       >
                         Unverified

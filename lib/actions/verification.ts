@@ -353,12 +353,24 @@ export async function verifyStudentEmailCode(
            set consumed_at = ${now}
          where id = ${row.id}
       `;
+      // Free up the email address from any competing unverified claims. The
+      // partial unique index only enforces uniqueness among verified rows, but
+      // leaving someone else's stale unverified claim hanging around is noise.
+      await tx`
+        update public.profiles
+           set student_email = null,
+               pending_domain_name = null
+         where student_email = ${studentEmail}
+           and student_email_verified = false
+           and id <> ${user.id}
+      `;
       await tx`
         update public.profiles
            set student_email              = ${studentEmail},
                student_email_verified     = true,
                student_email_verified_at  = ${now},
                verification_method        = 'email_otp'::public.verification_method_t,
+               pending_domain_name        = null,
                updated_at                 = ${now}
          where id = ${user.id}
       `;
@@ -410,14 +422,18 @@ export async function verifyStudentEmailCode(
 }
 
 // --------------------------------------------------------------------------
-// reserveStudentEmail — validates the email (domain allowlist + duplicate guard)
-// and stores it on the profile as UNVERIFIED. Used by the "Verify later" flow:
-// we record the email they plan to verify without actually sending an OTP, so
-// they can come back later and we know which address to challenge.
+// reserveStudentEmail — records the email the user plans to verify (without
+// sending an OTP) so we don't lose what they typed when they hit "Verify later".
+//
+// Two paths:
+//   - Domain is in school_domains → reserve the email; user can return to verify.
+//   - Domain is NOT in school_domains → still store the email + pending_domain_name
+//     so the UI can show "your school is coming soon"; append to domain_requests
+//     so admins can see which schools to add.
 // --------------------------------------------------------------------------
 export async function reserveStudentEmail(
   rawInput: ReserveStudentEmailInput
-): Promise<ActionResult<{ studentEmail: string }>> {
+): Promise<ActionResult<{ studentEmail: string; domainSupported: boolean }>> {
   const parsed = reserveStudentEmailSchema.safeParse(rawInput);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
@@ -441,32 +457,29 @@ export async function reserveStudentEmail(
     .select("domain, is_active")
     .eq("domain", domain)
     .maybeSingle();
-  if (!domainRow || !domainRow.is_active) {
-    return err(
-      "DOMAIN_NOT_ALLOWED",
-      "That school domain isn't supported yet.",
-      { field: "studentEmail" }
-    );
-  }
+  const domainSupported = Boolean(domainRow?.is_active);
 
-  const { data: dupe } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("student_email", studentEmail)
-    .eq("student_email_verified", true)
-    .neq("id", user.id)
-    .maybeSingle();
-  if (dupe) {
-    return err(
-      "EMAIL_TAKEN",
-      "That email is already in use on another Progsu account. Contact an admin if this is a mistake.",
-      { field: "studentEmail" }
-    );
+  // If the domain IS supported, guard against stealing a verified holder's email.
+  if (domainSupported) {
+    const { data: dupe } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("student_email", studentEmail)
+      .eq("student_email_verified", true)
+      .neq("id", user.id)
+      .maybeSingle();
+    if (dupe) {
+      return err(
+        "EMAIL_TAKEN",
+        "That email is already in use on another Progsu account. Contact an admin if this is a mistake.",
+        { field: "studentEmail" }
+      );
+    }
   }
 
   // Refuse to overwrite a verified email via the reserve path. If the caller is
   // already verified and wants to change their address, they must go through
-  // the real OTP verify flow (which has its own state transition guarantees).
+  // the real OTP verify flow.
   const { data: me } = await admin
     .from("profiles")
     .select("student_email_verified")
@@ -479,22 +492,47 @@ export async function reserveStudentEmail(
     );
   }
 
-  // Store the unverified email on the profile so the user can resume later.
-  // RLS lets the user write their own student_email as long as
-  // student_email_verified stays false (verification flag + verification_method
-  // are blocked on client writes; plain email column is writable by the owner).
+  // Store the email (verified=false is enforced by RLS). Also set/clear
+  // pending_domain_name depending on whether the domain is supported.
   const { error: updateErr } = await supabase
     .from("profiles")
-    .update({ student_email: studentEmail })
+    .update({
+      student_email: studentEmail,
+      pending_domain_name: domainSupported ? null : domain,
+    })
     .eq("id", user.id);
   if (updateErr) {
     return err("INTERNAL", updateErr.message);
   }
 
+  // If the domain isn't in our allowlist, log the request so admins can see
+  // demand for that school. Append-only; the unique index ensures one row per
+  // (domain, user). Errors here are non-fatal for the reserve flow.
+  if (!domainSupported) {
+    const { error: reqErr } = await supabase
+      .from("domain_requests")
+      .upsert(
+        {
+          domain,
+          user_id: user.id,
+          example_email: studentEmail,
+        },
+        { onConflict: "domain,user_id" }
+      );
+    if (reqErr) {
+      log.warn("domain_requests insert failed", {
+        action: "reserveStudentEmail",
+        user_id: user.id,
+        error_message: reqErr.message,
+      });
+    }
+  }
+
   log.info("student email reserved (verify later)", {
     action: "reserveStudentEmail",
     user_id: user.id,
+    domain_supported: domainSupported,
     ok: true,
   });
-  return ok({ studentEmail });
+  return ok({ studentEmail, domainSupported });
 }

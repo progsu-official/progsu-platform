@@ -39,6 +39,9 @@ export default async function AdminLayout({
             <AdminNavLink href="/admin">Overview</AdminNavLink>
             <AdminNavLink href="/admin/members">Members</AdminNavLink>
             <AdminNavLink href="/admin/export">Export</AdminNavLink>
+            <AdminNavLink href="/admin/domain-requests">
+              Domain requests
+            </AdminNavLink>
             <AdminNavLink href="/admin/audit">Audit log</AdminNavLink>
             <AdminNavLink href="/admin/settings">Settings</AdminNavLink>
           </nav>

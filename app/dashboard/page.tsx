@@ -18,7 +18,7 @@ export default async function DashboardHome() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "first_name, last_name, preferred_name, school, major, grad_year, grad_term, class_standing, student_email, student_email_verified, open_to_recruiters, interested_roles"
+      "first_name, last_name, preferred_name, school, major, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles"
     )
     .eq("id", user.id)
     .single();
@@ -52,20 +52,39 @@ export default async function DashboardHome() {
       <StaleConsentBanner consents={consents ?? []} versions={versions ?? []} />
 
       {!profile?.student_email_verified ? (
-        <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
-          <div>
-            <p className="font-medium text-foreground">
-              Your student email isn&apos;t verified
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              You can still use Progsu, but recruiters will only see members
-              with a verified school email. Verify any time from below.
-            </p>
-          </div>
-          <Button asChild size="sm">
-            <Link href="/onboarding/verify-email">Verify now</Link>
-          </Button>
-        </section>
+        profile?.pending_domain_name ? (
+          <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+            <div>
+              <p className="font-medium text-foreground">
+                {profile.pending_domain_name} is coming soon
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Your school isn&apos;t on our verification list yet. Once we
+                add it you&apos;ll be prompted to verify. Until then recruiters
+                won&apos;t see your profile. You can swap to a different school
+                email any time.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/onboarding/verify-email">Change email</Link>
+            </Button>
+          </section>
+        ) : (
+          <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+            <div>
+              <p className="font-medium text-foreground">
+                Your student email isn&apos;t verified
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                You can still use Progsu, but recruiters will only see members
+                with a verified school email. Verify any time from below.
+              </p>
+            </div>
+            <Button asChild size="sm">
+              <Link href="/onboarding/verify-email">Verify now</Link>
+            </Button>
+          </section>
+        )
       ) : null}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -95,7 +114,7 @@ export default async function DashboardHome() {
               </span>
               {profile?.student_email_verified ? (
                 <span
-                  title="Verified"
+                  title="Verified via OTP"
                   aria-label="Verified"
                   className="ml-1 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
                 >
@@ -103,10 +122,14 @@ export default async function DashboardHome() {
                 </span>
               ) : profile?.student_email ? (
                 <span
-                  title="Unverified"
-                  className="ml-1 inline-flex shrink-0 items-center rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                  title={
+                    profile.pending_domain_name
+                      ? `${profile.pending_domain_name} isn't on our verification list yet — we'll enable it soon.`
+                      : "Waiting for you to verify via OTP. Recruiters won't see your profile until then."
+                  }
+                  className="ml-1 inline-flex shrink-0 items-center rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400 cursor-help"
                 >
-                  Unverified
+                  {profile.pending_domain_name ? "School coming soon" : "Unverified"}
                 </span>
               ) : null}
             </dd>

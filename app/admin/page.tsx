@@ -8,30 +8,35 @@ type Stats = {
   unverified: number;
   withResume: number;
   openToRecruiters: number;
+  pendingDomains: number;
 };
 
 async function loadStats(): Promise<Stats> {
   const admin = createAdminClient();
 
-  const [totalQ, verifiedQ, unverifiedQ, resumeQ, openQ] = await Promise.all([
-    admin.from("profiles").select("*", { count: "exact", head: true }),
-    admin
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("student_email_verified", true),
-    admin
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("student_email_verified", false),
-    admin
-      .from("resumes")
-      .select("user_id", { count: "exact", head: true })
-      .eq("is_current", true),
-    admin
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("open_to_recruiters", true),
-  ]);
+  const [totalQ, verifiedQ, unverifiedQ, resumeQ, openQ, pendingDomainsQ] =
+    await Promise.all([
+      admin.from("profiles").select("*", { count: "exact", head: true }),
+      admin
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("student_email_verified", true),
+      admin
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("student_email_verified", false),
+      admin
+        .from("resumes")
+        .select("user_id", { count: "exact", head: true })
+        .eq("is_current", true),
+      admin
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("open_to_recruiters", true),
+      admin
+        .from("domain_requests")
+        .select("*", { count: "exact", head: true }),
+    ]);
 
   return {
     total: totalQ.count ?? 0,
@@ -39,6 +44,7 @@ async function loadStats(): Promise<Stats> {
     unverified: unverifiedQ.count ?? 0,
     withResume: resumeQ.count ?? 0,
     openToRecruiters: openQ.count ?? 0,
+    pendingDomains: pendingDomainsQ.count ?? 0,
   };
 }
 
@@ -55,7 +61,7 @@ export default async function AdminHomePage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Members" value={stats.total} />
         <StatCard label="Verified" value={stats.verified} />
         <StatCard
@@ -66,6 +72,12 @@ export default async function AdminHomePage() {
         />
         <StatCard label="With resume" value={stats.withResume} />
         <StatCard label="Open to recruiters" value={stats.openToRecruiters} />
+        <StatCard
+          label="Domain requests"
+          value={stats.pendingDomains}
+          href="/admin/domain-requests"
+          emphasis={stats.pendingDomains > 0 ? "warn" : undefined}
+        />
       </div>
     </div>
   );

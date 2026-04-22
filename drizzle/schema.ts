@@ -1,4 +1,4 @@
-import { pgTable, index, unique, pgPolicy, check, text, boolean, timestamp, uniqueIndex, foreignKey, uuid, integer, bigint, inet, jsonb, bigserial, pgView, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, uniqueIndex, foreignKey, pgPolicy, check, uuid, text, boolean, timestamp, integer, unique, bigint, inet, jsonb, bigserial, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const classStandingT = pgEnum("class_standing_t", ['freshman', 'sophomore', 'junior', 'senior', 'graduate', 'phd', 'alumni'])
@@ -8,21 +8,6 @@ export const interestedRoleT = pgEnum("interested_role_t", ['software_engineerin
 export const resumeStatusT = pgEnum("resume_status_t", ['pending', 'active', 'deleted'])
 export const verificationMethodT = pgEnum("verification_method_t", ['email_otp', 'admin_manual'])
 
-
-export const schoolDomains = pgTable("school_domains", {
-	domain: text("domain").primaryKey().notNull(),
-	schoolName: text("school_name").notNull(),
-	schoolSlug: text("school_slug").notNull(),
-	isActive: boolean("is_active").default(true).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("school_domains_active_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`is_active`),
-	unique("school_domains_school_slug_key").on(table.schoolSlug),
-	pgPolicy("school_domains_select_auth", { as: "permissive", for: "select", to: ["authenticated"], using: sql`true` }),
-	pgPolicy("school_domains_write_admin", { as: "permissive", for: "all", to: ["authenticated"] }),
-	check("school_domains_school_slug_check", sql`school_slug ~ '^[a-z0-9\-]+$'::text`),
-]);
 
 export const profiles = pgTable("profiles", {
 	id: uuid().primaryKey().notNull(),
@@ -58,6 +43,7 @@ END`),
 	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	pendingDomainName: text("pending_domain_name"),
 }, (table) => [
 	index("profiles_archived_idx").using("btree", table.isArchived.asc().nullsLast().op("timestamptz_ops"), table.archivedAt.asc().nullsLast().op("bool_ops")),
 	index("profiles_class_standing_idx").using("btree", table.classStanding.asc().nullsLast().op("enum_ops")),
@@ -69,8 +55,8 @@ END`),
 	index("profiles_last_name_trgm").using("gin", table.lastName.asc().nullsLast().op("gin_trgm_ops")),
 	index("profiles_recruiter_export_idx").using("btree", table.studentEmailVerified.asc().nullsLast().op("bool_ops"), table.openToRecruiters.asc().nullsLast().op("bool_ops")).where(sql`(student_email_verified AND open_to_recruiters AND (NOT is_archived))`),
 	index("profiles_student_domain_idx").using("btree", table.studentEmailDomain.asc().nullsLast().op("citext_ops")),
-	uniqueIndex("profiles_student_email_idx").using("btree", table.studentEmail.asc().nullsLast().op("citext_ops")).where(sql`(student_email IS NOT NULL)`),
 	index("profiles_student_email_trgm").using("gin", sql`((student_email)::text)`),
+	uniqueIndex("profiles_student_email_verified_idx").using("btree", table.studentEmail.asc().nullsLast().op("citext_ops")).where(sql`((student_email IS NOT NULL) AND (student_email_verified = true))`),
 	// FK to auth.users.id lives in Postgres; auth schema is filtered out of introspection.
 	pgPolicy("profiles_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = id)` }),
 	pgPolicy("profiles_update_own", { as: "permissive", for: "update", to: ["authenticated"] }),
@@ -83,6 +69,21 @@ END`),
 	check("profiles_portfolio_url_check", sql`(portfolio_url IS NULL) OR (portfolio_url ~* '^https?://'::text)`),
 	check("profiles_phone_number_check", sql`(phone_number IS NULL) OR (phone_number ~ '^\+?[0-9\-\(\) ]{7,20}$'::text)`),
 	check("profiles_interested_roles_max_six", sql`cardinality(interested_roles) <= 6`),
+]);
+
+export const schoolDomains = pgTable("school_domains", {
+	domain: text("domain").primaryKey().notNull(),
+	schoolName: text("school_name").notNull(),
+	schoolSlug: text("school_slug").notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("school_domains_active_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`is_active`),
+	unique("school_domains_school_slug_key").on(table.schoolSlug),
+	pgPolicy("school_domains_select_auth", { as: "permissive", for: "select", to: ["authenticated"], using: sql`true` }),
+	pgPolicy("school_domains_write_admin", { as: "permissive", for: "all", to: ["authenticated"] }),
+	check("school_domains_school_slug_check", sql`school_slug ~ '^[a-z0-9\-]+$'::text`),
 ]);
 
 export const consentVersions = pgTable("consent_versions", {
@@ -244,6 +245,27 @@ export const rateLimitHits = pgTable("rate_limit_hits", {
 	index("rate_limit_hits_bucket_key_idx").using("btree", table.bucket.asc().nullsLast().op("timestamptz_ops"), table.key.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	pgPolicy("rate_limit_hits_no_auth_select", { as: "permissive", for: "select", to: ["authenticated"], using: sql`false` }),
 	pgPolicy("rate_limit_hits_no_auth_write", { as: "permissive", for: "all", to: ["authenticated"] }),
+]);
+
+export const domainRequests = pgTable("domain_requests", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	domain: text("domain").notNull(),
+	userId: uuid("user_id").notNull(),
+	exampleEmail: text("example_email"),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("domain_requests_domain_idx").using("btree", table.domain.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("citext_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "domain_requests_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("domain_requests_unique_per_user").on(table.domain, table.userId),
+	pgPolicy("domain_requests_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("domain_requests_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("domain_requests_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("domain_requests_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("domain_requests_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
 ]);
 export const recruiterEligibleMembers = pgView("recruiter_eligible_members", {	id: uuid(),
 	firstName: text("first_name"),
