@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CalendarDays, CalendarPlus, History } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -153,8 +155,9 @@ async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
   if (rows.length === 0) {
     return (
       <EmptyState
-        title="Nothing scheduled — yet"
-        body="Upcoming events will show up here as soon as organizers publish them."
+        icon={CalendarDays}
+        title="Nothing scheduled yet"
+        body="Officers publish events here. Check back soon."
       />
     );
   }
@@ -226,9 +229,10 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
   if (historyRows.length === 0 && pendingInvites.length === 0) {
     return (
       <EmptyState
-        title="No upcoming plans"
-        body="Once you RSVP to an event or get invited to one it'll land here."
-        cta={{ href: "/events?tab=upcoming", label: "Browse events" }}
+        icon={CalendarPlus}
+        title="You haven't RSVP'd to anything yet"
+        body="When you RSVP or get invited, it'll show up here so you don't miss it."
+        cta={{ href: "/events?tab=upcoming", label: "Browse upcoming events" }}
       />
     );
   }
@@ -366,8 +370,10 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
   if (rows.length === 0) {
     return (
       <EmptyState
-        title="No past events"
-        body="Once you RSVP and attend events, they'll appear here."
+        icon={History}
+        title="No event history yet"
+        body="Events you attend will appear here after they end."
+        cta={{ href: "/events?tab=upcoming", label: "See what's coming up" }}
       />
     );
   }
@@ -521,13 +527,20 @@ function EmptyState({
   title,
   body,
   cta,
+  icon: Icon,
 }: {
   title: string;
   body: string;
   cta?: { href: string; label: string };
+  icon?: LucideIcon;
 }) {
   return (
     <div className="rounded-md border border-dashed p-8 text-center">
+      {Icon ? (
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+          <Icon size={20} className="text-muted-foreground" strokeWidth={1.5} />
+        </div>
+      ) : null}
       <p className="text-sm font-medium text-foreground">{title}</p>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
       {cta ? (
