@@ -102,12 +102,20 @@ export default async function AdminEventsPage({
             {count ?? 0} {tab} event{count === 1 ? "" : "s"}
           </p>
         </div>
-        <Link
-          href="/admin/events/new"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Create event
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/events/analytics"
+            className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-accent/10"
+          >
+            Analytics →
+          </Link>
+          <Link
+            href="/admin/events/new"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Create event
+          </Link>
+        </div>
       </header>
 
       <nav className="flex flex-wrap gap-1 border-b text-sm">
