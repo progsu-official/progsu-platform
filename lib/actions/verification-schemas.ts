@@ -15,6 +15,10 @@ export const requestStudentEmailCodeSchema = z.object({
   studentEmail: StudentEmailSchema,
 });
 
+export const reserveStudentEmailSchema = z.object({
+  studentEmail: StudentEmailSchema,
+});
+
 export const verifyStudentEmailCodeSchema = z.object({
   studentEmail: StudentEmailSchema,
   code: z
@@ -28,6 +32,9 @@ export type RequestStudentEmailCodeInput = z.infer<
 >;
 export type VerifyStudentEmailCodeInput = z.infer<
   typeof verifyStudentEmailCodeSchema
+>;
+export type ReserveStudentEmailInput = z.infer<
+  typeof reserveStudentEmailSchema
 >;
 
 // Config (defaults match the OTP contract in docs/07-implementation-plan.md §1.1).

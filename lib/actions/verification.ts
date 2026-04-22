@@ -13,6 +13,7 @@ import { log } from "@/lib/log";
 import { type ActionResult, err, ok } from "./result";
 import {
   type RequestStudentEmailCodeInput,
+  type ReserveStudentEmailInput,
   type VerifyStudentEmailCodeInput,
   OTP_TTL_MINUTES_DEFAULT,
   OTP_MAX_ATTEMPTS_DEFAULT,
@@ -25,6 +26,7 @@ import {
   VERIFY_WINDOW_SEC,
   VERIFY_MAX,
   requestStudentEmailCodeSchema,
+  reserveStudentEmailSchema,
   verifyStudentEmailCodeSchema,
 } from "./verification-schemas";
 
@@ -405,4 +407,94 @@ export async function verifyStudentEmailCode(
     ok: true,
   });
   return ok({ studentEmail, verifiedAt: outcome.verifiedAt });
+}
+
+// --------------------------------------------------------------------------
+// reserveStudentEmail — validates the email (domain allowlist + duplicate guard)
+// and stores it on the profile as UNVERIFIED. Used by the "Verify later" flow:
+// we record the email they plan to verify without actually sending an OTP, so
+// they can come back later and we know which address to challenge.
+// --------------------------------------------------------------------------
+export async function reserveStudentEmail(
+  rawInput: ReserveStudentEmailInput
+): Promise<ActionResult<{ studentEmail: string }>> {
+  const parsed = reserveStudentEmailSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
+      field: first?.path.join("."),
+    });
+  }
+  const { studentEmail } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "You must be signed in.");
+
+  const admin = createAdminClient();
+
+  const domain = studentEmail.split("@")[1];
+  const { data: domainRow } = await admin
+    .from("school_domains")
+    .select("domain, is_active")
+    .eq("domain", domain)
+    .maybeSingle();
+  if (!domainRow || !domainRow.is_active) {
+    return err(
+      "DOMAIN_NOT_ALLOWED",
+      "That school domain isn't supported yet.",
+      { field: "studentEmail" }
+    );
+  }
+
+  const { data: dupe } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("student_email", studentEmail)
+    .eq("student_email_verified", true)
+    .neq("id", user.id)
+    .maybeSingle();
+  if (dupe) {
+    return err(
+      "EMAIL_TAKEN",
+      "That email is already in use on another Progsu account. Contact an admin if this is a mistake.",
+      { field: "studentEmail" }
+    );
+  }
+
+  // Refuse to overwrite a verified email via the reserve path. If the caller is
+  // already verified and wants to change their address, they must go through
+  // the real OTP verify flow (which has its own state transition guarantees).
+  const { data: me } = await admin
+    .from("profiles")
+    .select("student_email_verified")
+    .eq("id", user.id)
+    .single();
+  if (me?.student_email_verified) {
+    return err(
+      "CONFLICT",
+      "You're already verified. Use the verify flow to change your email."
+    );
+  }
+
+  // Store the unverified email on the profile so the user can resume later.
+  // RLS lets the user write their own student_email as long as
+  // student_email_verified stays false (verification flag + verification_method
+  // are blocked on client writes; plain email column is writable by the owner).
+  const { error: updateErr } = await supabase
+    .from("profiles")
+    .update({ student_email: studentEmail })
+    .eq("id", user.id);
+  if (updateErr) {
+    return err("INTERNAL", updateErr.message);
+  }
+
+  log.info("student email reserved (verify later)", {
+    action: "reserveStudentEmail",
+    user_id: user.id,
+    ok: true,
+  });
+  return ok({ studentEmail });
 }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   requestStudentEmailCode,
+  reserveStudentEmail,
   verifyStudentEmailCode,
 } from "@/lib/actions/verification";
 import type { ActionResult } from "@/lib/actions/result";
@@ -69,8 +70,12 @@ export function VerifyEmailForm({
     errorMessage: null,
     errorField: null,
   });
+  // Anchor timestamp for the "didn't receive a code?" reveal delay. Set on first
+  // successful requestStudentEmailCode; the button only appears 15s after.
+  const [skipRevealAt, setSkipRevealAt] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
   const now = useNow(500);
+  const skipRevealed = skipRevealAt != null && now >= skipRevealAt;
 
   // Message live-region for aria-live announcements
   const liveRef = useRef<HTMLDivElement>(null);
@@ -131,6 +136,9 @@ export function VerifyEmailForm({
         retryAfterMs: 60_000,
         retryAnchor: Date.now(),
       }));
+      // Only start the "didn't receive?" reveal timer on first send, so users
+      // can't trick the UI by click-resending immediately.
+      setSkipRevealAt((prev) => prev ?? Date.now() + 15_000);
     });
   }
 
@@ -184,6 +192,19 @@ export function VerifyEmailForm({
     }));
   }
 
+  function onSkip() {
+    setState((s) => ({ ...s, errorMessage: null, errorField: null }));
+    startTransition(async () => {
+      const result = await reserveStudentEmail({ studentEmail: state.email });
+      if (!result.ok) {
+        setError(result);
+        return;
+      }
+      router.push(skipDestination);
+      router.refresh();
+    });
+  }
+
   const expiryLabel =
     msUntilExpiry > 0
       ? `${Math.floor(msUntilExpiry / 60000)}:${String(
@@ -223,14 +244,16 @@ export function VerifyEmailForm({
             <Button type="submit" disabled={pending || state.email.length === 0} size="lg">
               {pending ? "Sending…" : "Send verification code"}
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              onClick={() => router.push(skipDestination)}
-              disabled={pending}
-            >
-              Didn&apos;t receive a code? Verify later
-            </Button>
+            {skipRevealed ? (
+              <Button
+                type="button"
+                variant="link"
+                onClick={onSkip}
+                disabled={pending || state.email.length === 0}
+              >
+                Didn&apos;t receive a code? Verify later
+              </Button>
+            ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
             You can finish your profile without verifying, but your profile
@@ -296,14 +319,16 @@ export function VerifyEmailForm({
             <Button type="button" variant="link" onClick={onChangeEmail} disabled={pending}>
               Use a different email
             </Button>
-            <Button
-              type="button"
-              variant="link"
-              onClick={() => router.push(skipDestination)}
-              disabled={pending}
-            >
-              Verify later
-            </Button>
+            {skipRevealed ? (
+              <Button
+                type="button"
+                variant="link"
+                onClick={onSkip}
+                disabled={pending}
+              >
+                Verify later
+              </Button>
+            ) : null}
           </div>
         </form>
       )}
