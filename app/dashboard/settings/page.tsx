@@ -131,6 +131,7 @@ export default async function SettingsPage() {
           <VisibilitySettings
             initial={visibility}
             siteUrl={env.NEXT_PUBLIC_SITE_URL}
+            sharedEventsEnabled={env.FEATURE_SHARED_EVENT_HISTORY}
           />
         </section>
       ) : null}

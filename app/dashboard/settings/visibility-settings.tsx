@@ -20,9 +20,14 @@ type Props = {
     profile_slug: string | null;
   };
   siteUrl: string;
+  sharedEventsEnabled: boolean;
 };
 
-export function VisibilitySettings({ initial, siteUrl }: Props) {
+export function VisibilitySettings({
+  initial,
+  siteUrl,
+  sharedEventsEnabled,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState(initial);
@@ -96,13 +101,15 @@ export function VisibilitySettings({ initial, siteUrl }: Props) {
         disabled={pending || !state.discoverable}
       />
 
-      <Toggle
-        label="Let other members see events we've both attended"
-        description="Coming soon: when you and another member have both turned this on, we can highlight events you attended together."
-        checked={state.share_shared_event_counts}
-        onChange={(v) => updateToggle("share_shared_event_counts", v)}
-        disabled={pending || !state.discoverable}
-      />
+      {sharedEventsEnabled ? (
+        <Toggle
+          label="Show shared event history to other members who opt in"
+          description="When another member and I both turn this on, we can each see the names of events we both attended — only for public, non-sensitive events. Private-invite events are never shown."
+          checked={state.share_shared_event_counts}
+          onChange={(v) => updateToggle("share_shared_event_counts", v)}
+          disabled={pending || !state.discoverable}
+        />
+      ) : null}
 
       {state.profile_slug ? (
         <div className="space-y-2 rounded-md border p-3">

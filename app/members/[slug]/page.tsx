@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { getMemberCardBySlug } from "@/lib/actions/members";
+import { env } from "@/lib/env";
+import {
+  getMemberCardBySlug,
+  getSharedEventsForViewer,
+} from "@/lib/actions/members";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +39,16 @@ export default async function MemberProfilePage({
     data: { user },
   } = await supabase.auth.getUser();
   const isSelf = user?.id === card.user_id;
+
+  // Shared-events section: only when flag is on AND viewing a peer (not self).
+  // Action wrapper handles the flag; this is a belt-and-suspenders check so we
+  // also skip the RPC round-trip on self-views.
+  const sharedEvents =
+    env.FEATURE_SHARED_EVENT_HISTORY && user?.id && !isSelf
+      ? await getSharedEventsForViewer(card.user_id).then((r) =>
+          r.ok ? r.data : null
+        )
+      : null;
 
   const gradLabel =
     card.grad_term && card.grad_year
@@ -138,6 +152,56 @@ export default async function MemberProfilePage({
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+      ) : null}
+
+      {sharedEvents && sharedEvents.aggregate_count > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Shared events with you</h2>
+          {sharedEvents.named_events.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You and {card.display_name ?? "this member"} have attended{" "}
+              {sharedEvents.aggregate_count} shared{" "}
+              {sharedEvents.aggregate_count === 1 ? "event" : "events"}.
+            </p>
+          ) : (
+            <>
+              <ul className="divide-y rounded-md border">
+                {sharedEvents.named_events.map((ev) => (
+                  <li
+                    key={ev.event_id}
+                    className="flex items-center justify-between gap-4 p-3"
+                  >
+                    <div className="min-w-0">
+                      <Link
+                        href={`/events/${ev.event_slug}`}
+                        className="truncate text-sm font-medium hover:underline"
+                      >
+                        {ev.event_title}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(ev.starts_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {sharedEvents.named_events.length < sharedEvents.aggregate_count ? (
+                <p className="text-xs text-muted-foreground">
+                  Plus{" "}
+                  {sharedEvents.aggregate_count -
+                    sharedEvents.named_events.length}{" "}
+                  more shared{" "}
+                  {sharedEvents.aggregate_count -
+                    sharedEvents.named_events.length ===
+                  1
+                    ? "event"
+                    : "events"}{" "}
+                  that aren&apos;t shown here.
+                </p>
+              ) : null}
+            </>
           )}
         </section>
       ) : null}
