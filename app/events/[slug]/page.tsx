@@ -6,6 +6,7 @@ import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { Button } from "@/components/ui/button";
 
 import { EventDate } from "../_components/event-date";
+import { EventDescription } from "./_components/event-description";
 import { RsvpPanel } from "./_components/rsvp-panel";
 
 export const dynamic = "force-dynamic";
@@ -252,10 +253,7 @@ export default async function MemberEventDetailPage({
           <h2 className="text-sm font-semibold text-muted-foreground">
             About this event
           </h2>
-          {/* Release 1: preserve line breaks; markdown rendering deferred. */}
-          <div className="whitespace-pre-wrap text-sm text-foreground">
-            {event.description_md}
-          </div>
+          <EventDescription md={event.description_md} />
         </section>
       ) : null}
     </div>
