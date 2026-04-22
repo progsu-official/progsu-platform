@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CalendarDays, CalendarPlus, History } from "lucide-react";
+import { CalendarDays, CalendarPlus, History, MapPin } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveCoverUrls } from "@/lib/events/cover-url";
 
 import { EventDate } from "./_components/event-date";
 
@@ -29,6 +30,7 @@ type UpcomingRow = {
   starts_at: string;
   ends_at: string;
   location_text: string | null;
+  cover_image_path: string | null;
   capacity: number | null;
   waitlist_enabled: boolean;
   going_count: number | null;
@@ -44,6 +46,7 @@ type HistoryRow = {
   ends_at: string;
   status: string;
   location_text: string | null;
+  cover_image_path: string | null;
   rsvp_status: string | null;
   attended: boolean | null;
   checked_in_at: string | null;
@@ -56,6 +59,7 @@ type InviteRow = {
   starts_at: string;
   ends_at: string;
   location_text: string | null;
+  cover_image_path: string | null;
 };
 
 function joinHosts(hosts: HostRef[] | null | undefined): string | null {
@@ -122,7 +126,7 @@ async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
   const { data, error } = await supabase
     .from("member_visible_events")
     .select(
-      "id, slug, title, starts_at, ends_at, location_text, capacity, waitlist_enabled, going_count, waitlisted_count, hosts"
+      "id, slug, title, starts_at, ends_at, location_text, cover_image_path, capacity, waitlist_enabled, going_count, waitlisted_count, hosts"
     )
     .gte("ends_at", nowIso)
     .order("starts_at", { ascending: true })
@@ -144,12 +148,17 @@ async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
       starts_at: r.starts_at as string,
       ends_at: r.ends_at as string,
       location_text: (r.location_text as string | null) ?? null,
+      cover_image_path: (r.cover_image_path as string | null) ?? null,
       capacity: (r.capacity as number | null) ?? null,
       waitlist_enabled: !!r.waitlist_enabled,
       going_count: (r.going_count as number | null) ?? 0,
       waitlisted_count: (r.waitlisted_count as number | null) ?? 0,
       hosts: (r.hosts as HostRef[] | null) ?? [],
     })
+  );
+  const coverUrls = await resolveCoverUrls(
+    supabase,
+    rows.map((r) => r.cover_image_path)
   );
 
   if (rows.length === 0) {
@@ -164,7 +173,7 @@ async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
 
   return (
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {rows.map((ev) => (
+      {rows.map((ev, i) => (
         <EventCard
           key={ev.id}
           href={`/events/${ev.slug}`}
@@ -173,6 +182,7 @@ async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
           startsAt={ev.starts_at}
           endsAt={ev.ends_at}
           location={ev.location_text}
+          coverUrl={coverUrls[i] ?? null}
           footer={<CapacityLine ev={ev} />}
         />
       ))}
@@ -190,7 +200,7 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
     supabase
       .from("self_event_history")
       .select(
-        "event_id, slug, title, starts_at, ends_at, status, location_text, rsvp_status, attended, checked_in_at"
+        "event_id, slug, title, starts_at, ends_at, status, location_text, cover_image_path, rsvp_status, attended, checked_in_at"
       )
       .gte("starts_at", nowIso)
       .in("rsvp_status", ["going", "waitlisted"])
@@ -215,6 +225,7 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
       ends_at: r.ends_at as string,
       status: r.status as string,
       location_text: (r.location_text as string | null) ?? null,
+      cover_image_path: (r.cover_image_path as string | null) ?? null,
       rsvp_status: (r.rsvp_status as string | null) ?? null,
       attended: (r.attended as boolean | null) ?? null,
       checked_in_at: (r.checked_in_at as string | null) ?? null,
@@ -225,6 +236,19 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
   // after a public RSVP, or a stale pending invite row). history wins.
   const knownIds = new Set(historyRows.map((r) => r.event_id));
   const pendingInvites = invites.filter((i) => !knownIds.has(i.event_id));
+
+  // Batch-sign covers for both sections in a single Promise.all. The helper
+  // handles nulls gracefully, so empty arrays just resolve to empty arrays.
+  const [historyCoverUrls, inviteCoverUrls] = await Promise.all([
+    resolveCoverUrls(
+      supabase,
+      historyRows.map((r) => r.cover_image_path)
+    ),
+    resolveCoverUrls(
+      supabase,
+      pendingInvites.map((r) => r.cover_image_path)
+    ),
+  ]);
 
   if (historyRows.length === 0 && pendingInvites.length === 0) {
     return (
@@ -239,7 +263,7 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
 
   return (
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {historyRows.map((ev) => {
+      {historyRows.map((ev, i) => {
         const badge =
           ev.rsvp_status === "going" ? (
             <Badge tone="primary">Going</Badge>
@@ -256,11 +280,12 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
             endsAt={ev.ends_at}
             location={ev.location_text}
             cancelled={ev.status === "cancelled"}
+            coverUrl={historyCoverUrls[i] ?? null}
             footer={badge}
           />
         );
       })}
-      {pendingInvites.map((ev) => (
+      {pendingInvites.map((ev, i) => (
         <EventCard
           key={ev.event_id}
           href={`/events/${ev.slug}`}
@@ -269,6 +294,7 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
           startsAt={ev.starts_at}
           endsAt={ev.ends_at}
           location={ev.location_text}
+          coverUrl={inviteCoverUrls[i] ?? null}
           footer={<Badge tone="muted">Invited</Badge>}
         />
       ))}
@@ -285,32 +311,24 @@ async function loadInvitedPending(
   const { data, error } = await supabase
     .from("event_invites")
     .select(
-      "event_id, events!inner(slug, title, status, starts_at, ends_at, location_text)"
+      "event_id, events!inner(slug, title, status, starts_at, ends_at, location_text, cover_image_path)"
     )
     .eq("user_id", userId)
     .is("revoked_at", null);
   if (error || !data) return [];
 
+  type InviteEvent = {
+    slug: string;
+    title: string;
+    status: string;
+    starts_at: string;
+    ends_at: string;
+    location_text: string | null;
+    cover_image_path: string | null;
+  };
   type InviteWithEvent = {
     event_id: string;
-    events:
-      | {
-          slug: string;
-          title: string;
-          status: string;
-          starts_at: string;
-          ends_at: string;
-          location_text: string | null;
-        }
-      | Array<{
-          slug: string;
-          title: string;
-          status: string;
-          starts_at: string;
-          ends_at: string;
-          location_text: string | null;
-        }>
-      | null;
+    events: InviteEvent | InviteEvent[] | null;
   };
   const rows: InviteRow[] = [];
   for (const raw of data as Array<Record<string, unknown>>) {
@@ -327,6 +345,7 @@ async function loadInvitedPending(
       starts_at: ev.starts_at,
       ends_at: ev.ends_at,
       location_text: ev.location_text,
+      cover_image_path: ev.cover_image_path,
     });
   }
   rows.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -338,7 +357,7 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
   const { data, error } = await supabase
     .from("self_event_history")
     .select(
-      "event_id, slug, title, starts_at, ends_at, status, location_text, rsvp_status, attended, checked_in_at"
+      "event_id, slug, title, starts_at, ends_at, status, location_text, cover_image_path, rsvp_status, attended, checked_in_at"
     )
     .lt("ends_at", nowIso)
     .order("starts_at", { ascending: false })
@@ -361,10 +380,15 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
       ends_at: r.ends_at as string,
       status: r.status as string,
       location_text: (r.location_text as string | null) ?? null,
+      cover_image_path: (r.cover_image_path as string | null) ?? null,
       rsvp_status: (r.rsvp_status as string | null) ?? null,
       attended: (r.attended as boolean | null) ?? null,
       checked_in_at: (r.checked_in_at as string | null) ?? null,
     })
+  );
+  const pastCoverUrls = await resolveCoverUrls(
+    supabase,
+    rows.map((r) => r.cover_image_path)
   );
 
   if (rows.length === 0) {
@@ -380,7 +404,7 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
 
   return (
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {rows.map((ev) => {
+      {rows.map((ev, i) => {
         const badge = buildPastBadge(ev);
         return (
           <EventCard
@@ -392,6 +416,7 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
             endsAt={ev.ends_at}
             location={ev.location_text}
             cancelled={ev.status === "cancelled"}
+            coverUrl={pastCoverUrls[i] ?? null}
             footer={badge}
           />
         );
@@ -434,6 +459,7 @@ function EventCard({
   endsAt,
   location,
   cancelled,
+  coverUrl,
   footer,
 }: {
   href: string;
@@ -443,34 +469,51 @@ function EventCard({
   endsAt: string;
   location: string | null;
   cancelled?: boolean;
+  coverUrl?: string | null;
   footer?: React.ReactNode;
 }) {
   return (
     <li>
       <Link
         href={href}
-        className="group flex h-full flex-col justify-between gap-3 rounded-md border p-4 transition-colors hover:border-primary hover:bg-accent/10"
+        className="group flex h-full flex-col overflow-hidden rounded-md border transition-colors hover:border-primary hover:bg-accent/5"
       >
-        <div className="space-y-1">
+        <div className="relative aspect-[3/1] w-full bg-gradient-to-br from-muted to-accent/30">
+          {coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : null}
           {cancelled ? (
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-destructive">
+            <div className="absolute inset-x-0 bottom-0 bg-destructive/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-destructive-foreground">
               Cancelled
-            </p>
-          ) : null}
-          <h2 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary">
-            {title}
-          </h2>
-          {hosts ? (
-            <p className="text-xs text-muted-foreground">{hosts}</p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            <EventDate startsAt={startsAt} endsAt={endsAt} />
-          </p>
-          {location ? (
-            <p className="text-xs text-muted-foreground">{location}</p>
+            </div>
           ) : null}
         </div>
-        {footer ? <div className="text-xs">{footer}</div> : null}
+        <div className="flex flex-1 flex-col justify-between gap-3 p-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary">
+              {title}
+            </h2>
+            {hosts ? (
+              <p className="text-xs text-muted-foreground">{hosts}</p>
+            ) : null}
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarDays size={12} strokeWidth={1.75} />
+              <EventDate startsAt={startsAt} endsAt={endsAt} />
+            </p>
+            {location ? (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapPin size={12} strokeWidth={1.75} />
+                <span className="truncate">{location}</span>
+              </p>
+            ) : null}
+          </div>
+          {footer ? <div className="text-xs">{footer}</div> : null}
+        </div>
       </Link>
     </li>
   );
