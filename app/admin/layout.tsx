@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import { signOut } from "@/lib/actions/session";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,9 @@ export default async function AdminLayout({
           <nav className="flex-1 space-y-1 px-2 py-3 text-sm">
             <AdminNavLink href="/admin">Overview</AdminNavLink>
             <AdminNavLink href="/admin/members">Members</AdminNavLink>
+            {env.FEATURE_EVENTS ? (
+              <AdminNavLink href="/admin/events">Events</AdminNavLink>
+            ) : null}
             <AdminNavLink href="/admin/export">Export</AdminNavLink>
             <AdminNavLink href="/admin/domain-requests">
               Domain requests

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
 
 import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
@@ -30,13 +31,24 @@ export default async function DashboardHome() {
     .eq("is_current", true)
     .maybeSingle();
 
-  const [{ data: consents }, { data: versions }] = await Promise.all([
-    supabase
-      .from("consents")
-      .select("consent_type, accepted, version, accepted_at, id")
-      .eq("user_id", user.id),
-    supabase.from("consent_versions").select("consent_type, version"),
-  ]);
+  const [{ data: consents }, { data: versions }, upcomingResult] =
+    await Promise.all([
+      supabase
+        .from("consents")
+        .select("consent_type, accepted, version, accepted_at, id")
+        .eq("user_id", user.id),
+      supabase.from("consent_versions").select("consent_type, version"),
+      env.FEATURE_EVENTS
+        ? supabase
+            .from("self_event_history")
+            .select("event_id, slug, title, starts_at, rsvp_status")
+            .gte("starts_at", new Date().toISOString())
+            .in("rsvp_status", ["going", "waitlisted"])
+            .order("starts_at", { ascending: true })
+            .limit(3)
+        : Promise.resolve({ data: null }),
+    ]);
+  const upcomingPlans = upcomingResult.data;
 
   return (
     <div className="space-y-8">
@@ -170,6 +182,10 @@ export default async function DashboardHome() {
         </div>
       </section>
 
+      {env.FEATURE_EVENTS ? (
+        <UpcomingEventsCard rows={upcomingPlans ?? []} />
+      ) : null}
+
       <section className="rounded-md border p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -188,5 +204,86 @@ export default async function DashboardHome() {
         </div>
       </section>
     </div>
+  );
+}
+
+type UpcomingPlanRow = {
+  event_id: string;
+  slug: string;
+  title: string;
+  starts_at: string;
+  rsvp_status: string | null;
+};
+
+function UpcomingEventsCard({ rows }: { rows: Array<Record<string, unknown>> }) {
+  const plans: UpcomingPlanRow[] = rows.map((r) => ({
+    event_id: r.event_id as string,
+    slug: r.slug as string,
+    title: r.title as string,
+    starts_at: r.starts_at as string,
+    rsvp_status: (r.rsvp_status as string | null) ?? null,
+  }));
+
+  return (
+    <section className="rounded-md border p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-semibold">Upcoming events</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your next Progsu plans.
+          </p>
+        </div>
+        <Link
+          href="/events?tab=my-plans"
+          className="text-xs text-primary underline underline-offset-4"
+        >
+          See all →
+        </Link>
+      </div>
+
+      {plans.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          No upcoming events.{" "}
+          <Link
+            href="/events"
+            className="text-primary underline underline-offset-4"
+          >
+            Browse events
+          </Link>
+          .
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y rounded-md border">
+          {plans.map((p) => (
+            <li
+              key={p.event_id}
+              className="flex items-center justify-between gap-3 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <Link
+                  href={`/events/${p.slug}`}
+                  className="block truncate text-sm font-medium text-foreground hover:text-primary"
+                >
+                  {p.title}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(p.starts_at).toLocaleString()}
+                </p>
+              </div>
+              <span
+                className={
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+                  (p.rsvp_status === "going"
+                    ? "bg-primary/10 text-primary"
+                    : "bg-amber-500/15 text-amber-700 dark:text-amber-400")
+                }
+              >
+                {p.rsvp_status === "going" ? "Going" : "Waitlisted"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
