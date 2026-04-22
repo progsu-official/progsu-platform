@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { DetailsTab } from "./details-tab";
@@ -202,8 +203,12 @@ async function AccessTabServer({
 }
 
 async function GuestsTabServer({ eventId }: { eventId: string }) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("admin_event_roster_for", {
+  // Must use the user-context client because admin_event_roster_for()
+  // checks public.is_admin(auth.uid()) server-side. Service-role has no
+  // auth.uid() and the RPC would raise "admin only". The parent layout
+  // has already gated on is_admin so the caller here is guaranteed admin.
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_event_roster_for", {
     p_event_id: eventId,
   });
   if (error) {
