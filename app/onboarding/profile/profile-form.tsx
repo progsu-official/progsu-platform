@@ -19,6 +19,23 @@ import {
   type InterestedRole,
 } from "@/lib/enums/roles";
 
+// Field-specific headlines so users know WHICH field blocked the save, not just
+// a vague "something went wrong". Add to this as new required fields appear.
+const FIELD_ERROR_HEADINGS: Record<string, string> = {
+  firstName: "First name is required",
+  lastName: "Last name is required",
+  school: "Select your school",
+  major: "Major is required",
+  classStanding: "Select your class standing",
+  gradYear: "Select your graduation year",
+  gradTerm: "Select your graduation term",
+  interestedRoles: "Pick at least one role",
+  phoneNumber: "Your profile didn't save — a phone number is required",
+  linkedinUrl: "That LinkedIn URL doesn't look right",
+  githubUrl: "That GitHub URL doesn't look right",
+  portfolioUrl: "That portfolio URL doesn't look right",
+};
+
 type Initial = {
   firstName: string;
   lastName: string;
@@ -276,12 +293,15 @@ export function ProfileForm({
         </Field>
       </div>
 
-      {error && !error.field ? (
+      {error ? (
         <div
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          {error.message}
+          <p className="font-medium">
+            {FIELD_ERROR_HEADINGS[error.field ?? ""] ?? "We couldn't save your profile"}
+          </p>
+          <p className="mt-1">{error.message}</p>
         </div>
       ) : null}
 
