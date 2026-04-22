@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
+import { getOwnVisibilitySettings } from "@/lib/actions/members";
 
 import { ConsentSettings } from "./consent-settings";
 import { ResumeSettings } from "./resume-settings";
 import { ProfileSettings } from "./profile-settings";
+import { VisibilitySettings } from "./visibility-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +46,24 @@ export default async function SettingsPage() {
   const schoolOptions = Array.from(
     new Set((domains ?? []).map((d) => d.school_name))
   );
+
+  let visibility: {
+    discoverable: boolean;
+    share_attended_events: boolean;
+    share_shared_event_counts: boolean;
+    profile_slug: string | null;
+  } | null = null;
+  if (env.FEATURE_MEMBER_DIRECTORY) {
+    const r = await getOwnVisibilitySettings();
+    if (r.ok) {
+      visibility = r.data ?? {
+        discoverable: false,
+        share_attended_events: false,
+        share_shared_event_counts: false,
+        profile_slug: null,
+      };
+    }
+  }
 
   return (
     <div className="space-y-10">
@@ -99,6 +120,20 @@ export default async function SettingsPage() {
           phoneNumber={profile?.phone_number ?? ""}
         />
       </section>
+
+      {visibility ? (
+        <section id="visibility" className="space-y-4">
+          <h2 className="text-xl font-semibold">Profile visibility</h2>
+          <p className="text-sm text-muted-foreground">
+            Control whether other Progsu members can find your profile and
+            what they can see about you.
+          </p>
+          <VisibilitySettings
+            initial={visibility}
+            siteUrl={env.NEXT_PUBLIC_SITE_URL}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }
