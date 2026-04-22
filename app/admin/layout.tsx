@@ -48,6 +48,8 @@ export default async function AdminLayout({
             </AdminNavLink>
             <AdminNavLink href="/admin/audit">Audit log</AdminNavLink>
             <AdminNavLink href="/admin/settings">Settings</AdminNavLink>
+            <div className="my-2 border-t" />
+            <AdminNavLink href="/dashboard">View as member</AdminNavLink>
           </nav>
           <div className="border-t px-4 py-3 text-xs text-muted-foreground">
             Signed in as {profile.first_name ?? user.email}

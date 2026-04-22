@@ -19,8 +19,10 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
-  if (!state.fullyOnboarded) {
+  // Admins bypass onboarding; non-admins must finish it before hitting the
+  // dashboard (same contract as before — we just don't force admins away from
+  // member surfaces anymore).
+  if (!state.isAdmin && !state.fullyOnboarded) {
     const next = onboardingPathFor(state.nextStep) ?? "/onboarding/verify-email";
     redirect(next);
   }
@@ -53,6 +55,14 @@ export default async function DashboardLayout({
             >
               Settings
             </Link>
+            {state.isAdmin ? (
+              <Link
+                href="/admin"
+                className="rounded-md border border-input px-2 py-1 text-xs font-medium transition-colors hover:bg-accent/10"
+              >
+                Admin
+              </Link>
+            ) : null}
             <span aria-hidden className="h-4 w-px bg-muted-foreground/20" />
             <span className="text-sm text-muted-foreground">{displayName}</span>
             <form action={signOut}>

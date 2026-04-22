@@ -67,6 +67,14 @@ export default async function MembersLayout({
             >
               Settings
             </Link>
+            {state.isAdmin ? (
+              <Link
+                href="/admin"
+                className="rounded-md border border-input px-2 py-1 text-xs font-medium transition-colors hover:bg-accent/10"
+              >
+                Admin
+              </Link>
+            ) : null}
             <span aria-hidden className="h-4 w-px bg-muted-foreground/20" />
             <span className="text-sm text-muted-foreground">{displayName}</span>
             <form action={signOut}>

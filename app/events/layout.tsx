@@ -27,10 +27,10 @@ export default async function EventsLayout({
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  // Admins get bounced to their own events surface — /events is a
-  // member-only shell. Mirrors the dashboard layout's admin bypass.
-  if (state.isAdmin) redirect("/admin/events");
-  if (!state.fullyOnboarded) {
+  // Admins can view the member events surface (e.g., to preview how it looks
+  // or walk through an RSVP themselves). They also have /admin/events.
+  // Non-admins must finish onboarding before reaching /events.
+  if (!state.isAdmin && !state.fullyOnboarded) {
     const next = onboardingPathFor(state.nextStep) ?? "/onboarding/verify-email";
     redirect(next);
   }
@@ -57,6 +57,14 @@ export default async function EventsLayout({
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <EventsNav />
+            {state.isAdmin ? (
+              <Link
+                href="/admin"
+                className="rounded-md border border-input px-2 py-1 text-xs font-medium transition-colors hover:bg-accent/10"
+              >
+                Admin
+              </Link>
+            ) : null}
             <span aria-hidden className="h-4 w-px bg-muted-foreground/20" />
             <span className="text-sm text-muted-foreground">{displayName}</span>
             <form action={signOut}>
