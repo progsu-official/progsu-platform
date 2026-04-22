@@ -1,0 +1,35 @@
+-- Migration 000080 — placeholder for a self_check_in rate-limit fix.
+--
+-- KNOWN LIMITATION (R1 ships with this gap documented):
+--
+-- self_check_in() calls public.consume_rate_limit(...) before validating the
+-- raw code. When code verification fails and the helper raises, Postgres
+-- rolls back the ENTIRE function transaction — including the rate_limit_hits
+-- insert that consume_rate_limit just made. PL/pgSQL sub-transactions
+-- (begin ... exception when others then ...) do NOT help: re-raising the
+-- captured exception still aborts the outer transaction managed by PostgREST,
+-- which unwinds every write the function made.
+--
+-- Net effect: wrong-code attempts are NOT counted toward the 10/60s limiter.
+-- Successful check-ins ARE counted (they commit normally), so legitimate
+-- replay spam is still bounded, but a brute-force code-guessing attack is
+-- unbounded at the DB layer.
+--
+-- Mitigation shipped with R1:
+--   - Check-in codes are rotated manually by admins (D5, plan §7.4).
+--   - Code window is short (events.check_in_code_expires_at is seconds/minutes
+--     before/after the event).
+--   - Raw codes are bcrypted; each verification is expensive.
+--   - App layer can add request-level rate limiting at the server action boundary.
+--
+-- Follow-up: a future migration should either:
+--   a) Use dblink / pg_background to commit the hit on a separate connection.
+--   b) Restructure self_check_in() to return a result row instead of raising,
+--      so the outer transaction commits the rate-limit hit regardless.
+--   c) Add an explicit application-level rate limiter in lib/actions/events.ts
+--      that wraps selfCheckIn() and increments a Redis/memory counter.
+--
+-- This migration intentionally makes no schema changes. It exists to document
+-- the decision point in migration history.
+
+select 1 where false;
