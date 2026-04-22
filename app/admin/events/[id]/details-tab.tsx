@@ -14,6 +14,7 @@ import {
   updateEvent,
 } from "@/lib/actions/events";
 
+import { CoverUploader } from "./cover-uploader";
 import type { EventRecord } from "./types";
 
 // datetime-local expects "YYYY-MM-DDTHH:mm" in local time.
@@ -33,11 +34,22 @@ function toIso(local: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-export function DetailsTab({ event }: { event: EventRecord }) {
+export function DetailsTab({
+  event,
+  coverUrl,
+}: {
+  event: EventRecord;
+  coverUrl: string | null;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const [cancelPanel, setCancelPanel] = useState<{
+    open: boolean;
+    reason: string;
+  }>({ open: false, reason: "" });
 
   const [form, setForm] = useState({
     title: event.title,
@@ -49,7 +61,6 @@ export function DetailsTab({ event }: { event: EventRecord }) {
     capacity: event.capacity == null ? "" : String(event.capacity),
     waitlist_enabled: event.waitlist_enabled,
     is_sensitive: event.is_sensitive,
-    cover_image_path: event.cover_image_path ?? "",
   });
 
   function runLifecycle(
@@ -77,7 +88,6 @@ export function DetailsTab({ event }: { event: EventRecord }) {
         capacity: form.capacity === "" ? null : form.capacity,
         waitlist_enabled: form.waitlist_enabled,
         is_sensitive: form.is_sensitive,
-        cover_image_path: form.cover_image_path,
       });
       if (!r.ok) {
         setError(r.error.message);
@@ -88,13 +98,22 @@ export function DetailsTab({ event }: { event: EventRecord }) {
     });
   }
 
-  function onCancel() {
-    const reason =
-      typeof window !== "undefined"
-        ? window.prompt("Reason for cancellation? (required)") ?? ""
-        : "";
-    if (!reason.trim()) return;
-    runLifecycle(() => cancelEvent(event.id, { reason }));
+  function openCancelPanel() {
+    setError(null);
+    setCancelPanel({ open: true, reason: "" });
+  }
+
+  function confirmCancel() {
+    const reason = cancelPanel.reason.trim();
+    if (!reason) {
+      setError("Reason is required to cancel an event.");
+      return;
+    }
+    runLifecycle(async () => {
+      const r = await cancelEvent(event.id, { reason });
+      if (r.ok) setCancelPanel({ open: false, reason: "" });
+      return r;
+    });
   }
 
   function onDelete() {
@@ -137,7 +156,7 @@ export function DetailsTab({ event }: { event: EventRecord }) {
               type="button"
               size="sm"
               variant="outline"
-              onClick={onCancel}
+              onClick={openCancelPanel}
               disabled={pending}
             >
               Cancel event
@@ -186,6 +205,57 @@ export function DetailsTab({ event }: { event: EventRecord }) {
         </div>
       ) : null}
 
+      {cancelPanel.open ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-destructive">Cancel this event?</p>
+            <p className="text-xs text-muted-foreground">
+              Everyone with a going, waitlisted, or attended record will receive
+              a cancellation email. The event will disappear from discovery but
+              stay visible to people with RSVPs.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="cancel-reason" className="text-xs">
+              Reason (shown to members)
+            </Label>
+            <textarea
+              id="cancel-reason"
+              value={cancelPanel.reason}
+              onChange={(e) =>
+                setCancelPanel((p) => ({ ...p, reason: e.target.value }))
+              }
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              rows={3}
+              maxLength={2000}
+              disabled={pending}
+              placeholder="Venue fell through — rescheduling next week."
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={confirmCancel}
+              disabled={pending || cancelPanel.reason.trim().length === 0}
+            >
+              Confirm cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setCancelPanel({ open: false, reason: "" })}
+              disabled={pending}
+            >
+              Keep event
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {error ? (
         <div
           role="alert"
@@ -229,11 +299,16 @@ export function DetailsTab({ event }: { event: EventRecord }) {
             title="Sensitive"
             value={event.is_sensitive ? "Yes" : "No"}
           />
-          <InfoCard
-            title="Cover image path"
-            value={event.cover_image_path ?? "—"}
-            mono
-          />
+          <div className="md:col-span-2">
+            <h3 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+              Cover image
+            </h3>
+            <CoverUploader
+              eventId={event.id}
+              currentPath={event.cover_image_path}
+              currentUrl={coverUrl}
+            />
+          </div>
           <InfoCard
             title="Hosts"
             value={
@@ -312,15 +387,6 @@ export function DetailsTab({ event }: { event: EventRecord }) {
                 value={form.location_url}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, location_url: e.target.value }))
-                }
-                disabled={pending}
-              />
-            </Field>
-            <Field label="Cover image path (TODO upload UI)">
-              <Input
-                value={form.cover_image_path}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, cover_image_path: e.target.value }))
                 }
                 disabled={pending}
               />

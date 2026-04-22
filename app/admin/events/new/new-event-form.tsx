@@ -28,7 +28,6 @@ type State = {
   is_sensitive: boolean;
   send_rsvp_email: boolean;
   send_reminder_email: boolean;
-  cover_image_path: string;
   hosts: HostRow[];
 };
 
@@ -46,7 +45,6 @@ const initial: State = {
   is_sensitive: false,
   send_rsvp_email: true,
   send_reminder_email: true,
-  cover_image_path: "",
   hosts: [],
 };
 
@@ -108,7 +106,7 @@ export function NewEventForm() {
         is_sensitive: state.is_sensitive,
         send_rsvp_email: state.send_rsvp_email,
         send_reminder_email: state.send_reminder_email,
-        cover_image_path: state.cover_image_path || null,
+        cover_image_path: null,
         hosts: state.hosts
           .map((h) => ({
             display_name: h.display_name.trim(),
@@ -249,17 +247,9 @@ export function NewEventForm() {
         </Field>
       </section>
 
-      <Field
-        label="Cover image path"
-        hint="TODO: upload flow not wired yet. Paste a storage path if you have one."
-      >
-        <Input
-          value={state.cover_image_path}
-          onChange={(e) => setField("cover_image_path", e.target.value)}
-          placeholder="{event_id}/{uuid}.png"
-          disabled={pending}
-        />
-      </Field>
+      <p className="text-xs text-muted-foreground">
+        You can upload a cover image after creating the event.
+      </p>
 
       <section className="space-y-3 rounded-md border p-4">
         <div className="flex items-center justify-between">

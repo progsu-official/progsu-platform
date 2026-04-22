@@ -5,7 +5,10 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { randomUUID } from "node:crypto";
+
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   enqueueEventCancellation,
   enqueueEventReminder,
@@ -14,16 +17,26 @@ import {
 import { type ActionResult, err, ok } from "./result";
 import {
   cancelEventSchema,
+  createEventCoverUploadUrlSchema,
   createEventSchema,
   rotateCheckInCodeSchema,
   rsvpToEventSchema,
   selfCheckInSchema,
   updateEventSchema,
+  type CreateEventCoverUploadUrlInput,
   type CreateEventInput,
   type RotateCheckInCodeInput,
   type RsvpDesired,
   type UpdateEventInput,
 } from "./event-schemas";
+
+const EVENT_COVERS_BUCKET = "event-covers";
+
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 // Map a Supabase/Postgres error to an ActionResult error code.
 // - P0001 (raise_exception): business-rule violations from SECURITY DEFINER
@@ -584,4 +597,164 @@ export async function selfCheckIn(
 
   revalidateMemberEventPaths();
   return ok({ checkedIn: true });
+}
+
+// ---------------------------------------------------------------------------
+// Invite by email
+// ---------------------------------------------------------------------------
+
+// Resolves an email address to a profile id (matching either google_email or
+// student_email) and invites them. Single round-trip for the admin UX.
+// Returns the resolved user_id so the caller can show a confirmation.
+export async function inviteMemberByEmail(
+  eventId: string,
+  rawEmail: string
+): Promise<ActionResult<{ userId: string; email: string }>> {
+  const idParsed = z.string().uuid().safeParse(eventId);
+  if (!idParsed.success) return err("INVALID_INPUT", "Invalid event id.");
+
+  const emailParsed = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Invalid email address.")
+    .safeParse(rawEmail);
+  if (!emailParsed.success) {
+    return err("INVALID_INPUT", emailParsed.error.issues[0]?.message ?? "Invalid email.");
+  }
+  const email = emailParsed.data;
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  // Admin RLS on profiles allows SELECT; use the user-context client so the
+  // read is audited under this admin's session, not service-role.
+  const { data: match, error: lookupErr } = await supabase
+    .from("profiles")
+    .select("id, google_email, student_email")
+    .or(`google_email.eq.${email},student_email.eq.${email}`)
+    .limit(1)
+    .maybeSingle();
+  if (lookupErr) return err("INTERNAL", lookupErr.message);
+  if (!match) {
+    return err(
+      "NOT_FOUND",
+      "No member with that email. They need to sign in at least once before you can invite them.",
+      { field: "email" }
+    );
+  }
+
+  const { error } = await supabase.rpc("invite_member_to_event", {
+    p_event_id: eventId,
+    p_user_id: match.id,
+  });
+  if (error) return mapPgError(error);
+
+  revalidateEventPaths(eventId);
+  return ok({ userId: match.id as string, email });
+}
+
+// ---------------------------------------------------------------------------
+// Cover image upload
+// ---------------------------------------------------------------------------
+
+// Mints a signed upload URL for an event cover. The client does the actual
+// upload (direct-to-storage POST), then calls updateEvent({cover_image_path})
+// separately to persist the path on the event row. Separation keeps a failed
+// upload from corrupting the event row and lets cover replacement reuse the
+// same flow without a transaction.
+//
+// Storage RLS (migration 1): INSERT/UPDATE/DELETE on event-covers is gated on
+// public.is_admin(auth.uid()). We double-gate at the action layer to return
+// a friendly error before touching storage.
+export async function createEventCoverUploadUrl(
+  rawInput: CreateEventCoverUploadUrlInput
+): Promise<
+  ActionResult<{ path: string; signedUrl: string; token: string }>
+> {
+  const parsed = createEventCoverUploadUrlSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
+      field: first?.path.join("."),
+    });
+  }
+  const { eventId, contentType, fileSize } = parsed.data;
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  // Verify the event exists so we don't sign a URL for a bad id.
+  const { data: event, error: eventErr } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (eventErr) return err("INTERNAL", eventErr.message);
+  if (!event) return err("NOT_FOUND", "Event not found.");
+
+  const ext = MIME_TO_EXT[contentType];
+  if (!ext) return err("INVALID_INPUT", "Unsupported image type.");
+  const path = `${eventId}/${randomUUID()}.${ext}`;
+
+  const { data: signed, error: signErr } = await supabase.storage
+    .from(EVENT_COVERS_BUCKET)
+    .createSignedUploadUrl(path);
+  if (signErr || !signed) {
+    return err(
+      "INTERNAL",
+      signErr?.message ?? "Could not sign cover upload URL."
+    );
+  }
+
+  // fileSize is sanity-checked at the schema layer; storage also enforces
+  // the 5 MB bucket limit server-side. We don't persist the size here —
+  // the event row doesn't track cover metadata beyond the path.
+  void fileSize;
+
+  return ok({ path, signedUrl: signed.signedUrl, token: signed.token });
+}
+
+// Removes the cover: deletes the storage object (via service-role so we
+// don't depend on the admin's own storage policy) and clears
+// events.cover_image_path via update_event. Safe to call when no cover is
+// set (no-op).
+export async function deleteEventCover(
+  eventId: string
+): Promise<ActionResult<{ cleared: true }>> {
+  const idParsed = z.string().uuid().safeParse(eventId);
+  if (!idParsed.success) return err("INVALID_INPUT", "Invalid event id.");
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  const { data: event, error: eventErr } = await supabase
+    .from("events")
+    .select("id, cover_image_path")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (eventErr) return err("INTERNAL", eventErr.message);
+  if (!event) return err("NOT_FOUND", "Event not found.");
+
+  const existing = (event as { cover_image_path: string | null })
+    .cover_image_path;
+
+  if (existing) {
+    const admin = createAdminClient();
+    // Ignore individual remove errors — a missing object is fine, and we
+    // still want to clear the path on the event row below.
+    await admin.storage.from(EVENT_COVERS_BUCKET).remove([existing]);
+  }
+
+  const { error: updateErr } = await supabase.rpc("update_event", {
+    p_event_id: eventId,
+    p_patch: { cover_image_path: null },
+  });
+  if (updateErr) return mapPgError(updateErr);
+
+  revalidateEventPaths(eventId);
+  return ok({ cleared: true });
 }

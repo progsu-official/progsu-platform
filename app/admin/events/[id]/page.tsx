@@ -96,6 +96,14 @@ export default async function AdminEventDetailPage({
     })),
   };
 
+  let coverUrl: string | null = null;
+  if (ev.cover_image_path) {
+    const { data: signed } = await admin.storage
+      .from("event-covers")
+      .createSignedUrl(ev.cover_image_path, 60 * 60);
+    coverUrl = signed?.signedUrl ?? null;
+  }
+
   return (
     <div className="space-y-6">
       <nav className="text-xs text-muted-foreground">
@@ -125,7 +133,9 @@ export default async function AdminEventDetailPage({
       <TabNav tabs={TABS} active={tab} eventId={ev.id} />
 
       <section className="mt-4">
-        {tab === "details" ? <DetailsTab event={ev} /> : null}
+        {tab === "details" ? (
+          <DetailsTab event={ev} coverUrl={coverUrl} />
+        ) : null}
         {tab === "access" ? <AccessTabServer eventId={ev.id} event={ev} /> : null}
         {tab === "guests" ? <GuestsTabServer eventId={ev.id} /> : null}
         {tab === "notifications" ? <NotificationsTab event={ev} /> : null}

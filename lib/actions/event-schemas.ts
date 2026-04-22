@@ -217,3 +217,26 @@ export const selfCheckInSchema = z.object({
 });
 
 export type SelfCheckInInput = z.input<typeof selfCheckInSchema>;
+
+// Cover-image upload. Limit of 5 MB mirrors the DB's event-covers bucket
+// `file_size_limit`. Allowed MIME types match the bucket's `allowed_mime_types`.
+export const MAX_EVENT_COVER_BYTES = 5 * 1024 * 1024;
+export const EVENT_COVER_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+export const createEventCoverUploadUrlSchema = z.object({
+  eventId: z.string().uuid("Invalid event id."),
+  contentType: z.enum(EVENT_COVER_MIME_TYPES),
+  fileSize: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_EVENT_COVER_BYTES, "Cover must be 5 MB or less"),
+});
+
+export type CreateEventCoverUploadUrlInput = z.input<
+  typeof createEventCoverUploadUrlSchema
+>;

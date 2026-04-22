@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { inviteMember, revokeInvite } from "@/lib/actions/events";
+import { inviteMemberByEmail, revokeInvite } from "@/lib/actions/events";
 
 import type { EventRecord } from "./types";
 
@@ -28,24 +28,27 @@ export function AccessTab({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function onInvite(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const id = userId.trim();
-    if (!id) {
-      setError("Paste a user id.");
+    setNotice(null);
+    const addr = email.trim();
+    if (!addr) {
+      setError("Enter an email address.");
       return;
     }
     startTransition(async () => {
-      const r = await inviteMember(event.id, id);
+      const r = await inviteMemberByEmail(event.id, addr);
       if (!r.ok) {
         setError(r.error.message);
         return;
       }
-      setUserId("");
+      setEmail("");
+      setNotice(`Invited ${r.data.email}.`);
       router.refresh();
     });
   }
@@ -90,23 +93,33 @@ export function AccessTab({
       >
         <div className="flex-1 min-w-64 space-y-1">
           <label className="text-xs text-muted-foreground">
-            Invite by user id
+            Invite by email
           </label>
           <Input
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="00000000-0000-0000-0000-000000000000"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="member@gsu.edu"
             disabled={pending}
           />
-          {/* TODO: add invite-by-email lookup. For R1 MVP we accept a raw user id. */}
           <p className="text-xs text-muted-foreground">
-            TODO: email lookup. Paste the user id from /admin/members for now.
+            Matches the member&apos;s Google or student email. Members must
+            have signed in at least once to appear.
           </p>
         </div>
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? "…" : "Invite"}
         </Button>
       </form>
+
+      {notice ? (
+        <div
+          role="status"
+          className="rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm"
+        >
+          {notice}
+        </div>
+      ) : null}
 
       {error ? (
         <div
