@@ -61,7 +61,8 @@ export function CheckInForm({
           spellCheck={false}
           required
           disabled={pending}
-          placeholder="Enter code"
+          placeholder="ABC123"
+          className="text-center text-xl font-mono uppercase tracking-widest"
         />
         <p className="text-xs text-muted-foreground">
           Letters and numbers only. Case matters.
