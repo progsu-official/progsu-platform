@@ -35,6 +35,7 @@ export default function PrivacyPage() {
           <li>Optional contact info: phone, LinkedIn, GitHub, portfolio URL.</li>
           <li>Your resume PDF, if you upload one.</li>
           <li>Your consent choices (privacy, terms, age, recruiter sharing, email, SMS), with version and timestamp.</li>
+          <li>Your event activity: RSVPs, waitlist entries, and check-ins for events you choose to engage with.</li>
         </ul>
         <p>We do not collect date of birth, SSN, home address, GPA, gender, or race.</p>
 
@@ -43,8 +44,41 @@ export default function PrivacyPage() {
           <li>To run your member account.</li>
           <li>To let Progsu admins help you with problems (e.g. manual verification).</li>
           <li>To share with sponsors and recruiters Progsu works with — only if you toggle &quot;open to recruiters&quot; AND accept the recruiter-sharing consent.</li>
-          <li>To send event and opportunity emails or text messages, if you opt in.</li>
+          <li>To operate events you participate in — RSVP confirmations, reminders, and cancellations (see Events below).</li>
+          <li>To send marketing event and opportunity emails or text messages, if you opt in separately.</li>
         </ul>
+
+        <h2 className="text-lg font-semibold">Events</h2>
+        <p>
+          When you RSVP to a Progsu event, we store your RSVP status, any
+          waitlist position, and whether you checked in. Admins running the
+          event can see this roster so they can manage capacity, run
+          check-in, and follow up with attendees.
+        </p>
+        <p>
+          If you RSVP &quot;going&quot; to an event, you may receive a small number
+          of operational emails related to that specific event:
+        </p>
+        <ul className="list-disc pl-6">
+          <li>An RSVP confirmation when you sign up.</li>
+          <li>A reminder before the event starts.</li>
+          <li>A cancellation or reschedule notice if the event changes.</li>
+        </ul>
+        <p>
+          These are transactional emails tied to your participation. They are
+          separate from the marketing email setting in your{" "}
+          <Link href="/dashboard/settings" className="text-primary underline underline-offset-4">
+            dashboard settings
+          </Link>
+          , and turning marketing email off does <em>not</em> silence event
+          operational mail — the only way to stop those is to cancel your RSVP
+          or skip the event.
+        </p>
+        <p>
+          Other members do not see your event activity by default. A separate
+          opt-in member-directory feature may be introduced later; that is
+          off today and will require its own consent before it ships.
+        </p>
 
         <h2 className="text-lg font-semibold">Recruiter sharing</h2>
         <p>

@@ -87,6 +87,12 @@ export default async function SettingsPage() {
 
       <section id="consents" className="space-y-4">
         <h2 className="text-xl font-semibold">Marketing preferences</h2>
+        <p className="text-sm text-muted-foreground">
+          These toggles only affect marketing messages. If you RSVP to an
+          event, you may still receive a confirmation, reminder, and
+          cancellation notice for that event regardless of these settings.
+          To stop those, cancel your RSVP.
+        </p>
         <ConsentSettings
           consents={consents ?? []}
           versions={versions ?? []}
