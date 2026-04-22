@@ -263,6 +263,21 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
 
   return (
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {/* Pending invites render first — they need a response and bubbling
+          them above "Going" rows makes that obvious. */}
+      {pendingInvites.map((ev, i) => (
+        <EventCard
+          key={ev.event_id}
+          href={`/events/${ev.slug}`}
+          title={ev.title}
+          hosts={null}
+          startsAt={ev.starts_at}
+          endsAt={ev.ends_at}
+          location={ev.location_text}
+          coverUrl={inviteCoverUrls[i] ?? null}
+          footer={<Badge tone="invite">Invited · RSVP</Badge>}
+        />
+      ))}
       {historyRows.map((ev, i) => {
         const badge =
           ev.rsvp_status === "going" ? (
@@ -285,19 +300,6 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
           />
         );
       })}
-      {pendingInvites.map((ev, i) => (
-        <EventCard
-          key={ev.event_id}
-          href={`/events/${ev.slug}`}
-          title={ev.title}
-          hosts={null}
-          startsAt={ev.starts_at}
-          endsAt={ev.ends_at}
-          location={ev.location_text}
-          coverUrl={inviteCoverUrls[i] ?? null}
-          footer={<Badge tone="muted">Invited</Badge>}
-        />
-      ))}
     </ul>
   );
 }
@@ -546,7 +548,7 @@ function Badge({
   tone,
   children,
 }: {
-  tone: "primary" | "amber" | "destructive" | "muted";
+  tone: "primary" | "amber" | "destructive" | "muted" | "invite";
   children: React.ReactNode;
 }) {
   const toneClass =
@@ -556,7 +558,9 @@ function Badge({
         ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
         : tone === "destructive"
           ? "bg-destructive/10 text-destructive"
-          : "bg-muted text-muted-foreground";
+          : tone === "invite"
+            ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
+            : "bg-muted text-muted-foreground";
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${toneClass}`}
