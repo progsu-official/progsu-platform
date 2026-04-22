@@ -20,6 +20,13 @@ async function main() {
     { auth: { persistSession: false, autoRefreshToken: false } }
   );
 
+  const { data: versionRows } = await admin
+    .from("consent_versions")
+    .select("consent_type, version");
+  const currentVersions = new Map<string, string>(
+    (versionRows ?? []).map((r) => [r.consent_type as string, r.version as string])
+  );
+
   async function makeUser(
     email: string,
     opts: { isAdmin?: boolean; fullyOnboarded?: boolean } = {}
@@ -66,7 +73,7 @@ async function main() {
           user_id: uid,
           consent_type: t,
           accepted: true,
-          version: "v1",
+          version: currentVersions.get(t) ?? "v1",
           accepted_at: ts,
         }))
       );

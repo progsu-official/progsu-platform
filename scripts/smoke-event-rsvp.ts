@@ -17,6 +17,13 @@ async function main() {
     { auth: { persistSession: false, autoRefreshToken: false } }
   );
 
+  const { data: versionRows } = await admin
+    .from("consent_versions")
+    .select("consent_type, version");
+  const currentVersions = new Map<string, string>(
+    (versionRows ?? []).map((r) => [r.consent_type as string, r.version as string])
+  );
+
   async function makeUser(email: string, opts: { isAdmin?: boolean; fullyOnboarded?: boolean } = {}) {
     const { data, error } = await admin.auth.admin.createUser({
       email,
@@ -61,15 +68,16 @@ async function main() {
         is_current: true,
       });
 
-      // Required consents at current version (privacy_policy, terms_of_service,
-      // age_confirmation all at v1 per migration seeds).
+      // Required consents at the current consent_versions — fetched once
+      // inside main() and passed via closure so we don't hardcode 'v1'
+      // (privacy_policy bumped to v2 in migration 000200 for R2).
       const ts = new Date().toISOString();
       await admin.from("consents").insert(
         ["privacy_policy", "terms_of_service", "age_confirmation"].map((t) => ({
           user_id: uid,
           consent_type: t,
           accepted: true,
-          version: "v1",
+          version: currentVersions.get(t) ?? "v1",
           accepted_at: ts,
         }))
       );

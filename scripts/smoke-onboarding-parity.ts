@@ -43,6 +43,15 @@ async function main() {
     { auth: { persistSession: false, autoRefreshToken: false } }
   );
 
+  // Pull current versions once so scenarios use whatever migrations have
+  // landed (privacy_policy is at v2 for R2, etc.).
+  const { data: versionRows } = await admin
+    .from("consent_versions")
+    .select("consent_type, version");
+  const currentVersions = new Map<string, string>(
+    (versionRows ?? []).map((r) => [r.consent_type as string, r.version as string])
+  );
+
   const suffix = Date.now();
 
   // Helpers used by scenarios.
@@ -104,7 +113,7 @@ async function main() {
         user_id: userId,
         consent_type: t,
         accepted: true,
-        version: "v1",
+        version: currentVersions.get(t) ?? "v1",
         accepted_at: ts,
       }))
     );
@@ -182,7 +191,7 @@ async function main() {
             user_id: uid,
             consent_type: t,
             accepted: true,
-            version: "v1",
+            version: currentVersions.get(t) ?? "v1",
             accepted_at: ts,
           }))
         );
@@ -273,7 +282,7 @@ async function main() {
             user_id: uid,
             consent_type: t,
             accepted: true,
-            version: "v1",
+            version: currentVersions.get(t) ?? "v1",
             accepted_at: ts,
           }))
         );
