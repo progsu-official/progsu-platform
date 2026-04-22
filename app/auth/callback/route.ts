@@ -69,6 +69,14 @@ export async function GET(request: NextRequest) {
     requestedNext.startsWith("/")
   ) {
     targetPath = requestedNext;
+  } else if (
+    !state.studentEmailVerified &&
+    !state.profileFieldsComplete
+  ) {
+    // First-time signup: invite verification upfront so the OTP email is fresh
+    // in their inbox. They can still skip; verify-email itself offers a "verify
+    // later" escape that drops them into /onboarding/profile.
+    targetPath = "/onboarding/verify-email";
   } else {
     targetPath = onboardingPathFor(state.nextStep) ?? "/dashboard";
   }

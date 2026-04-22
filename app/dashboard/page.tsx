@@ -18,7 +18,7 @@ export default async function DashboardHome() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "first_name, last_name, preferred_name, school, major, grad_year, grad_term, class_standing, student_email, open_to_recruiters, interested_roles"
+      "first_name, last_name, preferred_name, school, major, grad_year, grad_term, class_standing, student_email, student_email_verified, open_to_recruiters, interested_roles"
     )
     .eq("id", user.id)
     .single();
@@ -51,6 +51,23 @@ export default async function DashboardHome() {
 
       <StaleConsentBanner consents={consents ?? []} versions={versions ?? []} />
 
+      {!profile?.student_email_verified ? (
+        <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+          <div>
+            <p className="font-medium text-foreground">
+              Your student email isn&apos;t verified
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              You can still use Progsu, but recruiters will only see members
+              with a verified school email. Verify any time from below.
+            </p>
+          </div>
+          <Button asChild size="sm">
+            <Link href="/onboarding/verify-email">Verify now</Link>
+          </Button>
+        </section>
+      ) : null}
+
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2 rounded-md border p-4">
           <h2 className="text-sm font-semibold text-muted-foreground">
@@ -70,7 +87,29 @@ export default async function DashboardHome() {
             <dt className="text-muted-foreground">Graduates</dt>
             <dd>{profile?.grad_term}</dd>
             <dt className="text-muted-foreground">Student email</dt>
-            <dd className="truncate">{profile?.student_email}</dd>
+            <dd className="flex items-center gap-1 truncate">
+              <span className="truncate">
+                {profile?.student_email ?? (
+                  <span className="text-muted-foreground">not set</span>
+                )}
+              </span>
+              {profile?.student_email_verified ? (
+                <span
+                  title="Verified"
+                  aria-label="Verified"
+                  className="ml-1 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                >
+                  ✓ Verified
+                </span>
+              ) : profile?.student_email ? (
+                <span
+                  title="Unverified"
+                  className="ml-1 inline-flex shrink-0 items-center rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                >
+                  Unverified
+                </span>
+              ) : null}
+            </dd>
           </dl>
           <div className="pt-2">
             <Button variant="outline" size="sm" asChild>

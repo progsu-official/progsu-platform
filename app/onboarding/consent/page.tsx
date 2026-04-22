@@ -16,7 +16,6 @@ export default async function OnboardingConsentPage() {
 
   const state = await loadOnboardingState(supabase, user.id);
   if (state.isAdmin) redirect("/admin");
-  if (!state.studentEmailVerified) redirect("/onboarding/verify-email");
   if (!state.profileFieldsComplete) redirect("/onboarding/profile");
   if (!state.hasCurrentResume) redirect("/onboarding/resume");
   if (state.nextStep !== "consent" && state.nextStep !== null) {

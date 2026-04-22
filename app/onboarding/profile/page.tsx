@@ -33,7 +33,9 @@ export default async function OnboardingProfilePage() {
 
   const state = await loadOnboardingState(supabase, user.id);
   if (state.isAdmin) redirect("/admin");
-  if (!state.studentEmailVerified) redirect("/onboarding/verify-email");
+  // Student email verification is no longer required to reach this step.
+  // Unverified users can still fill out their profile; recruiter export
+  // eligibility is the gate, not the onboarding funnel.
   // If they already have a full profile AND are further along, forward to next step.
   if (state.nextStep !== "profile" && state.nextStep !== null) {
     const next = onboardingPathFor(state.nextStep);

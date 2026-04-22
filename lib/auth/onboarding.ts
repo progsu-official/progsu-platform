@@ -87,8 +87,8 @@ export async function loadOnboardingState(
     ]);
 
   if (!profile) {
-    // Should not happen — handle_new_user() creates the row on auth insert. Treat as
-    // "start at verify-email" to avoid infinite bounce.
+    // Should not happen — handle_new_user() creates the row on auth insert. Fall
+    // through to "start at profile" so the user isn't stuck.
     return {
       userId,
       isAdmin: false,
@@ -97,7 +97,7 @@ export async function loadOnboardingState(
       hasCurrentResume: false,
       requiredConsentsCurrent: false,
       fullyOnboarded: false,
-      nextStep: "verify-email",
+      nextStep: "profile",
     };
   }
 
@@ -170,21 +170,22 @@ export async function loadOnboardingState(
     return latest.accepted === true && latest.version === currentVersion;
   });
 
+  // Student email verification is a *soft* requirement: users can finish the
+  // member funnel without it, but recruiter exports exclude unverified users
+  // (enforced separately in public.recruiter_eligible_members). Profile, resume
+  // and required consents remain hard gates.
   const fullyOnboarded =
-    p.student_email_verified &&
     profileFieldsComplete &&
     hasCurrentResume &&
     requiredConsentsCurrent;
 
-  const nextStep: OnboardingStep = !p.student_email_verified
-    ? "verify-email"
-    : !profileFieldsComplete
-      ? "profile"
-      : !hasCurrentResume
-        ? "resume"
-        : !requiredConsentsCurrent
-          ? "consent"
-          : null;
+  const nextStep: OnboardingStep = !profileFieldsComplete
+    ? "profile"
+    : !hasCurrentResume
+      ? "resume"
+      : !requiredConsentsCurrent
+        ? "consent"
+        : null;
 
   return {
     userId,

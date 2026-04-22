@@ -49,8 +49,15 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
-export function VerifyEmailForm({ initialEmail }: { initialEmail: string }) {
+export function VerifyEmailForm({
+  initialEmail,
+  fullyOnboarded,
+}: {
+  initialEmail: string;
+  fullyOnboarded: boolean;
+}) {
   const router = useRouter();
+  const skipDestination = fullyOnboarded ? "/dashboard" : "/onboarding/profile";
   const [state, setState] = useState<FormState>({
     phase: initialEmail ? "email" : "email",
     email: initialEmail,
@@ -139,7 +146,7 @@ export function VerifyEmailForm({ initialEmail }: { initialEmail: string }) {
         setError(result);
         return;
       }
-      router.push("/onboarding/profile");
+      router.push(skipDestination);
       router.refresh();
     });
   }
@@ -212,9 +219,23 @@ export function VerifyEmailForm({ initialEmail }: { initialEmail: string }) {
               </p>
             ) : null}
           </div>
-          <Button type="submit" disabled={pending || state.email.length === 0} size="lg">
-            {pending ? "Sending…" : "Send verification code"}
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button type="submit" disabled={pending || state.email.length === 0} size="lg">
+              {pending ? "Sending…" : "Send verification code"}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              onClick={() => router.push(skipDestination)}
+              disabled={pending}
+            >
+              Didn&apos;t receive a code? Verify later
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            You can finish your profile without verifying, but your profile
+            won&apos;t be shared with recruiters until you do.
+          </p>
         </form>
       ) : (
         <form onSubmit={onVerify} className="space-y-4">
@@ -274,6 +295,14 @@ export function VerifyEmailForm({ initialEmail }: { initialEmail: string }) {
             </Button>
             <Button type="button" variant="link" onClick={onChangeEmail} disabled={pending}>
               Use a different email
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              onClick={() => router.push(skipDestination)}
+              disabled={pending}
+            >
+              Verify later
             </Button>
           </div>
         </form>

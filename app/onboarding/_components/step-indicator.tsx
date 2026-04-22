@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "@/lib/auth/onboarding";
 
+// Verify-email is intentionally NOT in the cascade — users can complete the
+// funnel without it, then come back to verify when their OTP actually arrives.
+// See lib/auth/onboarding.ts for the fullyOnboarded rule.
 const STEPS: Array<{ key: OnboardingStep; label: string; path: string }> = [
-  { key: "verify-email", label: "Verify email", path: "/onboarding/verify-email" },
   { key: "profile", label: "Profile", path: "/onboarding/profile" },
   { key: "resume", label: "Resume", path: "/onboarding/resume" },
   { key: "consent", label: "Consent", path: "/onboarding/consent" },

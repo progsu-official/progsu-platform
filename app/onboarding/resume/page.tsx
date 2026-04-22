@@ -16,7 +16,6 @@ export default async function OnboardingResumePage() {
 
   const state = await loadOnboardingState(supabase, user.id);
   if (state.isAdmin) redirect("/admin");
-  if (!state.studentEmailVerified) redirect("/onboarding/verify-email");
   if (!state.profileFieldsComplete) redirect("/onboarding/profile");
   if (state.nextStep !== "resume" && state.nextStep !== null) {
     const next = onboardingPathFor(state.nextStep);

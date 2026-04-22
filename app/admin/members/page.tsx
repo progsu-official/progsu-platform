@@ -282,10 +282,27 @@ export default async function AdminMembersPage({
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {r.student_email ?? "—"}
                     {r.student_email_verified ? (
-                      <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                        ✓
+                      <span
+                        title="Verified"
+                        className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                      >
+                        ✓ Verified
                       </span>
-                    ) : null}
+                    ) : r.student_email ? (
+                      <span
+                        title="Student email pending verification"
+                        className="ml-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                      >
+                        Unverified
+                      </span>
+                    ) : (
+                      <span
+                        title="No student email provided"
+                        className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                      >
+                        No email
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">{r.school ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">{r.grad_term ?? "—"}</td>
