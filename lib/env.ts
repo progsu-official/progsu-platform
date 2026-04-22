@@ -5,6 +5,12 @@ function required(name: string, value: string | undefined): string {
   return value;
 }
 
+function parseBool(value: string | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes" || v === "on";
+}
+
 export const env = {
   NEXT_PUBLIC_SUPABASE_URL: required(
     "NEXT_PUBLIC_SUPABASE_URL",
@@ -16,6 +22,12 @@ export const env = {
   ),
   NEXT_PUBLIC_SITE_URL:
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+
+  FEATURE_EVENTS: parseBool(process.env.FEATURE_EVENTS),
+  FEATURE_MEMBER_DIRECTORY: parseBool(process.env.FEATURE_MEMBER_DIRECTORY),
+  FEATURE_SHARED_EVENT_HISTORY: parseBool(
+    process.env.FEATURE_SHARED_EVENT_HISTORY
+  ),
 };
 
 export function requireServerEnv() {
@@ -25,4 +37,8 @@ export function requireServerEnv() {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     ),
   };
+}
+
+export function requireCronSecret(): string {
+  return required("CRON_SECRET", process.env.CRON_SECRET);
 }
