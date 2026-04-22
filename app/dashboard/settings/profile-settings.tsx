@@ -80,7 +80,7 @@ export function ProfileSettings({
         linkedinUrl: state.linkedinUrl || null,
         githubUrl: state.githubUrl || null,
         portfolioUrl: state.portfolioUrl || null,
-        phoneNumber: state.phoneNumber || null,
+        phoneNumber: state.phoneNumber,
       });
       if (!result.ok) {
         setStatus({
@@ -120,12 +120,14 @@ export function ProfileSettings({
             disabled={pending}
           />
         </Row>
-        <Row label="Phone">
+        <Row label="Phone" required>
           <Input
             type="tel"
             value={state.phoneNumber}
             onChange={(e) => setState({ ...state, phoneNumber: e.target.value })}
             disabled={pending}
+            required
+            placeholder="(404) 555-1234"
           />
         </Row>
       </div>

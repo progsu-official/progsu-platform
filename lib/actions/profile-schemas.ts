@@ -50,10 +50,8 @@ export const updateProfileSchema = z
     phoneNumber: z
       .string()
       .trim()
-      .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number")
-      .optional()
-      .nullable()
-      .transform((v) => (v && v.length > 0 ? v : null)),
+      .min(1, "Phone number is required")
+      .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
   })
   .strict();
 

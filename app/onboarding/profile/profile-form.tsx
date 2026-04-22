@@ -82,7 +82,7 @@ export function ProfileForm({
         linkedinUrl: state.linkedinUrl || null,
         githubUrl: state.githubUrl || null,
         portfolioUrl: state.portfolioUrl || null,
-        phoneNumber: state.phoneNumber || null,
+        phoneNumber: state.phoneNumber,
       });
       if (!result.ok) {
         setError({
@@ -124,13 +124,19 @@ export function ProfileForm({
             disabled={pending}
           />
         </Field>
-        <Field label="Phone (optional)" error={error?.field === "phoneNumber" ? error.message : null}>
+        <Field
+          label="Phone"
+          required
+          error={error?.field === "phoneNumber" ? error.message : null}
+        >
           <Input
             type="tel"
             value={state.phoneNumber}
             onChange={(e) => setField("phoneNumber", e.target.value)}
             autoComplete="tel"
+            required
             disabled={pending}
+            placeholder="(404) 555-1234"
           />
         </Field>
       </div>
