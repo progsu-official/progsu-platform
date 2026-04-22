@@ -33,7 +33,10 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   await adminPage.getByLabel(/ends/i).fill(toLocalInput(ends));
 
   await adminPage.getByRole("button", { name: /create draft event/i }).click();
-  await expect(adminPage).toHaveURL(/\/admin\/events\/[0-9a-f-]{36}/);
+  // First compile of /admin/events/[id] can take ~2.5s cold; give it room.
+  await expect(adminPage).toHaveURL(/\/admin\/events\/[0-9a-f-]{36}/, {
+    timeout: 15_000,
+  });
 
   // --- Admin publishes -----------------------------------------------------
   await adminPage.getByRole("button", { name: /^publish$/i }).click();

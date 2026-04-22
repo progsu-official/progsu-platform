@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { resolveCoverUrls } from "@/lib/events/cover-url";
 import { Button } from "@/components/ui/button";
 
 import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
@@ -41,14 +42,48 @@ export default async function DashboardHome() {
       env.FEATURE_EVENTS
         ? supabase
             .from("self_event_history")
-            .select("event_id, slug, title, starts_at, rsvp_status")
+            .select(
+              "event_id, slug, title, starts_at, ends_at, status, location_text, cover_image_path, rsvp_status, waitlisted_at"
+            )
             .gte("starts_at", new Date().toISOString())
             .in("rsvp_status", ["going", "waitlisted"])
+            .in("status", ["published", "cancelled"])
             .order("starts_at", { ascending: true })
             .limit(3)
         : Promise.resolve({ data: null }),
     ]);
   const upcomingPlans = upcomingResult.data;
+
+  // Batch-resolve cover URLs + waitlist positions for the upcoming card.
+  // Both are no-op when FEATURE_EVENTS is off (plans stays null).
+  let upcomingCoverUrls: Array<string | null> = [];
+  const upcomingWaitlistPositions = new Map<string, number | null>();
+  if (upcomingPlans && upcomingPlans.length > 0) {
+    const paths = (upcomingPlans as Array<{ cover_image_path: string | null }>).map(
+      (r) => r.cover_image_path ?? null
+    );
+    upcomingCoverUrls = await resolveCoverUrls(supabase, paths);
+
+    // Only fetch waitlist positions for the waitlisted rows. The helper is
+    // self-scoped so each call is cheap and admin-RLS-safe.
+    const waitlistedIds = (
+      upcomingPlans as Array<{ event_id: string; rsvp_status: string | null }>
+    )
+      .filter((r) => r.rsvp_status === "waitlisted")
+      .map((r) => r.event_id);
+    await Promise.all(
+      waitlistedIds.map(async (eventId) => {
+        const { data } = await supabase.rpc("my_waitlist_position", {
+          p_event_id: eventId,
+        });
+        const parsed = typeof data === "number" ? data : Number(data);
+        upcomingWaitlistPositions.set(
+          eventId,
+          Number.isFinite(parsed) ? parsed : null
+        );
+      })
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -183,7 +218,11 @@ export default async function DashboardHome() {
       </section>
 
       {env.FEATURE_EVENTS ? (
-        <UpcomingEventsCard rows={upcomingPlans ?? []} />
+        <UpcomingEventsCard
+          rows={upcomingPlans ?? []}
+          coverUrls={upcomingCoverUrls}
+          waitlistPositions={upcomingWaitlistPositions}
+        />
       ) : null}
 
       <section className="rounded-md border p-4">
@@ -212,15 +251,29 @@ type UpcomingPlanRow = {
   slug: string;
   title: string;
   starts_at: string;
+  ends_at: string;
+  status: string;
+  location_text: string | null;
   rsvp_status: string | null;
 };
 
-function UpcomingEventsCard({ rows }: { rows: Array<Record<string, unknown>> }) {
+function UpcomingEventsCard({
+  rows,
+  coverUrls,
+  waitlistPositions,
+}: {
+  rows: Array<Record<string, unknown>>;
+  coverUrls: Array<string | null>;
+  waitlistPositions: Map<string, number | null>;
+}) {
   const plans: UpcomingPlanRow[] = rows.map((r) => ({
     event_id: r.event_id as string,
     slug: r.slug as string,
     title: r.title as string,
     starts_at: r.starts_at as string,
+    ends_at: r.ends_at as string,
+    status: (r.status as string) ?? "published",
+    location_text: (r.location_text as string | null) ?? null,
     rsvp_status: (r.rsvp_status as string | null) ?? null,
   }));
 
@@ -254,34 +307,74 @@ function UpcomingEventsCard({ rows }: { rows: Array<Record<string, unknown>> }) 
         </p>
       ) : (
         <ul className="mt-3 divide-y rounded-md border">
-          {plans.map((p) => (
-            <li
-              key={p.event_id}
-              className="flex items-center justify-between gap-3 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/events/${p.slug}`}
-                  className="block truncate text-sm font-medium text-foreground hover:text-primary"
-                >
-                  {p.title}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(p.starts_at).toLocaleString()}
-                </p>
-              </div>
-              <span
-                className={
-                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
-                  (p.rsvp_status === "going"
-                    ? "bg-primary/10 text-primary"
-                    : "bg-amber-500/15 text-amber-700 dark:text-amber-400")
-                }
+          {plans.map((p, i) => {
+            const cover = coverUrls[i] ?? null;
+            const cancelled = p.status === "cancelled";
+            const isWaitlisted = p.rsvp_status === "waitlisted";
+            const position = isWaitlisted
+              ? waitlistPositions.get(p.event_id) ?? null
+              : null;
+            return (
+              <li
+                key={p.event_id}
+                className="flex items-center gap-3 px-3 py-2"
               >
-                {p.rsvp_status === "going" ? "Going" : "Waitlisted"}
-              </span>
-            </li>
-          ))}
+                <div
+                  className="relative h-12 w-16 shrink-0 overflow-hidden rounded bg-gradient-to-br from-muted to-accent/30"
+                  aria-hidden
+                >
+                  {cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={cover}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/events/${p.slug}`}
+                    className="block truncate text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    {p.title}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {new Date(p.starts_at).toLocaleString([], {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                    {p.location_text ? ` · ${p.location_text}` : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <span
+                    className={
+                      "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+                      (cancelled
+                        ? "bg-destructive/10 text-destructive"
+                        : p.rsvp_status === "going"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-amber-500/15 text-amber-700 dark:text-amber-400")
+                    }
+                  >
+                    {cancelled
+                      ? "Cancelled"
+                      : p.rsvp_status === "going"
+                        ? "Going"
+                        : "Waitlisted"}
+                  </span>
+                  {isWaitlisted && position != null ? (
+                    <span className="text-[10px] text-muted-foreground">
+                      #{position}
+                    </span>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
