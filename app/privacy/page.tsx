@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v2
+          Draft · v3
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -118,6 +118,35 @@ export default function PrivacyPage() {
           Turning off visibility hides your card from the directory and from
           peer URL lookups immediately; previously-recorded audit rows are
           retained.
+        </p>
+
+        <h2 className="text-lg font-semibold">Shared event history with other members</h2>
+        <p>
+          There is a separate opt-in toggle for showing events you and another
+          member both attended. When you and another member have <em>both</em>{" "}
+          turned it on, each of you can see:
+        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            A count of events you both attended that meet our anonymity
+            threshold (enough other attendees were present that knowing
+            you were both there doesn&apos;t narrow the field).
+          </li>
+          <li>
+            The names of specific events — but only if the event was public,
+            non-sensitive, and cleared the same threshold.
+          </li>
+        </ul>
+        <p>
+          &quot;Attended&quot; means you both actually checked in, not just
+          that you RSVP&apos;d yes. Private-invite events are never included,
+          even in the aggregate count. Events marked sensitive by an admin
+          are never shown by name.
+        </p>
+        <p>
+          We record an audit row each time another member views your shared
+          event history. Turning the toggle off hides future views; audit
+          rows of past views are retained so admins can investigate abuse.
         </p>
 
         <h2 className="text-lg font-semibold">Recruiter sharing</h2>
