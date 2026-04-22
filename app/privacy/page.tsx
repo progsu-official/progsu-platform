@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v1
+          Draft · v2
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -75,9 +75,49 @@ export default function PrivacyPage() {
           or skip the event.
         </p>
         <p>
-          Other members do not see your event activity by default. A separate
-          opt-in member-directory feature may be introduced later; that is
-          off today and will require its own consent before it ships.
+          Other members do not see your event activity by default. The
+          member-directory section below explains the opt-in path that makes
+          some of your profile and event history visible to peers.
+        </p>
+
+        <h2 className="text-lg font-semibold">Member directory and profile visibility</h2>
+        <p>
+          You can opt into a peer-visible member directory from your{" "}
+          <Link href="/dashboard/settings#visibility" className="text-primary underline underline-offset-4">
+            settings
+          </Link>
+          . When it&apos;s on, other Progsu members can visit{" "}
+          <span className="font-mono text-xs">progsu.app/members/&lt;your-slug&gt;</span>{" "}
+          and see a sanitized view of your profile.
+        </p>
+        <p className="font-medium">Fields visible to other members:</p>
+        <ul className="list-disc pl-6">
+          <li>Your name (preferred name, or first name if none).</li>
+          <li>Your Google avatar.</li>
+          <li>School, class standing, and graduation term.</li>
+          <li>Up to six interested roles.</li>
+          <li>
+            Optional: events you attended — only public, non-sensitive events
+            with at least a handful of attendees. Private-invite events are
+            never shown. You can turn this on or off separately.
+          </li>
+        </ul>
+        <p className="font-medium">Fields never visible to other members:</p>
+        <ul className="list-disc pl-6">
+          <li>Email addresses (Google or student).</li>
+          <li>Phone number.</li>
+          <li>Resume content or file path.</li>
+          <li>Consent history or verification status.</li>
+          <li>Admin status.</li>
+          <li>Major, minor, LinkedIn/GitHub/portfolio links.</li>
+        </ul>
+        <p>
+          Progsu admins can still see full profile data regardless of your
+          directory setting. Every time another member views your card we
+          record an audit row so admins can investigate suspicious patterns.
+          Turning off visibility hides your card from the directory and from
+          peer URL lookups immediately; previously-recorded audit rows are
+          retained.
         </p>
 
         <h2 className="text-lg font-semibold">Recruiter sharing</h2>
