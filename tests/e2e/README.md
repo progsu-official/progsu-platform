@@ -21,24 +21,19 @@ Dev env must have:
 
 ## Status
 
-MVP coverage (3 of 7 spec scenarios shipped). Catches the high-value flows. Remaining 4 are refinement + follow-up.
+Full spec coverage — 7 of 7 scenarios green in ~52s. Runs serial to avoid dev-server hot-reload contention.
 
-### Shipped
+### Scenarios
 
 | # | File | What it catches |
 |---|---|---|
 | 01 | `01-admin-creates-and-member-checks-in.spec.ts` | Full happy path: form-create → publish → code rotate → RSVP → self check-in → admin roster |
 | 02 | `02-capacity-waitlist.spec.ts` | Capacity, waitlist, cancel-then-promote |
 | 03 | `03-private-invite-visibility.spec.ts` | 404 for non-invitees, detail page for invitees |
-
-### Remaining (see `docs/13-roadmap/04-playwright-e2e.md` §6.4–§6.7)
-
-- 04 cancel event fan-out (requires email-log tailing helper)
-- 05 R2 member directory
-- 06 R3 shared events
-- 07 onboarding consent cascade (must be serial; mutates global `consent_versions`)
-
-Add these when convenient. Scenario 4 needs `tests/e2e/helpers/email.ts` to tail the dev-server stdout for `[email:log]` lines.
+| 04 | `04-cancel-event-fan-out.spec.ts` | Cancellation fan-out enqueues jobs for going RSVPs |
+| 05 | `05-member-directory.spec.ts` | R2 opt-in directory render + slug resolution |
+| 06 | `06-shared-events.spec.ts` | R3 shared-events section renders with mutual opt-in + attendance |
+| 07 | `07-onboarding-consent-cascade.spec.ts` | Privacy version bump routes users through re-acceptance (serial — mutates `consent_versions`) |
 
 ## Bugs this suite has caught
 
