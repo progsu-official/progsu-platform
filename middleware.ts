@@ -66,8 +66,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Skip Next.js internals + static files + webhook endpoints (which verify their own HMAC)
-  // + smoketest routes (only created during integration smoke scripts; they self-auth).
+  // + cron endpoints (which verify CRON_SECRET themselves) + smoketest routes
+  // (only created during integration smoke scripts; they self-auth).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/smoketest-|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
