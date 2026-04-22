@@ -152,6 +152,18 @@ export type MemberCardAttendedEventRow = {
   checked_in_at: string | null;
 };
 
+export type SharedEventNamed = {
+  event_id: string;
+  event_slug: string;
+  event_title: string;
+  starts_at: string;
+};
+
+export type SharedEventsResult = {
+  aggregate_count: number;
+  named_events: SharedEventNamed[];
+};
+
 export async function listMemberCards(
   input: z.input<typeof listMemberCardsSchema> = {}
 ): Promise<ActionResult<MemberCardRow[]>> {
@@ -232,6 +244,44 @@ export async function getMemberCardBySlug(
   }
 
   return ok({ card, attendedEvents });
+}
+
+// R3: shared events with a target member. Both the viewer and target must
+// have share_shared_event_counts=true AND the FEATURE_SHARED_EVENT_HISTORY
+// flag must be on at the server-action layer. Flag off OR any gate failure
+// returns an empty result (aggregate=0, named=[]) — indistinguishable from
+// "no shared events" so the feature's existence doesn't leak.
+export async function getSharedEventsForViewer(
+  targetUserId: string
+): Promise<ActionResult<SharedEventsResult>> {
+  const empty: SharedEventsResult = { aggregate_count: 0, named_events: [] };
+
+  if (!env.FEATURE_SHARED_EVENT_HISTORY) return ok(empty);
+
+  const idParsed = z.string().uuid().safeParse(targetUserId);
+  if (!idParsed.success) return ok(empty);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+
+  const { data, error } = await supabase.rpc("shared_events_for_viewer", {
+    p_viewer_id: user.id,
+    p_target_id: targetUserId,
+  });
+  if (error) return mapPgError(error);
+
+  const row = (data ?? [])[0] as
+    | { event_count: number; named_events: SharedEventNamed[] }
+    | undefined;
+  if (!row) return ok(empty);
+
+  return ok({
+    aggregate_count: row.event_count,
+    named_events: Array.isArray(row.named_events) ? row.named_events : [],
+  });
 }
 
 export async function getOwnVisibilitySettings(): Promise<
