@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { Button } from "@/components/ui/button";
 
 import { EventDate } from "../_components/event-date";
@@ -265,18 +266,3 @@ export default async function MemberEventDetailPage({
 // Helpers
 // ---------------------------------------------------------------------
 
-type SupabaseCtx = Awaited<ReturnType<typeof createClient>>;
-
-async function resolveCoverUrl(
-  supabase: SupabaseCtx,
-  path: string | null
-): Promise<string | null> {
-  if (!path) return null;
-  // event-covers is a private bucket; use a short-lived signed URL so the
-  // browser can render without granting direct bucket access.
-  const { data, error } = await supabase.storage
-    .from("event-covers")
-    .createSignedUrl(path, 60 * 60);
-  if (error || !data?.signedUrl) return null;
-  return data.signedUrl;
-}

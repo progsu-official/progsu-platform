@@ -59,9 +59,9 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   await memberPage.goto(`/events/${slug}`);
   await expect(memberPage.getByRole("heading", { name: title })).toBeVisible();
   await memberPage.getByRole("button", { name: /i'?m going/i }).click();
-  await expect(memberPage.getByText(/you'?re going/i)).toBeVisible({
-    timeout: 10_000,
-  });
+  await expect(
+    memberPage.getByText(/you'?re going\./i).first()
+  ).toBeVisible({ timeout: 10_000 });
 
   // --- Member self-checks-in -----------------------------------------------
   // The event hasn't started yet but is within the 2h window, so check-in is

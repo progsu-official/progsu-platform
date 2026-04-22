@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveCoverUrl } from "@/lib/events/cover-url";
 
 import { DetailsTab } from "./details-tab";
 import { AccessTab } from "./access-tab";
@@ -97,13 +98,7 @@ export default async function AdminEventDetailPage({
     })),
   };
 
-  let coverUrl: string | null = null;
-  if (ev.cover_image_path) {
-    const { data: signed } = await admin.storage
-      .from("event-covers")
-      .createSignedUrl(ev.cover_image_path, 60 * 60);
-    coverUrl = signed?.signedUrl ?? null;
-  }
+  const coverUrl = await resolveCoverUrl(admin, ev.cover_image_path);
 
   return (
     <div className="space-y-6">

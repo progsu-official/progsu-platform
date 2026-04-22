@@ -17,9 +17,12 @@ export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
   expect: { timeout: 5_000 },
-  fullyParallel: true,
+  // Parallel E2E against a single dev server flakes on hot-reload contention.
+  // One worker is enough at our scale (3–7 scenarios). Revisit if the suite
+  // grows past ~20 scenarios.
+  fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  workers: 1,
   reporter: process.env.CI
     ? [["html", { open: "never" }], ["github"], ["list"]]
     : [["list"], ["html", { open: "on-failure" }]],
