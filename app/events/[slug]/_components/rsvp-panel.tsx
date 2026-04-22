@@ -76,6 +76,10 @@ export function RsvpPanel({
         </div>
       </div>
 
+      {capacity !== null ? (
+        <CapacityBar going={goingCount} capacity={capacity} />
+      ) : null}
+
       {error ? (
         <div
           role="alert"
@@ -100,14 +104,9 @@ export function RsvpPanel({
           pending={pending}
           buttons={[
             {
-              label: "Change to Declined",
-              onClick: () => submit("declined"),
-              variant: "outline",
-            },
-            {
-              label: "Cancel RSVP",
+              label: "I can't make it",
               onClick: () => submit("cancelled"),
-              variant: "ghost",
+              variant: "outline",
             },
           ]}
         />
@@ -158,12 +157,12 @@ function CurrentStateLine({ current }: { current: CurrentRsvp }) {
     return <p className="mt-0.5 text-xs text-primary">You&apos;re going.</p>;
   }
   if (current.status === "waitlisted") {
+    const pos = current.waitlistPosition;
     return (
       <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
         You&apos;re on the waitlist
-        {current.waitlistPosition != null
-          ? ` — you're #${current.waitlistPosition}.`
-          : "."}
+        {pos != null ? ` — position #${pos}.` : "."} We&apos;ll email if a
+        spot opens.
       </p>
     );
   }
@@ -229,7 +228,8 @@ function NoRsvpForm({
       </div>
       {capacityReached && !waitlistEnabled ? (
         <p className="text-[11px] text-destructive">
-          This event is full.
+          This event is full and the waitlist is closed. Officers may reopen
+          if capacity changes.
         </p>
       ) : null}
     </div>
@@ -262,6 +262,33 @@ function ActionButtons({
           {pending ? "Saving…" : b.label}
         </Button>
       ))}
+    </div>
+  );
+}
+
+function CapacityBar({
+  going,
+  capacity,
+}: {
+  going: number;
+  capacity: number;
+}) {
+  const pct = capacity === 0 ? 0 : Math.min(100, Math.round((going / capacity) * 100));
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>
+          {going} of {capacity} going
+        </span>
+        <span>{pct}%</span>
+      </div>
+      <div className="h-1 w-full rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary/70"
+          style={{ width: `${pct}%` }}
+          aria-hidden
+        />
+      </div>
     </div>
   );
 }
