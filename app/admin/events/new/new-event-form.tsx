@@ -133,8 +133,10 @@ export function NewEventForm() {
           label="Title"
           required
           error={error?.field === "title" ? error.message : null}
+          htmlFor="event-title"
         >
           <Input
+            id="event-title"
             value={state.title}
             onChange={(e) => setField("title", e.target.value)}
             maxLength={200}
@@ -147,8 +149,10 @@ export function NewEventForm() {
           required
           hint="Lowercase letters, numbers, dashes. Used in URLs."
           error={error?.field === "slug" ? error.message : null}
+          htmlFor="event-slug"
         >
           <Input
+            id="event-slug"
             value={state.slug}
             onChange={(e) => setField("slug", e.target.value)}
             placeholder="winter-kickoff-2026"
@@ -160,8 +164,10 @@ export function NewEventForm() {
           label="Starts"
           required
           error={error?.field === "starts_at" ? error.message : null}
+          htmlFor="event-starts"
         >
           <Input
+            id="event-starts"
             type="datetime-local"
             value={state.starts_at}
             onChange={(e) => setField("starts_at", e.target.value)}
@@ -173,8 +179,10 @@ export function NewEventForm() {
           label="Ends"
           required
           error={error?.field === "ends_at" ? error.message : null}
+          htmlFor="event-ends"
         >
           <Input
+            id="event-ends"
             type="datetime-local"
             value={state.ends_at}
             onChange={(e) => setField("ends_at", e.target.value)}
@@ -363,16 +371,18 @@ function Field({
   hint,
   error,
   children,
+  htmlFor,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
   error?: string | null;
   children: React.ReactNode;
+  htmlFor?: string;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label>
+      <Label htmlFor={htmlFor}>
         {label}
         {required ? <span className="text-destructive"> *</span> : null}
       </Label>

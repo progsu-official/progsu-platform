@@ -108,8 +108,9 @@ export function CheckInTab({ event }: { event: EventRecord }) {
         <h3 className="text-sm font-semibold">Rotate code</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Raw code (4-20 chars)</Label>
+            <Label htmlFor="check-in-raw-code">Raw code (4-20 chars)</Label>
             <Input
+              id="check-in-raw-code"
               value={rawCode}
               onChange={(e) => setRawCode(e.target.value)}
               minLength={4}
@@ -123,8 +124,9 @@ export function CheckInTab({ event }: { event: EventRecord }) {
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label>Expires at</Label>
+            <Label htmlFor="check-in-expires">Expires at</Label>
             <Input
+              id="check-in-expires"
               type="datetime-local"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
