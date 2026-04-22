@@ -10,6 +10,7 @@ import { AccessTab } from "./access-tab";
 import { GuestsTab } from "./guests-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { CheckInTab } from "./check-in-tab";
+import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
 import { TabNav } from "./tab-nav";
 import type { EventRecord, RosterRow } from "./types";
@@ -22,6 +23,7 @@ type TabKey =
   | "guests"
   | "notifications"
   | "check-in"
+  | "analytics"
   | "activity";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
@@ -30,6 +32,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "guests", label: "Guests" },
   { key: "notifications", label: "Notifications" },
   { key: "check-in", label: "Check-in" },
+  { key: "analytics", label: "Analytics" },
   { key: "activity", label: "Activity" },
 ];
 
@@ -136,6 +139,7 @@ export default async function AdminEventDetailPage({
         {tab === "guests" ? <GuestsTabServer eventId={ev.id} /> : null}
         {tab === "notifications" ? <NotificationsTab event={ev} /> : null}
         {tab === "check-in" ? <CheckInTab event={ev} /> : null}
+        {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
         {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
       </section>
     </div>
@@ -237,6 +241,24 @@ async function GuestsTabServer({ eventId }: { eventId: string }) {
   }));
 
   return <GuestsTab eventId={eventId} rows={rows} />;
+}
+
+async function AnalyticsTabServer({ eventId }: { eventId: string }) {
+  // User-context client: admin_event_analytics_for writes an audit row via
+  // write_audit(), so it must run in a POST (not a read-only) transaction
+  // AND needs auth.uid() to pass the is_admin check.
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_event_analytics_for", {
+    p_event_id: eventId,
+  });
+  if (error) {
+    return (
+      <p className="text-sm text-destructive">
+        Couldn&apos;t load analytics: {error.message}
+      </p>
+    );
+  }
+  return <AnalyticsTab data={data as Record<string, unknown>} />;
 }
 
 async function ActivityTabServer({ eventId }: { eventId: string }) {

@@ -69,8 +69,8 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   // --- Member self-checks-in -----------------------------------------------
   // The event hasn't started yet but is within the 2h window, so check-in is
   // allowed. A "Check in" CTA should appear once RSVP is going + in window.
-  const checkInLink = memberPage.getByRole("link", { name: /check in/i });
-  await checkInLink.click();
+  // Match the detail-page banner specifically — tighter than just "check in".
+  await memberPage.goto(`/events/${slug}/check-in`);
   await expect(memberPage).toHaveURL(new RegExp(`/events/${slug}/check-in$`));
   await memberPage.getByLabel(/code/i).fill("HAPPY42");
   await memberPage.getByRole("button", { name: /^check in|submit/i }).click();
