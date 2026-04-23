@@ -16,6 +16,12 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   memberPage,
   suffix,
 }) => {
+  // Longest happy-path scenario: cold-compiles /admin/events/new,
+  // /admin/events/[id] (both tabs), /events/[slug], /events/[slug]/check-in,
+  // /events/[slug]/check-in/success, /admin/events/[id]/check-in — six
+  // distinct routes in one run. 30s isn't enough on a cold dev server.
+  // slow() triples the timeout (90s total).
+  test.slow();
   const slug = `happy-${suffix}`.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
   const title = "Happy Path E2E";
 
