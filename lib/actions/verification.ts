@@ -364,6 +364,11 @@ export async function verifyStudentEmailCode(
            and student_email_verified = false
            and id <> ${user.id}
       `;
+      // Auto-populate school from the school_domains lookup so the minimal
+      // signup form doesn't need a school picker (docs/14-low-friction-signup).
+      // coalesce(..., school) keeps any manually-set school if the domain
+      // isn't in the allowlist (race with admin removing a row, etc). Last
+      // verified domain wins — documented behavior.
       await tx`
         update public.profiles
            set student_email              = ${studentEmail},
@@ -371,6 +376,14 @@ export async function verifyStudentEmailCode(
                student_email_verified_at  = ${now},
                verification_method        = 'email_otp'::public.verification_method_t,
                pending_domain_name        = null,
+               school                     = coalesce(
+                 (select sd.school_name
+                    from public.school_domains sd
+                   where sd.domain = ${domain}
+                     and sd.is_active = true
+                  limit 1),
+                 school
+               ),
                updated_at                 = ${now}
          where id = ${user.id}
       `;

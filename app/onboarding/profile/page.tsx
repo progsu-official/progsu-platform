@@ -10,19 +10,14 @@ export const dynamic = "force-dynamic";
 type ProfileRow = {
   first_name: string | null;
   last_name: string | null;
-  preferred_name: string | null;
   school: string | null;
+  student_email_verified: boolean;
   major: string | null;
-  minor: string | null;
-  class_standing: string | null;
-  grad_year: number | null;
-  grad_term: string | null;
-  interested_roles: string[] | null;
-  linkedin_url: string | null;
-  github_url: string | null;
-  portfolio_url: string | null;
+  major_other_text: string | null;
   phone_number: string | null;
 };
+
+type MajorRow = { slug: string; label: string };
 
 export default async function OnboardingProfilePage() {
   const supabase = await createClient();
@@ -33,64 +28,64 @@ export default async function OnboardingProfilePage() {
 
   const state = await loadOnboardingState(supabase, user.id);
   if (state.isAdmin) redirect("/admin");
-  // Student email verification is no longer required to reach this step.
-  // Unverified users can still fill out their profile; recruiter export
-  // eligibility is the gate, not the onboarding funnel.
-  // If they already have a full profile AND are further along, forward to next step.
   if (state.nextStep !== "profile" && state.nextStep !== null) {
     const next = onboardingPathFor(state.nextStep);
     if (next) redirect(next);
   }
   if (state.fullyOnboarded) redirect("/dashboard");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number"
-    )
-    .eq("id", user.id)
-    .single<ProfileRow>();
+  const [{ data: profile }, { data: majors }, { data: domains }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "first_name, last_name, school, student_email_verified, major, major_other_text, phone_number"
+        )
+        .eq("id", user.id)
+        .single<ProfileRow>(),
+      supabase
+        .from("majors")
+        .select("slug, label")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("school_domains")
+        .select("school_name")
+        .eq("is_active", true)
+        .order("school_name"),
+    ]);
 
-  const { data: domains } = await supabase
-    .from("school_domains")
-    .select("school_name")
-    .eq("is_active", true)
-    .order("school_name");
-
+  const majorOptions: MajorRow[] = (majors ?? []).map((m) => ({
+    slug: m.slug as string,
+    label: m.label as string,
+  }));
   const schoolOptions = Array.from(
-    new Set((domains ?? []).map((d) => d.school_name))
+    new Set((domains ?? []).map((d) => d.school_name as string))
   );
-
-  // Extract the "term" half out of "Fall 2027" if we have a prior value.
-  const priorGradTermRaw = profile?.grad_term ?? null;
-  const priorGradTerm = priorGradTermRaw?.split(" ")[0] ?? null;
+  const schoolAutoFilled =
+    !!profile?.student_email_verified && !!profile?.school;
 
   return (
     <section className="space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Your profile</h1>
         <p className="text-sm text-muted-foreground">
-          Tell us a little about yourself. You can update any of this later.
+          A few quick basics to get you on the platform. You can finish the rest
+          (graduation info, roles, resume, links) from your dashboard.
         </p>
       </header>
       <ProfileForm
         initial={{
           firstName: profile?.first_name ?? "",
           lastName: profile?.last_name ?? "",
-          preferredName: profile?.preferred_name ?? "",
           school: profile?.school ?? "",
-          major: profile?.major ?? "",
-          minor: profile?.minor ?? "",
-          classStanding: profile?.class_standing ?? "",
-          gradYear: profile?.grad_year ?? null,
-          gradTerm: priorGradTerm ?? "",
-          interestedRoles: profile?.interested_roles ?? [],
-          linkedinUrl: profile?.linkedin_url ?? "",
-          githubUrl: profile?.github_url ?? "",
-          portfolioUrl: profile?.portfolio_url ?? "",
           phoneNumber: profile?.phone_number ?? "",
+          major: profile?.major ?? "",
+          majorOtherText: profile?.major_other_text ?? "",
         }}
+        majorOptions={majorOptions}
         schoolOptions={schoolOptions}
+        schoolAutoFilled={schoolAutoFilled}
       />
     </section>
   );

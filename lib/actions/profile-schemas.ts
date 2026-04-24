@@ -22,6 +22,40 @@ const urlOrEmpty = (host: RegExp | null) =>
       "Enter a valid URL"
     );
 
+// Onboarding-only minimum bar (docs/14-low-friction-signup §2). Used by the
+// /onboarding/profile form. Settings page keeps using the full
+// updateProfileSchema below. Verify-email auto-populates school if the user
+// verifies first; this form also exposes a school picker so users who haven't
+// verified yet can still finish onboarding.
+export const minimalSignupProfileSchema = z
+  .object({
+    firstName: z.string().trim().min(1).max(100),
+    lastName: z.string().trim().min(1).max(100),
+    school: z.string().trim().min(1, "Pick your school").max(150),
+    phoneNumber: z
+      .string()
+      .trim()
+      .min(1, "Phone number is required")
+      .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+    // Slug validation is done at call time against the majors table so admins
+    // can add majors without a redeploy. Zod just checks the shape here.
+    major: z.string().trim().min(1, "Pick a major from the list").max(100),
+    majorOtherText: z
+      .string()
+      .trim()
+      .max(100)
+      .transform((v) => (v.length === 0 ? null : v))
+      .nullable()
+      .optional(),
+  })
+  .strict()
+  .refine(
+    (v) => v.major !== "other" || (v.majorOtherText && v.majorOtherText.trim().length > 0),
+    { message: "Tell us your major", path: ["majorOtherText"] }
+  );
+
+export type MinimalSignupProfileInput = z.infer<typeof minimalSignupProfileSchema>;
+
 export const updateProfileSchema = z
   .object({
     firstName: z.string().trim().min(1).max(100),
