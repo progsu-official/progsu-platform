@@ -3,9 +3,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
+import { loadProfileCompletion } from "@/lib/auth/profile-completion";
 import { Button } from "@/components/ui/button";
 
 import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
+import { ProfileCompletionRing } from "./profile-completion-ring";
 import { StaleConsentBanner } from "./stale-consent-banner";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,8 @@ export default async function DashboardHome() {
     .eq("user_id", user.id)
     .eq("is_current", true)
     .maybeSingle();
+
+  const completion = await loadProfileCompletion(supabase, user.id);
 
   const [{ data: consents }, { data: versions }, upcomingResult] =
     await Promise.all([
@@ -98,55 +102,25 @@ export default async function DashboardHome() {
 
       <StaleConsentBanner consents={consents ?? []} versions={versions ?? []} />
 
-      {!profile?.student_email_verified ? (
-        profile?.pending_domain_name ? (
-          <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
-            <div>
-              <p className="font-medium text-foreground">
-                {profile.pending_domain_name} is coming soon
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                Your school isn&apos;t on our verification list yet. Once we
-                add it you&apos;ll be prompted to verify. Until then recruiters
-                won&apos;t see your profile. You can swap to a different school
-                email any time.
-              </p>
-            </div>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/onboarding/verify-email">Change email</Link>
-            </Button>
-          </section>
-        ) : (
-          <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
-            <div>
-              <p className="font-medium text-foreground">
-                Your student email isn&apos;t verified
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                You can still use Progsu, but recruiters will only see members
-                with a verified school email. Verify any time from below.
-              </p>
-            </div>
-            <Button asChild size="sm">
-              <Link href="/onboarding/verify-email">Verify now</Link>
-            </Button>
-          </section>
-        )
-      ) : null}
+      <ProfileCompletionRing completion={completion} />
 
-      {!currentResume ? (
+      {/* Pending-domain banner stays — it's a "your school isn't supported yet"
+          admin-ops message, not a profile-completion nudge. */}
+      {!profile?.student_email_verified && profile?.pending_domain_name ? (
         <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
           <div>
             <p className="font-medium text-foreground">
-              Add your resume so recruiters can find you
+              {profile.pending_domain_name} is coming soon
             </p>
             <p className="mt-1 text-muted-foreground">
-              Recruiters only see profiles with a resume on file. You can still
-              RSVP to events and use the rest of Progsu without one.
+              Your school isn&apos;t on our verification list yet. Once we add
+              it you&apos;ll be prompted to verify. Until then recruiters
+              won&apos;t see your profile. You can swap to a different school
+              email any time.
             </p>
           </div>
-          <Button asChild size="sm">
-            <Link href="/dashboard/settings#resume">Upload resume</Link>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/onboarding/verify-email">Change email</Link>
           </Button>
         </section>
       ) : null}

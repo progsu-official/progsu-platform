@@ -76,6 +76,19 @@ export default async function SettingsPage() {
       </header>
 
       <section id="profile" className="space-y-4">
+        {/* Anchor targets for the dashboard profile-completion ring
+            (docs/14-low-friction-signup §3). The form is one component so
+            these empty anchors live at the page level; scroll-margin makes
+            the jump land below the site header instead of under it. */}
+        <span
+          id="verify-email"
+          aria-hidden
+          className="block scroll-mt-24"
+        />
+        <span id="academic" aria-hidden className="block scroll-mt-24" />
+        <span id="roles" aria-hidden className="block scroll-mt-24" />
+        <span id="recruiter" aria-hidden className="block scroll-mt-24" />
+        <span id="links" aria-hidden className="block scroll-mt-24" />
         <h2 className="text-xl font-semibold">Profile</h2>
         <ProfileSettings
           initial={{
