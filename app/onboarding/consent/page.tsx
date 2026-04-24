@@ -17,7 +17,9 @@ export default async function OnboardingConsentPage() {
   const state = await loadOnboardingState(supabase, user.id);
   if (state.isAdmin) redirect("/admin");
   if (!state.profileFieldsComplete) redirect("/onboarding/profile");
-  if (!state.hasCurrentResume) redirect("/onboarding/resume");
+  // Note: we do NOT redirect back to /onboarding/resume here. Resume is a
+  // soft step — users can Skip for now and still complete consent. The
+  // dashboard + inline nudges keep prompting them to upload later.
   if (state.nextStep !== "consent" && state.nextStep !== null) {
     const next = onboardingPathFor(state.nextStep);
     if (next) redirect(next);

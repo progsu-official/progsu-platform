@@ -170,22 +170,26 @@ export async function loadOnboardingState(
     return latest.accepted === true && latest.version === currentVersion;
   });
 
-  // Student email verification is a *soft* requirement: users can finish the
-  // member funnel without it, but recruiter exports exclude unverified users
-  // (enforced separately in public.recruiter_eligible_members). Profile, resume
-  // and required consents remain hard gates.
-  const fullyOnboarded =
-    profileFieldsComplete &&
-    hasCurrentResume &&
-    requiredConsentsCurrent;
+  // Resume and student email verification are *soft* requirements: users can
+  // finish the member funnel without them, but recruiter exports exclude both
+  // (enforced separately in public.recruiter_eligible_members, which inner-joins
+  // on a current resume and on student_email_verified=true). Profile fields and
+  // required consents remain hard gates.
+  const fullyOnboarded = profileFieldsComplete && requiredConsentsCurrent;
 
+  // Sequential flow is still "profile → resume → consent", but resume is
+  // skippable. If consent is already at current version, the user has reached
+  // the final step (either by uploading OR skipping resume), so we don't
+  // bounce them back. If consent is missing AND resume is missing, we route
+  // to /onboarding/resume so the user at least sees the skip affordance once
+  // on their first pass.
   const nextStep: OnboardingStep = !profileFieldsComplete
     ? "profile"
-    : !hasCurrentResume
-      ? "resume"
-      : !requiredConsentsCurrent
-        ? "consent"
-        : null;
+    : !requiredConsentsCurrent
+      ? !hasCurrentResume
+        ? "resume"
+        : "consent"
+      : null;
 
   return {
     userId,

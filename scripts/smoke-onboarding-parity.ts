@@ -9,11 +9,11 @@
 //   - profileFieldsComplete requires first_name, last_name, school, major,
 //     class_standing, grad_year, grad_term all non-empty AND interested_roles > 0.
 //   - hasCurrentResume = one resume row is_current = true (caller filter).
-//     Note: app-side only filters is_current; DB side filters is_current AND
-//     status='active'. For a soft-deleted (status='deleted') resume with no
-//     active current row, both return false because the app's
-//     .eq('is_current', true) won't match (soft delete flips is_current off).
-//     Scenario 8 below covers this path.
+//     Since migration 20260426000200, resume is a SOFT requirement — it is
+//     surfaced to the caller on OnboardingState.hasCurrentResume for nudges
+//     and recruiter-visibility, but it is NOT part of fullyOnboarded. Both
+//     loadOnboardingState() and is_fully_onboarded() were updated in the
+//     same commit; this smoke guards their parity.
 //   - requiredConsentsCurrent: privacy_policy, terms_of_service, age_confirmation
 //     must each have a latest-per-type row that is accepted=true at the current
 //     consent_versions version.
@@ -258,13 +258,27 @@ async function main() {
       },
     },
 
-    // 8. Soft-deleted (status='deleted') resume, no active current → both false.
+    // 8. Soft-deleted (status='deleted') resume, no active current → both true.
+    // Resume is a SOFT requirement since 20260426000200: users can complete
+    // onboarding without an active resume. Recruiter-visibility (not tested
+    // here) is still gated on a current/active resume via
+    // recruiter_eligible_members.
     {
-      name: "soft-deleted resume only, no active current",
-      expected: false,
+      name: "soft-deleted resume only, no active current — soft gate",
+      expected: true,
       setup: async (_a, uid) => {
         await fillCompleteProfile(uid);
         await addSoftDeletedResume(uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 8b. No resume at all (never uploaded) → both true.
+    {
+      name: "no resume at all — soft gate lets onboarding complete",
+      expected: true,
+      setup: async (_a, uid) => {
+        await fillCompleteProfile(uid);
         await addAllRequiredConsentsCurrent(uid);
       },
     },
