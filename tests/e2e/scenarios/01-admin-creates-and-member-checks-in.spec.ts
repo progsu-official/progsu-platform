@@ -19,12 +19,9 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   // Longest happy-path scenario: cold-compiles /admin/events/new,
   // /admin/events/[id] (both tabs), /events/[slug], /events/[slug]/check-in,
   // /events/[slug]/check-in/success, /admin/events/[id]/check-in — six
-  // distinct routes in one run. 30s isn't enough on a cold dev server.
-  // slow() triples the timeout (90s total). We also bump per-page navigation
-  // timeout: default 15s can be beaten by admin route compiles (1500+ modules).
+  // distinct routes in one run. slow() triples the per-test budget (60s → 180s).
+  // Global navigationTimeout is already 45s per playwright.config.ts.
   test.slow();
-  adminPage.setDefaultNavigationTimeout(45_000);
-  memberPage.setDefaultNavigationTimeout(45_000);
   const slug = `happy-${suffix}`.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
   const title = "Happy Path E2E";
 
@@ -83,8 +80,10 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   await expect(memberPage).toHaveURL(new RegExp(`/events/${slug}/check-in$`));
   await memberPage.getByLabel(/code/i).fill("HAPPY42");
   await memberPage.getByRole("button", { name: /^check in|submit/i }).click();
-  await expect(memberPage).toHaveURL(
-    new RegExp(`/events/${slug}/check-in/success`)
+  // /check-in/success cold-compile + router.push can take > 5s.
+  await memberPage.waitForURL(
+    new RegExp(`/events/${slug}/check-in/success`),
+    { timeout: 20_000 }
   );
 
   // --- Admin sees the attendance on the day-of roster ----------------------
