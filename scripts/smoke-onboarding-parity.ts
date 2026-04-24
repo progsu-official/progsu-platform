@@ -4,22 +4,20 @@
 // This is the merge-gate smoke — if it fails, the DB helper and the app helper
 // disagree and server actions that trust one but not the other will ship bugs.
 //
-// loadOnboardingState source of truth: lib/auth/onboarding.ts. Key facts verified
-// directly from that file before writing this smoke:
+// loadOnboardingState source of truth: lib/auth/onboarding.ts. Key facts (as of
+// migration 20260427000300 — low-friction signup refactor):
 //   - profileFieldsComplete requires first_name, last_name, school, major,
-//     class_standing, grad_year, grad_term all non-empty AND interested_roles > 0.
-//   - hasCurrentResume = one resume row is_current = true (caller filter).
-//     Since migration 20260426000200, resume is a SOFT requirement — it is
-//     surfaced to the caller on OnboardingState.hasCurrentResume for nudges
-//     and recruiter-visibility, but it is NOT part of fullyOnboarded. Both
-//     loadOnboardingState() and is_fully_onboarded() were updated in the
-//     same commit; this smoke guards their parity.
+//     phone_number all non-empty. When major='other', major_other_text must
+//     also be non-empty. class_standing / grad_year / grad_term /
+//     interested_roles are NO LONGER part of the hard gate — they live in the
+//     dashboard profile-completion ring.
+//   - hasCurrentResume is surfaced on OnboardingState for the ring/recruiter
+//     gate, but is NOT part of fullyOnboarded (soft since 20260426000200).
 //   - requiredConsentsCurrent: privacy_policy, terms_of_service, age_confirmation
 //     must each have a latest-per-type row that is accepted=true at the current
 //     consent_versions version.
 //   - student_email_verified is intentionally NOT part of fullyOnboarded.
-//   - NO admin bypass — admins with incomplete profile return fullyOnboarded=false
-//     (matches DB helper, which also has no admin bypass per migration 000009 note).
+//   - NO admin bypass — admins with incomplete profile return fullyOnboarded=false.
 
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
@@ -57,6 +55,8 @@ async function main() {
   // Helpers used by scenarios.
   const y = new Date().getFullYear() + 1;
 
+  // fills exactly the new minimum-bar profile: first/last/school/major/phone.
+  // Uses the canonical 'computer_science' slug from the majors seed.
   async function fillCompleteProfile(userId: string) {
     const { error } = await admin
       .from("profiles")
@@ -64,11 +64,8 @@ async function main() {
         first_name: "Parity",
         last_name: "User",
         school: "Georgia State University",
-        major: "Computer Science",
-        class_standing: "junior",
-        grad_year: y,
-        grad_term: `Fall ${y}`,
-        interested_roles: ["software_engineering"],
+        major: "computer_science",
+        phone_number: "555-555-5555",
       })
       .eq("id", userId);
     if (error) throw new Error(`fillCompleteProfile: ${error.message}`);
@@ -144,18 +141,53 @@ async function main() {
     if (error) throw new Error(`addWrongVersionConsent ${type}: ${error.message}`);
   }
 
+  // Scenarios mirror docs/14-low-friction-signup/06-smoke-and-e2e.md §1.
+  // y is unused now that grad_year isn't in the gate; intentionally reference it
+  // in a comment so the reader knows removing old-gate checks was deliberate.
+  void y;
   const scenarios: Scenario[] = [
-    // 1. Brand-new user: profile row exists via handle_new_user() trigger but
-    //    has no required fields, no resume, no consents.
+    // 1. Fresh profile row (handle_new_user trigger) — nothing filled.
     {
       name: "brand-new user (no profile fields, no resume, no consents)",
       expected: false,
       setup: async () => {},
     },
 
-    // 2. Profile complete except grad_term missing.
+    // 2. New minimum bar satisfied, no resume. Expected TRUE: resume and
+    //    verification are both SOFT since 20260426000200 / 20260427000300.
     {
-      name: "profile missing grad_term",
+      name: "min profile + 3 consents, no resume",
+      expected: true,
+      setup: async (_a, uid) => {
+        await fillCompleteProfile(uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 3. Major='other' with major_other_text set. Expected TRUE.
+    {
+      name: "major='other' with major_other_text provided",
+      expected: true,
+      setup: async (a, uid) => {
+        await a
+          .from("profiles")
+          .update({
+            first_name: "Parity",
+            last_name: "User",
+            school: "Georgia State University",
+            major: "other",
+            major_other_text: "Cognitive Science",
+            phone_number: "555-555-5555",
+          })
+          .eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 4. Major='other' without major_other_text — gate should fail on the
+    //    cross-column rule.
+    {
+      name: "major='other' without major_other_text → blocked",
       expected: false,
       setup: async (a, uid) => {
         await a
@@ -164,26 +196,73 @@ async function main() {
             first_name: "Parity",
             last_name: "User",
             school: "Georgia State University",
-            major: "Computer Science",
-            class_standing: "junior",
-            grad_year: y,
-            grad_term: null,
-            interested_roles: ["software_engineering"],
+            major: "other",
+            major_other_text: null,
+            phone_number: "555-555-5555",
           })
           .eq("id", uid);
-        await addActiveResume(uid);
         await addAllRequiredConsentsCurrent(uid);
       },
     },
 
-    // 3. Profile + resume but privacy_policy consent is stale (v0 < current v1).
+    // 5. Missing phone_number.
     {
-      name: "profile + resume, stale privacy_policy consent",
+      name: "missing phone_number",
+      expected: false,
+      setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
+        await a.from("profiles").update({ phone_number: null }).eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 6. Missing major.
+    {
+      name: "missing major",
+      expected: false,
+      setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
+        await a.from("profiles").update({ major: null }).eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 7. Missing school.
+    {
+      name: "missing school",
+      expected: false,
+      setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
+        await a.from("profiles").update({ school: null }).eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 8. Missing a required consent (age_confirmation).
+    {
+      name: "min profile, missing age_confirmation consent",
       expected: false,
       setup: async (_a, uid) => {
         await fillCompleteProfile(uid);
-        await addActiveResume(uid);
-        // terms + age current, but privacy_policy stale.
+        const ts = new Date().toISOString();
+        await admin.from("consents").insert(
+          ["privacy_policy", "terms_of_service"].map((t) => ({
+            user_id: uid,
+            consent_type: t,
+            accepted: true,
+            version: currentVersions.get(t) ?? "v1",
+            accepted_at: ts,
+          }))
+        );
+      },
+    },
+
+    // 9. Stale privacy_policy consent (accepted at v0, not current).
+    {
+      name: "stale privacy_policy consent",
+      expected: false,
+      setup: async (_a, uid) => {
+        await fillCompleteProfile(uid);
         await addStaleConsent(uid, "privacy_policy");
         const ts = new Date().toISOString();
         await admin.from("consents").insert(
@@ -198,43 +277,22 @@ async function main() {
       },
     },
 
-    // 4. Fully onboarded happy path.
+    // 10. Pre-refactor "fully completed old gate" user: all the fields we
+    //     REMOVED from the gate (class_standing, grad_year, grad_term,
+    //     interested_roles) plus the new minimum and a resume. Should still
+    //     pass. Verifies back-compat for existing members.
     {
-      name: "profile + resume + all 3 consents at current versions",
+      name: "old-gate-complete user still passes under new gate",
       expected: true,
-      setup: async (_a, uid) => {
-        await fillCompleteProfile(uid);
-        await addActiveResume(uid);
-        await addAllRequiredConsentsCurrent(uid);
-      },
-    },
-
-    // 5. Admin with incomplete profile: still false. No admin bypass per
-    //    onboarding.ts (fullyOnboarded is purely profile+resume+consents) AND
-    //    no admin bypass per migration 000009 comment. Both must agree = false.
-    {
-      name: "admin with incomplete profile (no admin bypass)",
-      expected: false,
-      isAdmin: true,
-      setup: async () => {},
-    },
-
-    // 6. interested_roles = []: profileFieldsComplete false.
-    {
-      name: "profile complete but interested_roles = []",
-      expected: false,
       setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
         await a
           .from("profiles")
           .update({
-            first_name: "Parity",
-            last_name: "User",
-            school: "Georgia State University",
-            major: "Computer Science",
             class_standing: "junior",
             grad_year: y,
             grad_term: `Fall ${y}`,
-            interested_roles: [],
+            interested_roles: ["software_engineering"],
           })
           .eq("id", uid);
         await addActiveResume(uid);
@@ -242,54 +300,20 @@ async function main() {
       },
     },
 
-    // 7. student_email_verified=false, everything else current → both true
-    //    (verification is NOT a hard gate for fullyOnboarded).
+    // 11. Admin with empty profile — no admin bypass, both helpers return false.
     {
-      name: "student_email_verified=false but everything else current",
-      expected: true,
-      setup: async (a, uid) => {
-        await fillCompleteProfile(uid);
-        await a
-          .from("profiles")
-          .update({ student_email_verified: false })
-          .eq("id", uid);
-        await addActiveResume(uid);
-        await addAllRequiredConsentsCurrent(uid);
-      },
+      name: "admin with incomplete profile (no admin bypass)",
+      expected: false,
+      isAdmin: true,
+      setup: async () => {},
     },
 
-    // 8. Soft-deleted (status='deleted') resume, no active current → both true.
-    // Resume is a SOFT requirement since 20260426000200: users can complete
-    // onboarding without an active resume. Recruiter-visibility (not tested
-    // here) is still gated on a current/active resume via
-    // recruiter_eligible_members.
-    {
-      name: "soft-deleted resume only, no active current — soft gate",
-      expected: true,
-      setup: async (_a, uid) => {
-        await fillCompleteProfile(uid);
-        await addSoftDeletedResume(uid);
-        await addAllRequiredConsentsCurrent(uid);
-      },
-    },
-
-    // 8b. No resume at all (never uploaded) → both true.
-    {
-      name: "no resume at all — soft gate lets onboarding complete",
-      expected: true,
-      setup: async (_a, uid) => {
-        await fillCompleteProfile(uid);
-        await addAllRequiredConsentsCurrent(uid);
-      },
-    },
-
-    // 9. Wrong version accepted on age_confirmation.
+    // 12. Wrong-version age_confirmation (version literal 'v99', guaranteed mismatch).
     {
       name: "wrong-version age_confirmation",
       expected: false,
       setup: async (_a, uid) => {
         await fillCompleteProfile(uid);
-        await addActiveResume(uid);
         const ts = new Date().toISOString();
         await admin.from("consents").insert(
           ["privacy_policy", "terms_of_service"].map((t) => ({
@@ -301,6 +325,17 @@ async function main() {
           }))
         );
         await addWrongVersionConsent(uid, "age_confirmation");
+      },
+    },
+
+    // 13. Soft-deleted resume only — resume soft gate (unchanged since 20260426000200).
+    {
+      name: "soft-deleted resume only — soft gate",
+      expected: true,
+      setup: async (_a, uid) => {
+        await fillCompleteProfile(uid);
+        await addSoftDeletedResume(uid);
+        await addAllRequiredConsentsCurrent(uid);
       },
     },
   ];

@@ -22,9 +22,12 @@ export type OnboardingState = {
   nextStep: OnboardingStep;
 };
 
-// Required profile fields for `profile_fields_complete`. Matches the V0 allow-list
-// in docs/07-implementation-plan.md §1.1 minus optional extras (preferred_name, minor,
-// linkedin_url, github_url, portfolio_url, phone_number, open_to_recruiters).
+// Required profile fields for `profile_fields_complete` (as of migration
+// 20260427000300). Minimum bar for low-friction signup: first/last/school/major/
+// phone. class_standing, grad_year, grad_term, interested_roles moved out of
+// the gate into the dashboard profile-completion ring (docs/14-low-friction-
+// signup/01-schema-changes.md §4). Must stay in sync with public.is_fully_onboarded()
+// — smoke-onboarding-parity.ts is the merge gate.
 const REQUIRED_PROFILE_FIELDS: Array<
   keyof ProfileRow
 > = [
@@ -32,9 +35,7 @@ const REQUIRED_PROFILE_FIELDS: Array<
   "last_name",
   "school",
   "major",
-  "class_standing",
-  "grad_year",
-  "grad_term",
+  "phone_number",
 ];
 
 // Required-to-finish-onboarding consent types per reconciliation #12 + decision D3.
@@ -54,10 +55,8 @@ type ProfileRow = {
   last_name: string | null;
   school: string | null;
   major: string | null;
-  class_standing: string | null;
-  grad_year: number | null;
-  grad_term: string | null;
-  interested_roles: string[] | null;
+  major_other_text: string | null;
+  phone_number: string | null;
 };
 
 export async function loadOnboardingState(
@@ -69,7 +68,7 @@ export async function loadOnboardingState(
       supabase
         .from("profiles")
         .select(
-          "id, is_admin, student_email_verified, first_name, last_name, school, major, class_standing, grad_year, grad_term, interested_roles"
+          "id, is_admin, student_email_verified, first_name, last_name, school, major, major_other_text, phone_number"
         )
         .eq("id", userId)
         .single(),
@@ -102,12 +101,15 @@ export async function loadOnboardingState(
   }
 
   const p = profile as ProfileRow;
+  const majorOtherSatisfied =
+    (p.major ?? "").trim().toLowerCase() !== "other" ||
+    (p.major_other_text ?? "").trim().length > 0;
   const profileFieldsComplete =
     REQUIRED_PROFILE_FIELDS.every((f) => {
       const v = p[f];
       if (typeof v === "string") return v.trim().length > 0;
       return v !== null && v !== undefined;
-    }) && (p.interested_roles ?? []).length > 0;
+    }) && majorOtherSatisfied;
 
   const hasCurrentResume = Boolean(resume?.id);
 
