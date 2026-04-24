@@ -208,14 +208,32 @@ export function ResumeUploader({
         <p className="text-xs text-muted-foreground">
           PDF only · 10 MB max · we never post your resume publicly
         </p>
-        <Button
-          onClick={onUpload}
-          disabled={!file || busy}
-          size="lg"
-        >
-          {busy ? "Uploading…" : "Upload and continue"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="lg"
+            disabled={busy}
+            onClick={() => {
+              router.push("/onboarding/consent");
+            }}
+          >
+            Skip for now
+          </Button>
+          <Button
+            onClick={onUpload}
+            disabled={!file || busy}
+            size="lg"
+          >
+            {busy ? "Uploading…" : "Upload and continue"}
+          </Button>
+        </div>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Heads up: recruiters browsing the member list only see profiles with a
+        resume on file. You can come back and upload any time from your
+        dashboard.
+      </p>
     </div>
   );
 }

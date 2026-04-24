@@ -134,6 +134,23 @@ export default async function DashboardHome() {
         )
       ) : null}
 
+      {!currentResume ? (
+        <section className="flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+          <div>
+            <p className="font-medium text-foreground">
+              Add your resume so recruiters can find you
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              Recruiters only see profiles with a resume on file. You can still
+              RSVP to events and use the rest of Progsu without one.
+            </p>
+          </div>
+          <Button asChild size="sm">
+            <Link href="/dashboard/settings#resume">Upload resume</Link>
+          </Button>
+        </section>
+      ) : null}
+
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2 rounded-md border p-4">
           <h2 className="text-sm font-semibold text-muted-foreground">

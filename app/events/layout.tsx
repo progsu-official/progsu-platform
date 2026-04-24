@@ -82,6 +82,7 @@ export default async function EventsLayout({
         {!state.studentEmailVerified ? (
           <StudentEmailNudge pendingDomainName={pendingDomainName} />
         ) : null}
+        {!state.isAdmin && !state.hasCurrentResume ? <ResumeNudge /> : null}
         {children}
       </main>
     </div>
@@ -127,6 +128,25 @@ function StudentEmailNudge({
       </div>
       <Button asChild size="sm">
         <Link href="/onboarding/verify-email">Verify now</Link>
+      </Button>
+    </section>
+  );
+}
+
+function ResumeNudge() {
+  return (
+    <section className="mb-6 flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+      <div>
+        <p className="font-medium text-foreground">
+          Add your resume so recruiters can find you
+        </p>
+        <p className="mt-1 text-muted-foreground">
+          Recruiters only see profiles with a resume on file. You can still
+          RSVP without one.
+        </p>
+      </div>
+      <Button asChild size="sm">
+        <Link href="/dashboard/settings#resume">Upload resume</Link>
       </Button>
     </section>
   );

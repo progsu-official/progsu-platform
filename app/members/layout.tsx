@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 import { signOut } from "@/lib/actions/session";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,25 @@ export default async function MembersLayout({
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        {!state.isAdmin && !state.hasCurrentResume ? (
+          <section className="mb-6 flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+            <div>
+              <p className="font-medium text-foreground">
+                Add your resume so recruiters can find you
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Recruiters only see members with a resume on file. You can
+                still browse the directory without one.
+              </p>
+            </div>
+            <Button asChild size="sm">
+              <Link href="/dashboard/settings#resume">Upload resume</Link>
+            </Button>
+          </section>
+        ) : null}
+        {children}
+      </main>
     </div>
   );
 }
