@@ -54,7 +54,11 @@ async function makeCookie(email: string, password: string) {
   );
 }
 
-async function seedEligibleMember(admin: unknown, email: string): Promise<string> {
+async function seedEligibleMember(
+  admin: unknown,
+  email: string,
+  versions: Map<string, string>
+): Promise<string> {
   // Admin client passed in as unknown — we use the supabase-js shape here.
   const client = admin as { auth: { admin: { createUser: (args: unknown) => Promise<{ data: { user: { id: string; email: string } } }> } }; from: (t: string) => unknown; storage: { from: (b: string) => unknown } };
   const { data } = await client.auth.admin.createUser({
@@ -75,7 +79,7 @@ async function seedEligibleMember(admin: unknown, email: string): Promise<string
       student_email_verified_at: new Date().toISOString(),
       verification_method: "admin_manual",
       school: "Georgia State University",
-      major: "Computer Science",
+      major: "computer_science",
       class_standing: "junior",
       grad_year: y,
       grad_term: `Fall ${y}`,
@@ -120,7 +124,12 @@ async function seedEligibleMember(admin: unknown, email: string): Promise<string
     "terms_of_service",
     "age_confirmation",
     "recruiter_resume_sharing",
-  ].map((t) => ({ user_id: userId, consent_type: t, accepted: true, version: "v1" }));
+  ].map((t) => ({
+    user_id: userId,
+    consent_type: t,
+    accepted: true,
+    version: versions.get(t) ?? "v1",
+  }));
   await (client.from("consents") as { insert: (p: unknown) => Promise<unknown> }).insert(consents);
 
   return userId;
@@ -140,6 +149,7 @@ async function main() {
   let adminId: string | null = null;
   let eligibleId: string | null = null;
   let ineligibleId: string | null = null;
+  const thresholdUsers: string[] = [];
 
   try {
     proc = spawn("pnpm", ["dev"], {
@@ -149,6 +159,18 @@ async function main() {
     proc.stdout?.on("data", () => {});
     proc.stderr?.on("data", () => {});
     await waitForServer("http://localhost:3000/");
+
+    // Read current consent versions once so seeded rows match
+    // consent_versions.version exactly (CLAUDE.md: never hardcode "v1").
+    const { data: versionRows } = await admin
+      .from("consent_versions")
+      .select("consent_type, version");
+    const currentVersions = new Map<string, string>(
+      (versionRows ?? []).map((r: { consent_type: string; version: string }) => [
+        r.consent_type,
+        r.version,
+      ])
+    );
 
     // Seed a Progsu admin.
     const { data: a } = await admin.auth.admin.createUser({
@@ -163,7 +185,8 @@ async function main() {
     // Seed one eligible member + one that's missing recruiter consent.
     eligibleId = await seedEligibleMember(
       admin,
-      `elig-${Date.now()}@example.com`
+      `elig-${Date.now()}@example.com`,
+      currentVersions
     );
     const { data: ineligibleUser } = await admin.auth.admin.createUser({
       email: `inelig-${Date.now()}@example.com`,
@@ -188,6 +211,24 @@ async function main() {
         open_to_recruiters: true, // but NO recruiter consent → not eligible
       })
       .eq("id", ineligibleId);
+
+    // Threshold-C scenarios (migration 20260427000400). Each seeds a full
+    // eligible member, then nulls one of the four threshold-C conjuncts. The
+    // CSV MUST exclude all four.
+    async function seedThresholdMember(label: string, override: Record<string, unknown>) {
+      const id = await seedEligibleMember(
+        admin,
+        `thr-${label}-${Date.now()}@example.com`,
+        currentVersions
+      );
+      thresholdUsers.push(id);
+      await admin.from("profiles").update({ first_name: `Thr${label}`, ...override }).eq("id", id);
+      return id;
+    }
+    await seedThresholdMember("GY", { grad_year: null });
+    await seedThresholdMember("CS", { class_standing: null });
+    await seedThresholdMember("GT", { grad_term: null });
+    await seedThresholdMember("IR", { interested_roles: [] });
 
     const adminCookie = await makeCookie(a.user.email!, "testpassword-12345");
 
@@ -221,11 +262,18 @@ async function main() {
       `  ✓ GET /api/admin/export → 200 text/csv (export_id=${exportId.slice(0, 8)}…)`
     );
 
-    // 3. Body contains the eligible user + excludes the ineligible user.
+    // 3. Body contains the eligible user + excludes the ineligible user +
+    //    excludes the four threshold-C drop-outs.
     const body = await dl.text();
     if (!body.includes("Eligible"))
       throw new Error("Eligible missing from CSV");
     if (body.includes("nope@")) throw new Error("ineligible leaked");
+    for (const label of ["ThrGY", "ThrCS", "ThrGT", "ThrIR"]) {
+      if (body.includes(label)) {
+        throw new Error(`threshold-C drop-out leaked: ${label}`);
+      }
+    }
+    console.log(`  ✓ threshold-C excludes members missing grad_year/class_standing/grad_term/interested_roles`);
     // Must include all D2 contact columns.
     for (const hdr of [
       "google_email",
@@ -283,6 +331,15 @@ async function main() {
       await admin.auth.admin.deleteUser(eligibleId).catch(() => {});
     }
     if (ineligibleId) await admin.auth.admin.deleteUser(ineligibleId).catch(() => {});
+    for (const uid of thresholdUsers) {
+      const { data: objs } = await admin.storage.from("resumes").list(uid);
+      if (objs?.length) {
+        await admin.storage
+          .from("resumes")
+          .remove(objs.map((o) => `${uid}/${o.name}`));
+      }
+      await admin.auth.admin.deleteUser(uid).catch(() => {});
+    }
   }
 }
 
