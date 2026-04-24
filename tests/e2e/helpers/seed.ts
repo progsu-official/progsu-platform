@@ -76,7 +76,10 @@ export async function makeFullyOnboardedUser(
       first_name: opts.firstName ?? "Member",
       last_name: opts.lastName ?? "E2E",
       school: "Georgia State University",
-      major: "Computer Science",
+      // Use a real majors.slug (added in migration 20260427000100) so the
+      // member passes is_fully_onboarded() — app validates major against the
+      // majors table now.
+      major: "computer_science",
       class_standing: "junior",
       grad_year: 2027,
       grad_term: "Spring 2027",

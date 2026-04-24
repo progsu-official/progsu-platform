@@ -40,14 +40,16 @@ async function main() {
     }
 
     if (opts.fullyOnboarded) {
-      // Profile fields.
+      // Profile fields. phone_number + major joined the hard gate in the
+      // low-friction-signup refactor (migration 20260427000300).
       await admin
         .from("profiles")
         .update({
           first_name: email.split("@")[0],
           last_name: "Onboarded",
           school: "Georgia State University",
-          major: "Computer Science",
+          major: "computer_science",
+          phone_number: "555-555-5555",
           class_standing: "junior",
           grad_year: y,
           grad_term: `Fall ${y}`,
