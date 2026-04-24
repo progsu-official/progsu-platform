@@ -177,18 +177,17 @@ export async function loadOnboardingState(
   // required consents remain hard gates.
   const fullyOnboarded = profileFieldsComplete && requiredConsentsCurrent;
 
-  // Sequential flow is still "profile → resume → consent", but resume is
-  // skippable. If consent is already at current version, the user has reached
-  // the final step (either by uploading OR skipping resume), so we don't
-  // bounce them back. If consent is missing AND resume is missing, we route
-  // to /onboarding/resume so the user at least sees the skip affordance once
-  // on their first pass.
+  // Resume is a SOFT step since 20260426000200, so it is never returned as
+  // nextStep — that would create a redirect loop where the consent page
+  // bounces the user back to resume whenever they try to Skip. Instead:
+  //   - nextStep drives the required redirect chain: profile → consent → done.
+  //   - The resume page is reachable on its own (natural first-pass flow via
+  //     the profile page pushing there after save, or dashboard/events/members
+  //     nudges) and redirects forward to consent after upload OR skip.
   const nextStep: OnboardingStep = !profileFieldsComplete
     ? "profile"
     : !requiredConsentsCurrent
-      ? !hasCurrentResume
-        ? "resume"
-        : "consent"
+      ? "consent"
       : null;
 
   return {

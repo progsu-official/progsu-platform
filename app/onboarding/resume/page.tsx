@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { loadOnboardingState } from "@/lib/auth/onboarding";
 
 import { ResumeUploader } from "./resume-uploader";
 
@@ -17,11 +17,11 @@ export default async function OnboardingResumePage() {
   const state = await loadOnboardingState(supabase, user.id);
   if (state.isAdmin) redirect("/admin");
   if (!state.profileFieldsComplete) redirect("/onboarding/profile");
-  if (state.nextStep !== "resume" && state.nextStep !== null) {
-    const next = onboardingPathFor(state.nextStep);
-    if (next) redirect(next);
-  }
-  if (state.fullyOnboarded) redirect("/dashboard");
+  // Resume is a soft step — nextStep is never "resume" (see lib/auth/onboarding).
+  // Allowed arrivals here: a freshly-onboarded user post-profile
+  // (nextStep === "consent"), a fully onboarded user visiting to upload later
+  // (nextStep === null), or a not-yet-consented user via a nudge link.
+  // We DO NOT bounce them forward — they chose this page, render it.
 
   const { data: current } = await supabase
     .from("resumes")
