@@ -51,12 +51,28 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
+// Reusable across onboarding (/onboarding/verify-email) and settings
+// (/dashboard/settings#account-email). Mode controls post-success behavior:
+//   - "onboarding" → router.push(skipDestination); router.refresh().
+//   - "settings"   → calls onSuccess; caller collapses inline UI + refreshes.
+// allowSkip toggles the "Verify later" reserveStudentEmail path. Settings
+// is past onboarding so always passes false.
+export type VerifyEmailFormMode = "onboarding" | "settings";
+
 export function VerifyEmailForm({
   initialEmail,
   fullyOnboarded,
+  mode = "onboarding",
+  allowSkip = true,
+  onSuccess,
+  onCancel,
 }: {
   initialEmail: string;
   fullyOnboarded: boolean;
+  mode?: VerifyEmailFormMode;
+  allowSkip?: boolean;
+  onSuccess?: (result: { studentEmail: string; verifiedAt: string }) => void;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const skipDestination = fullyOnboarded ? "/dashboard" : "/onboarding/profile";
@@ -155,6 +171,11 @@ export function VerifyEmailForm({
         setError(result);
         return;
       }
+      if (mode === "settings") {
+        onSuccess?.(result.data);
+        router.refresh();
+        return;
+      }
       router.push(skipDestination);
       router.refresh();
     });
@@ -245,7 +266,7 @@ export function VerifyEmailForm({
             <Button type="submit" disabled={pending || state.email.length === 0} size="lg">
               {pending ? "Sending…" : "Send verification code"}
             </Button>
-            {skipRevealed ? (
+            {skipRevealed && allowSkip ? (
               <Button
                 type="button"
                 variant="link"
@@ -255,11 +276,23 @@ export function VerifyEmailForm({
                 Didn&apos;t receive a code? Verify later
               </Button>
             ) : null}
+            {mode === "settings" && onCancel ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onCancel}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+            ) : null}
           </div>
-          <p className="text-xs text-muted-foreground">
-            You can finish your profile without verifying, but your profile
-            won&apos;t be shared with recruiters until you do.
-          </p>
+          {mode === "onboarding" ? (
+            <p className="text-xs text-muted-foreground">
+              You can finish your profile without verifying, but your profile
+              won&apos;t be shared with recruiters until you do.
+            </p>
+          ) : null}
         </form>
       ) : (
         <form onSubmit={onVerify} className="space-y-4">
@@ -320,7 +353,7 @@ export function VerifyEmailForm({
             <Button type="button" variant="link" onClick={onChangeEmail} disabled={pending}>
               Use a different email
             </Button>
-            {skipRevealed ? (
+            {skipRevealed && allowSkip ? (
               <Button
                 type="button"
                 variant="link"

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { getOwnVisibilitySettings } from "@/lib/actions/members";
 
+import { AccountEmailSettings } from "./account-email-settings";
 import { ConsentSettings } from "./consent-settings";
 import { ResumeSettings } from "./resume-settings";
 import { ProfileSettings } from "./profile-settings";
@@ -21,7 +22,7 @@ export default async function SettingsPage() {
       supabase
         .from("profiles")
         .select(
-          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number"
+          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name"
         )
         .eq("id", user.id)
         .single(),
@@ -74,6 +75,25 @@ export default async function SettingsPage() {
           preferences.
         </p>
       </header>
+
+      <section id="account-email" className="space-y-4">
+        <h2 className="text-xl font-semibold">Account email</h2>
+        <p className="text-sm text-muted-foreground">
+          Your sign-in email and your school email. Verifying your school email
+          unlocks recruiter visibility once your profile is complete.
+        </p>
+        <AccountEmailSettings
+          googleEmail={(profile?.google_email as string | undefined) ?? ""}
+          studentEmail={(profile?.student_email as string | null | undefined) ?? null}
+          studentEmailVerified={!!profile?.student_email_verified}
+          studentEmailVerifiedAt={
+            (profile?.student_email_verified_at as string | null | undefined) ?? null
+          }
+          pendingDomainName={
+            (profile?.pending_domain_name as string | null | undefined) ?? null
+          }
+        />
+      </section>
 
       <section id="profile" className="space-y-4">
         {/* Anchor targets for the dashboard profile-completion ring
