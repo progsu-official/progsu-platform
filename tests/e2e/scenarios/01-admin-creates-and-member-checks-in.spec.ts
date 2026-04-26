@@ -80,10 +80,11 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   await expect(memberPage).toHaveURL(new RegExp(`/events/${slug}/check-in$`));
   await memberPage.getByLabel(/code/i).fill("HAPPY42");
   await memberPage.getByRole("button", { name: /^check in|submit/i }).click();
-  // /check-in/success cold-compile + router.push can take > 5s.
+  // /check-in/success cold-compile + router.push can take > 20s on a cold
+  // dev server; give the same headroom as the global navigationTimeout.
   await memberPage.waitForURL(
     new RegExp(`/events/${slug}/check-in/success`),
-    { timeout: 20_000 }
+    { timeout: 45_000 }
   );
 
   // --- Admin sees the attendance on the day-of roster ----------------------
