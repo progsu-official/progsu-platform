@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 import { signOut } from "@/lib/actions/session";
 import { Button } from "@/components/ui/button";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -50,32 +51,11 @@ export default async function MembersLayout({
             Progsu
           </Link>
           <nav className="flex items-center gap-4 text-sm">
-            <Link
-              href="/dashboard"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/members"
-              className="font-medium hover:text-foreground"
-            >
-              Members
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Settings
-            </Link>
-            {state.isAdmin ? (
-              <Link
-                href="/admin"
-                className="rounded-md border border-input px-2 py-1 text-xs font-medium transition-colors hover:bg-accent/10"
-              >
-                Admin
-              </Link>
-            ) : null}
+            <SiteNav
+              showMembers={env.FEATURE_MEMBER_DIRECTORY}
+              showEvents={env.FEATURE_EVENTS}
+              isAdmin={state.isAdmin}
+            />
             <span aria-hidden className="h-4 w-px bg-muted-foreground/20" />
             <span className="text-sm text-muted-foreground">{displayName}</span>
             <form action={signOut}>
