@@ -23,10 +23,13 @@ type Initial = {
   firstName: string;
   lastName: string;
   school: string;
+  schoolOtherText: string;
   phoneNumber: string;
   major: string;
   majorOtherText: string;
 };
+
+const SCHOOL_OTHER = "other";
 
 type MajorOption = { slug: string; label: string };
 
@@ -47,6 +50,7 @@ export function ProfileForm({
   const [state, setState] = useState<Initial>(initial);
 
   const isOther = state.major === "other";
+  const isSchoolOther = state.school === SCHOOL_OTHER;
 
   function setField<K extends keyof Initial>(key: K, value: Initial[K]) {
     setState((s) => ({ ...s, [key]: value }));
@@ -59,7 +63,7 @@ export function ProfileForm({
       const result = await updateMinimalProfile({
         firstName: state.firstName,
         lastName: state.lastName,
-        school: state.school,
+        school: isSchoolOther ? state.schoolOtherText.trim() : state.school,
         phoneNumber: state.phoneNumber,
         major: state.major,
         majorOtherText: isOther ? state.majorOtherText : null,
@@ -132,6 +136,7 @@ export function ProfileForm({
                 {s}
               </option>
             ))}
+            <option value={SCHOOL_OTHER}>Other (not listed)</option>
           </select>
         </Field>
         <Field
@@ -172,6 +177,23 @@ export function ProfileForm({
           </select>
         </Field>
       </div>
+
+      {isSchoolOther ? (
+        <Field
+          label="Tell us your school"
+          required
+          error={error?.field === "school" ? error.message : null}
+        >
+          <Input
+            value={state.schoolOtherText}
+            onChange={(e) => setField("schoolOtherText", e.target.value)}
+            maxLength={150}
+            required
+            disabled={pending}
+            placeholder="e.g. Kennesaw State University"
+          />
+        </Field>
+      ) : null}
 
       {isOther ? (
         <Field

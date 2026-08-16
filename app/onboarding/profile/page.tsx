@@ -79,6 +79,7 @@ export default async function OnboardingProfilePage() {
           firstName: profile?.first_name ?? "",
           lastName: profile?.last_name ?? "",
           school: profile?.school ?? "",
+          schoolOtherText: "",
           phoneNumber: profile?.phone_number ?? "",
           major: profile?.major ?? "",
           majorOtherText: profile?.major_other_text ?? "",
