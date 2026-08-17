@@ -18,6 +18,7 @@ Created: 2026-04-22, after R3 code-complete and migration-pushed to prod.
 | 02 | Member-facing UX polish | Planned | None | [02-member-polish.md](./02-member-polish.md) |
 | 03 | Admin event analytics | Planned | None | [03-admin-analytics.md](./03-admin-analytics.md) |
 | 04 | Playwright E2E testing | Planned | None | [04-playwright-e2e.md](./04-playwright-e2e.md) |
+| 05 | QR check-in v2: wallet passes + scan modes | Stub | v1 QR check-in (D12) shipped | [05-qr-checkin-v2.md](./05-qr-checkin-v2.md) |
 
 ## Other ideas floated but not planned
 
