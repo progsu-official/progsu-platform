@@ -8,6 +8,30 @@ Two things changed since the original scope below was written:
 ## The one thing
 A member's confirmed RSVP renders a personal QR code (on the event page and in their confirmation email); staff scan it from the existing admin check-in screen to check them in. Manual roster search on that same screen is the fallback if a camera's unavailable.
 
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph Create["Create — at RSVP"]
+        A["Member RSVPs going"] --> B["event_rsvps.checkin_token generated"]
+        B --> C["QR shown on event page + confirmation email"]
+    end
+
+    subgraph CheckIn["Check-in — at the door"]
+        D["Staff opens admin check-in screen"] --> E{"Camera or search?"}
+        E -->|Scan QR| F["jsQR decodes token"]
+        E -->|Search name| G["Pick attendee from roster"]
+        F --> H["admin_check_in_by_token()"]
+        G --> I["admin_check_in_member()"]
+        H --> J[("event_attendances row written")]
+        I --> J
+    end
+
+    C -.->|guest shows their QR| E
+```
+
+Two entry points into the door step because they solve different failure modes: QR is fast when a camera works, roster search is the fallback when it doesn't (dead phone, bad lighting, no signal). Both write to the same table through the same audit seam, so the roster and analytics never know or care which path a given check-in came through.
+
 ## Non-goals
 - No new table or "ticket" object, reuses `event_rsvps.checkin_token` + `event_attendances` exactly as scoped in `docs/09-events-platform-plan.md` §7.5 (D12)
 - No native scanner app, no offline/kiosk mode, browser camera scan from the existing admin check-in screen
