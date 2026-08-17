@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { DayOfRoster } from "./day-of-roster";
+import { QrScanner } from "./qr-scanner";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,8 @@ export default async function AdminEventCheckInPage({
           / {goingCount} checked in
         </p>
       </header>
+
+      <QrScanner eventId={event.id as string} />
 
       <DayOfRoster eventId={event.id as string} rows={rows} />
     </div>

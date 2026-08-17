@@ -1,7 +1,7 @@
 import { pgTable, index, uniqueIndex, foreignKey, pgPolicy, check, uuid, text, boolean, timestamp, integer, unique, bigint, inet, jsonb, bigserial, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const attendanceMethodT = pgEnum("attendance_method_t", ['admin_click', 'self_code'])
+export const attendanceMethodT = pgEnum("attendance_method_t", ['admin_click', 'self_code', 'qr_token'])
 export const classStandingT = pgEnum("class_standing_t", ['freshman', 'sophomore', 'junior', 'senior', 'graduate', 'phd', 'alumni'])
 export const consentTypeT = pgEnum("consent_type_t", ['privacy_policy', 'terms_of_service', 'recruiter_resume_sharing', 'email_marketing', 'sms_marketing', 'age_confirmation'])
 export const deletionRequestStatusT = pgEnum("deletion_request_status_t", ['pending', 'processing', 'completed', 'cancelled'])
@@ -69,14 +69,14 @@ END`),
 	pgPolicy("profiles_update_own", { as: "permissive", for: "update", to: ["authenticated"] }),
 	pgPolicy("profiles_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("profiles_update_admin", { as: "permissive", for: "update", to: ["authenticated"] }),
-	check("profiles_github_url_check", sql`(github_url IS NULL) OR (github_url ~* '^https?://([a-z0-9-]+\.)*github\.com/'::text)`),
-	check("profiles_grad_term_check", sql`(grad_term IS NULL) OR (grad_term ~ '^(Spring|Summer|Fall|Winter) [0-9]{4}$'::text)`),
 	check("profiles_grad_year_check", sql`(grad_year IS NULL) OR ((grad_year >= 2000) AND (grad_year <= 2100))`),
-	check("profiles_interested_roles_max_six", sql`cardinality(interested_roles) <= 6`),
+	check("profiles_grad_term_check", sql`(grad_term IS NULL) OR (grad_term ~ '^(Spring|Summer|Fall|Winter) [0-9]{4}$'::text)`),
 	check("profiles_linkedin_url_check", sql`(linkedin_url IS NULL) OR (linkedin_url ~* '^https?://([a-z0-9-]+\.)*linkedin\.com/'::text)`),
-	check("profiles_major_other_text_check", sql`(major_other_text IS NULL) OR ((length(btrim(major_other_text)) >= 1) AND (length(btrim(major_other_text)) <= 100))`),
-	check("profiles_phone_number_check", sql`(phone_number IS NULL) OR (phone_number ~ '^\+?[0-9\-\(\) ]{7,20}$'::text)`),
+	check("profiles_github_url_check", sql`(github_url IS NULL) OR (github_url ~* '^https?://([a-z0-9-]+\.)*github\.com/'::text)`),
 	check("profiles_portfolio_url_check", sql`(portfolio_url IS NULL) OR (portfolio_url ~* '^https?://'::text)`),
+	check("profiles_phone_number_check", sql`(phone_number IS NULL) OR (phone_number ~ '^\+?[0-9\-\(\) ]{7,20}$'::text)`),
+	check("profiles_interested_roles_max_six", sql`cardinality(interested_roles) <= 6`),
+	check("profiles_major_other_text_check", sql`(major_other_text IS NULL) OR ((length(btrim(major_other_text)) >= 1) AND (length(btrim(major_other_text)) <= 100))`),
 ]);
 
 export const schoolDomains = pgTable("school_domains", {
@@ -126,8 +126,8 @@ export const emailVerificationCodes = pgTable("email_verification_codes", {
 	pgPolicy("evc_no_insert", { as: "permissive", for: "insert", to: ["authenticated"] }),
 	pgPolicy("evc_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
 	pgPolicy("evc_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
-	check("evc_attempts_range", sql`(attempts >= 0) AND (attempts <= (max_attempts + 1))`),
 	check("evc_email_has_at", sql`POSITION(('@'::text) IN ((email)::text)) > 0`),
+	check("evc_attempts_range", sql`(attempts >= 0) AND (attempts <= (max_attempts + 1))`),
 ]);
 
 export const resumes = pgTable("resumes", {
@@ -157,11 +157,11 @@ export const resumes = pgTable("resumes", {
 	pgPolicy("resumes_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("resumes_no_update_client", { as: "permissive", for: "update", to: ["authenticated"] }),
 	pgPolicy("resumes_delete_own_noncurrent", { as: "permissive", for: "delete", to: ["authenticated"] }),
-	check("resumes_current_requires_active", sql`(NOT is_current) OR (status = 'active'::resume_status_t)`),
-	check("resumes_deleted_not_current", sql`(deleted_at IS NULL) OR (NOT is_current)`),
 	check("resumes_file_name_check", sql`(length(file_name) >= 1) AND (length(file_name) <= 255)`),
 	check("resumes_file_size_check", sql`(file_size > 0) AND (file_size <= ((10 * 1024) * 1024))`),
 	check("resumes_mime_type_check", sql`mime_type = 'application/pdf'::text`),
+	check("resumes_current_requires_active", sql`(NOT is_current) OR (status = 'active'::resume_status_t)`),
+	check("resumes_deleted_not_current", sql`(deleted_at IS NULL) OR (NOT is_current)`),
 ]);
 
 export const consents = pgTable("consents", {
@@ -215,67 +215,6 @@ export const auditLog = pgTable("audit_log", {
 	pgPolicy("audit_log_no_client_write", { as: "permissive", for: "all", to: ["authenticated"] }),
 ]);
 
-export const accountDeletionRequests = pgTable("account_deletion_requests", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	reason: text(),
-	status: deletionRequestStatusT().default('pending').notNull(),
-	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
-	processedBy: uuid("processed_by"),
-}, (table) => [
-	uniqueIndex("account_deletion_requests_one_pending_per_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(status = ANY (ARRAY['pending'::deletion_request_status_t, 'processing'::deletion_request_status_t]))`),
-	index("account_deletion_requests_status_idx").using("btree", table.status.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("timestamptz_ops")),
-	foreignKey({
-			columns: [table.processedBy],
-			foreignColumns: [profiles.id],
-			name: "account_deletion_requests_processed_by_fkey"
-		}).onDelete("set null"),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [profiles.id],
-			name: "account_deletion_requests_user_id_fkey"
-		}).onDelete("cascade"),
-	pgPolicy("account_deletion_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("account_deletion_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
-	pgPolicy("account_deletion_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
-	pgPolicy("account_deletion_update_admin", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("account_deletion_no_client_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
-	check("account_deletion_requests_reason_check", sql`(reason IS NULL) OR (length(reason) <= 2000)`),
-]);
-
-export const rateLimitHits = pgTable("rate_limit_hits", {
-	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
-	bucket: text().notNull(),
-	key: text().notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("rate_limit_hits_bucket_key_idx").using("btree", table.bucket.asc().nullsLast().op("timestamptz_ops"), table.key.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
-	pgPolicy("rate_limit_hits_no_auth_select", { as: "permissive", for: "select", to: ["authenticated"], using: sql`false` }),
-	pgPolicy("rate_limit_hits_no_auth_write", { as: "permissive", for: "all", to: ["authenticated"] }),
-]);
-
-export const domainRequests = pgTable("domain_requests", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	domain: text("domain").notNull(),
-	userId: uuid("user_id").notNull(),
-	exampleEmail: text("example_email"),
-	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("domain_requests_domain_idx").using("btree", table.domain.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("citext_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [profiles.id],
-			name: "domain_requests_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("domain_requests_unique_per_user").on(table.domain, table.userId),
-	pgPolicy("domain_requests_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("domain_requests_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
-	pgPolicy("domain_requests_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
-	pgPolicy("domain_requests_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("domain_requests_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
-]);
-
 export const events = pgTable("events", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	slug: text().notNull(),
@@ -324,17 +263,17 @@ export const events = pgTable("events", {
 	pgPolicy("events_select_admin", { as: "permissive", for: "select", to: ["authenticated"], using: sql`is_admin(auth.uid())` }),
 	pgPolicy("events_select_member", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("events_admin_all", { as: "permissive", for: "all", to: ["authenticated"] }),
-	check("events_cancellation_pair", sql`((status = ANY (ARRAY['draft'::event_status_t, 'published'::event_status_t])) AND (cancelled_at IS NULL)) OR ((status = 'cancelled'::event_status_t) AND (cancelled_at IS NOT NULL)) OR (status = 'archived'::event_status_t)`),
-	check("events_cancellation_reason_check", sql`(cancellation_reason IS NULL) OR (length(cancellation_reason) <= 2000)`),
-	check("events_capacity_check", sql`(capacity IS NULL) OR (capacity >= 0)`),
-	check("events_check_in_code_pair", sql`((check_in_code_hash IS NULL) AND (check_in_code_expires_at IS NULL)) OR ((check_in_code_hash IS NOT NULL) AND (check_in_code_expires_at IS NOT NULL))`),
-	check("events_cover_image_path_check", sql`(cover_image_path IS NULL) OR (length(cover_image_path) <= 500)`),
+	check("events_slug_check", sql`slug ~ '^[a-z0-9](?:[a-z0-9\-]{0,62}[a-z0-9])?$'::text`),
+	check("events_title_check", sql`(length(title) >= 1) AND (length(title) <= 200)`),
 	check("events_description_md_check", sql`(description_md IS NULL) OR (length(description_md) <= 20000)`),
 	check("events_location_text_check", sql`(location_text IS NULL) OR (length(location_text) <= 500)`),
 	check("events_location_url_check", sql`(location_url IS NULL) OR (location_url ~* '^https?://'::text)`),
-	check("events_slug_check", sql`slug ~ '^[a-z0-9](?:[a-z0-9\-]{0,62}[a-z0-9])?$'::text`),
+	check("events_capacity_check", sql`(capacity IS NULL) OR (capacity >= 0)`),
+	check("events_cover_image_path_check", sql`(cover_image_path IS NULL) OR (length(cover_image_path) <= 500)`),
+	check("events_cancellation_reason_check", sql`(cancellation_reason IS NULL) OR (length(cancellation_reason) <= 2000)`),
 	check("events_time_order", sql`starts_at < ends_at`),
-	check("events_title_check", sql`(length(title) >= 1) AND (length(title) <= 200)`),
+	check("events_check_in_code_pair", sql`((check_in_code_hash IS NULL) AND (check_in_code_expires_at IS NULL)) OR ((check_in_code_hash IS NOT NULL) AND (check_in_code_expires_at IS NOT NULL))`),
+	check("events_cancellation_pair", sql`((status = ANY (ARRAY['draft'::event_status_t, 'published'::event_status_t])) AND (cancelled_at IS NULL)) OR ((status = 'cancelled'::event_status_t) AND (cancelled_at IS NOT NULL)) OR (status = 'archived'::event_status_t)`),
 ]);
 
 export const eventNotificationJobs = pgTable("event_notification_jobs", {
@@ -372,6 +311,45 @@ export const eventNotificationJobs = pgTable("event_notification_jobs", {
 	check("event_notification_jobs_sent_shape", sql`((status = ANY (ARRAY['sent'::event_notification_status_t, 'skipped'::event_notification_status_t])) AND (sent_at IS NOT NULL)) OR (status <> ALL (ARRAY['sent'::event_notification_status_t, 'skipped'::event_notification_status_t]))`),
 ]);
 
+export const rateLimitHits = pgTable("rate_limit_hits", {
+	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+	bucket: text().notNull(),
+	key: text().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("rate_limit_hits_bucket_key_idx").using("btree", table.bucket.asc().nullsLast().op("timestamptz_ops"), table.key.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	pgPolicy("rate_limit_hits_no_auth_select", { as: "permissive", for: "select", to: ["authenticated"], using: sql`false` }),
+	pgPolicy("rate_limit_hits_no_auth_write", { as: "permissive", for: "all", to: ["authenticated"] }),
+]);
+
+export const legacyMembers = pgTable("legacy_members", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	fullName: text("full_name"),
+	firstName: text("first_name"),
+	lastName: text("last_name"),
+	personalEmail: text("personal_email"),
+	campusEmail: text("campus_email"),
+	phoneNumber: text("phone_number"),
+	smsInterest: boolean("sms_interest"),
+	source: text().notNull(),
+	sourceDetail: text("source_detail"),
+	importedAt: timestamp("imported_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	claimedProfileId: uuid("claimed_profile_id"),
+}, (table) => [
+	uniqueIndex("legacy_members_campus_email_idx").using("btree", table.campusEmail.asc().nullsLast().op("citext_ops")).where(sql`(campus_email IS NOT NULL)`),
+	uniqueIndex("legacy_members_personal_email_idx").using("btree", table.personalEmail.asc().nullsLast().op("citext_ops")).where(sql`(personal_email IS NOT NULL)`),
+	index("legacy_members_unclaimed_idx").using("btree", table.claimedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(claimed_at IS NULL)`),
+	foreignKey({
+			columns: [table.claimedProfileId],
+			foreignColumns: [profiles.id],
+			name: "legacy_members_claimed_profile_id_fkey"
+		}),
+	pgPolicy("legacy_members_admin_all", { as: "permissive", for: "all", to: ["public"], using: sql`is_admin(auth.uid())`, withCheck: sql`is_admin(auth.uid())`  }),
+	pgPolicy("legacy_members_select_own_claimed", { as: "permissive", for: "select", to: ["authenticated"] }),
+	check("legacy_members_has_email", sql`(personal_email IS NOT NULL) OR (campus_email IS NOT NULL)`),
+]);
+
 export const majors = pgTable("majors", {
 	slug: text().primaryKey().notNull(),
 	label: text().notNull(),
@@ -382,8 +360,58 @@ export const majors = pgTable("majors", {
 }, (table) => [
 	pgPolicy("majors_select_active", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(is_active = true)` }),
 	pgPolicy("majors_admin_write", { as: "permissive", for: "all", to: ["authenticated"] }),
-	check("majors_label_check", sql`(length(label) >= 1) AND (length(label) <= 100)`),
 	check("majors_slug_check", sql`slug ~ '^[a-z0-9_]+$'::text`),
+	check("majors_label_check", sql`(length(label) >= 1) AND (length(label) <= 100)`),
+]);
+
+export const accountDeletionRequests = pgTable("account_deletion_requests", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	reason: text(),
+	status: deletionRequestStatusT().default('pending').notNull(),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+	processedBy: uuid("processed_by"),
+}, (table) => [
+	uniqueIndex("account_deletion_requests_one_pending_per_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(status = ANY (ARRAY['pending'::deletion_request_status_t, 'processing'::deletion_request_status_t]))`),
+	index("account_deletion_requests_status_idx").using("btree", table.status.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "account_deletion_requests_user_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.processedBy],
+			foreignColumns: [profiles.id],
+			name: "account_deletion_requests_processed_by_fkey"
+		}).onDelete("set null"),
+	pgPolicy("account_deletion_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("account_deletion_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("account_deletion_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("account_deletion_update_admin", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("account_deletion_no_client_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
+	check("account_deletion_requests_reason_check", sql`(reason IS NULL) OR (length(reason) <= 2000)`),
+]);
+
+export const domainRequests = pgTable("domain_requests", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	domain: text("domain").notNull(),
+	userId: uuid("user_id").notNull(),
+	exampleEmail: text("example_email"),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("domain_requests_domain_idx").using("btree", table.domain.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("citext_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "domain_requests_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("domain_requests_unique_per_user").on(table.domain, table.userId),
+	pgPolicy("domain_requests_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("domain_requests_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("domain_requests_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("domain_requests_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("domain_requests_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
 ]);
 
 export const profileVisibilitySettings = pgTable("profile_visibility_settings", {
@@ -451,15 +479,15 @@ export const eventInvites = pgTable("event_invites", {
 			name: "event_invites_event_id_fkey"
 		}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.invitedBy],
-			foreignColumns: [profiles.id],
-			name: "event_invites_invited_by_fkey"
-		}).onDelete("set null"),
-	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [profiles.id],
 			name: "event_invites_user_id_fkey"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.invitedBy],
+			foreignColumns: [profiles.id],
+			name: "event_invites_invited_by_fkey"
+		}).onDelete("set null"),
 	primaryKey({ columns: [table.eventId, table.userId], name: "event_invites_pk"}),
 	pgPolicy("event_invites_select_admin", { as: "permissive", for: "select", to: ["authenticated"], using: sql`is_admin(auth.uid())` }),
 	pgPolicy("event_invites_select_own", { as: "permissive", for: "select", to: ["authenticated"] }),
@@ -479,11 +507,6 @@ export const eventAttendances = pgTable("event_attendances", {
 	index("event_attendances_event_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops")),
 	index("event_attendances_user_idx").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.checkedInAt.desc().nullsFirst().op("timestamptz_ops")),
 	foreignKey({
-			columns: [table.checkedInBy],
-			foreignColumns: [profiles.id],
-			name: "event_attendances_checked_in_by_fkey"
-		}).onDelete("set null"),
-	foreignKey({
 			columns: [table.eventId],
 			foreignColumns: [events.id],
 			name: "event_attendances_event_id_fkey"
@@ -493,6 +516,11 @@ export const eventAttendances = pgTable("event_attendances", {
 			foreignColumns: [profiles.id],
 			name: "event_attendances_user_id_fkey"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.checkedInBy],
+			foreignColumns: [profiles.id],
+			name: "event_attendances_checked_in_by_fkey"
+		}).onDelete("set null"),
 	primaryKey({ columns: [table.eventId, table.userId], name: "event_attendances_pk"}),
 	pgPolicy("event_attendances_no_client_delete", { as: "permissive", for: "delete", to: ["authenticated"], using: sql`false` }),
 	pgPolicy("event_attendances_select_own", { as: "permissive", for: "select", to: ["authenticated"] }),
@@ -511,10 +539,12 @@ export const eventRsvps = pgTable("event_rsvps", {
 	statusChangedAt: timestamp("status_changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	waitlistedAt: timestamp("waitlisted_at", { withTimezone: true, mode: 'string' }),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	checkinToken: uuid("checkin_token"),
 }, (table) => [
+	uniqueIndex("event_rsvps_checkin_token_idx").using("btree", table.checkinToken.asc().nullsLast().op("uuid_ops")).where(sql`(checkin_token IS NOT NULL)`),
 	index("event_rsvps_event_status_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("uuid_ops")),
-	index("event_rsvps_event_waitlist_idx").using("btree", table.eventId.asc().nullsLast().op("timestamptz_ops"), table.waitlistedAt.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = 'waitlisted'::rsvp_status_t)`),
-	index("event_rsvps_user_idx").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.statusChangedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("event_rsvps_event_waitlist_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.waitlistedAt.asc().nullsLast().op("timestamptz_ops"), table.userId.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = 'waitlisted'::rsvp_status_t)`),
+	index("event_rsvps_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.statusChangedAt.desc().nullsFirst().op("timestamptz_ops")),
 	foreignKey({
 			columns: [table.eventId],
 			foreignColumns: [events.id],
@@ -534,29 +564,6 @@ export const eventRsvps = pgTable("event_rsvps", {
 	check("event_rsvps_comment_check", sql`(comment IS NULL) OR (length(comment) <= 500)`),
 	check("event_rsvps_waitlist_consistency", sql`((status = 'waitlisted'::rsvp_status_t) AND (waitlisted_at IS NOT NULL)) OR ((status <> 'waitlisted'::rsvp_status_t) AND (waitlisted_at IS NULL))`),
 ]);
-export const recruiterEligibleMembers = pgView("recruiter_eligible_members", {	id: uuid(),
-	firstName: text("first_name"),
-	lastName: text("last_name"),
-	preferredName: text("preferred_name"),
-	googleEmail: text("google_email"),
-	studentEmail: text("student_email"),
-	phoneNumber: text("phone_number"),
-	school: text(),
-	major: text(),
-	minor: text(),
-	classStanding: classStandingT("class_standing"),
-	gradYear: integer("grad_year"),
-	gradTerm: text("grad_term"),
-	interestedRoles: interestedRoleT("interested_roles"),
-	linkedinUrl: text("linkedin_url"),
-	githubUrl: text("github_url"),
-	portfolioUrl: text("portfolio_url"),
-	currentResumeId: uuid("current_resume_id"),
-	resumeFileName: text("resume_file_name"),
-	resumeStoragePath: text("resume_storage_path"),
-	resumeUploadedAt: timestamp("resume_uploaded_at", { withTimezone: true, mode: 'string' }),
-}).as(sql`WITH latest_consent AS ( SELECT c.user_id, c.consent_type, (array_agg(c.accepted ORDER BY c.accepted_at DESC, c.id DESC))[1] AS latest_accepted, (array_agg(c.version ORDER BY c.accepted_at DESC, c.id DESC))[1] AS latest_version FROM consents c WHERE c.consent_type = 'recruiter_resume_sharing'::consent_type_t GROUP BY c.user_id, c.consent_type ) SELECT p.id, p.first_name, p.last_name, p.preferred_name, p.google_email, p.student_email, p.phone_number, p.school, p.major, p.minor, p.class_standing, p.grad_year, p.grad_term, p.interested_roles, p.linkedin_url, p.github_url, p.portfolio_url, r.id AS current_resume_id, r.file_name AS resume_file_name, r.storage_path AS resume_storage_path, r.uploaded_at AS resume_uploaded_at FROM profiles p JOIN resumes r ON r.user_id = p.id AND r.is_current = true AND r.status = 'active'::resume_status_t JOIN latest_consent lc ON lc.user_id = p.id JOIN consent_versions cv ON cv.consent_type = 'recruiter_resume_sharing'::consent_type_t WHERE p.student_email_verified = true AND p.open_to_recruiters = true AND p.is_archived = false AND p.is_admin = false AND lc.latest_accepted = true AND lc.latest_version = cv.version`);
-
 export const memberVisibleEvents = pgView("member_visible_events", {	id: uuid(),
 	slug: text(),
 	title: text(),
@@ -596,6 +603,29 @@ export const selfEventHistory = pgView("self_event_history", {	eventId: uuid("ev
 	attended: boolean(),
 	coverImagePath: text("cover_image_path"),
 }).as(sql`SELECT e.id AS event_id, e.slug, e.title, e.starts_at, e.ends_at, e.status, e.visibility, e.location_text, r.status AS rsvp_status, r.status_changed_at AS rsvp_changed_at, r.waitlisted_at, a.checked_in_at, a.method AS attendance_method, a.checked_in_at IS NOT NULL AS attended, e.cover_image_path FROM events e LEFT JOIN event_rsvps r ON r.event_id = e.id AND r.user_id = auth.uid() LEFT JOIN event_attendances a ON a.event_id = e.id AND a.user_id = auth.uid() WHERE r.user_id IS NOT NULL OR a.user_id IS NOT NULL`);
+
+export const recruiterEligibleMembers = pgView("recruiter_eligible_members", {	id: uuid(),
+	firstName: text("first_name"),
+	lastName: text("last_name"),
+	preferredName: text("preferred_name"),
+	googleEmail: text("google_email"),
+	studentEmail: text("student_email"),
+	phoneNumber: text("phone_number"),
+	school: text(),
+	major: text(),
+	minor: text(),
+	classStanding: classStandingT("class_standing"),
+	gradYear: integer("grad_year"),
+	gradTerm: text("grad_term"),
+	interestedRoles: interestedRoleT("interested_roles"),
+	linkedinUrl: text("linkedin_url"),
+	githubUrl: text("github_url"),
+	portfolioUrl: text("portfolio_url"),
+	currentResumeId: uuid("current_resume_id"),
+	resumeFileName: text("resume_file_name"),
+	resumeStoragePath: text("resume_storage_path"),
+	resumeUploadedAt: timestamp("resume_uploaded_at", { withTimezone: true, mode: 'string' }),
+}).as(sql`WITH latest_consent AS ( SELECT c.user_id, c.consent_type, (array_agg(c.accepted ORDER BY c.accepted_at DESC, c.id DESC))[1] AS latest_accepted, (array_agg(c.version ORDER BY c.accepted_at DESC, c.id DESC))[1] AS latest_version FROM consents c WHERE c.consent_type = 'recruiter_resume_sharing'::consent_type_t GROUP BY c.user_id, c.consent_type ) SELECT p.id, p.first_name, p.last_name, p.preferred_name, p.google_email, p.student_email, p.phone_number, p.school, p.major, p.minor, p.class_standing, p.grad_year, p.grad_term, p.interested_roles, p.linkedin_url, p.github_url, p.portfolio_url, r.id AS current_resume_id, r.file_name AS resume_file_name, r.storage_path AS resume_storage_path, r.uploaded_at AS resume_uploaded_at FROM profiles p JOIN resumes r ON r.user_id = p.id AND r.is_current = true AND r.status = 'active'::resume_status_t JOIN latest_consent lc ON lc.user_id = p.id JOIN consent_versions cv ON cv.consent_type = 'recruiter_resume_sharing'::consent_type_t WHERE p.student_email_verified = true AND p.open_to_recruiters = true AND p.is_archived = false AND p.is_admin = false AND lc.latest_accepted = true AND lc.latest_version = cv.version AND p.grad_year IS NOT NULL AND p.class_standing IS NOT NULL AND p.grad_term IS NOT NULL AND cardinality(p.interested_roles) > 0`);
 
 export const memberCards = pgView("member_cards", {	userId: uuid("user_id"),
 	profileSlug: text("profile_slug"),

@@ -3,6 +3,15 @@ import "server-only";
 import { render } from "@react-email/render";
 import { Resend } from "resend";
 
+export interface SendEmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+  // Set to embed inline (referenced via `cid:` in the HTML) instead of a
+  // regular downloadable attachment. See EventRsvpConfirmationEmail's QR.
+  contentId?: string;
+}
+
 export interface SendEmailInput {
   to: string;
   subject: string;
@@ -10,6 +19,7 @@ export interface SendEmailInput {
   text: string;
   idempotencyKey?: string;
   tags?: Record<string, string>;
+  attachments?: SendEmailAttachment[];
 }
 
 export type SendEmailResult =
@@ -50,6 +60,12 @@ export async function sendEmail(
       tags: input.tags
         ? Object.entries(input.tags).map(([name, value]) => ({ name, value }))
         : undefined,
+      attachments: input.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+        contentId: a.contentId,
+      })),
     });
     if (error || !data) {
       return {

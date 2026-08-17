@@ -407,6 +407,43 @@ export async function adminCheckIn(
   return ok({ checkedIn: true });
 }
 
+const adminCheckInByTokenSchema = z.object({
+  token: z.string().uuid(),
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+// D12/§7.5: QR check-in. Staff's browser decodes the scanned QR into a raw
+// token string; this resolves it to (event_id, user_id) and writes through
+// the same event_attendances insert path as adminCheckIn above, just via
+// admin_check_in_by_token instead of admin_check_in_member.
+export async function adminCheckInByToken(
+  token: string,
+  note?: string | null
+): Promise<ActionResult<{ eventId: string; userId: string }>> {
+  const parsed = adminCheckInByTokenSchema.safeParse({ token, note });
+  if (!parsed.success) {
+    return err("INVALID_INPUT", "That doesn't look like a valid QR code.");
+  }
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  const { data, error } = await supabase.rpc("admin_check_in_by_token", {
+    p_token: parsed.data.token,
+    p_note: parsed.data.note ?? null,
+  });
+  if (error) return mapPgError(error);
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const eventId = row?.out_event_id as string | undefined;
+  const userId = row?.out_user_id as string | undefined;
+  if (!eventId || !userId) return err("INTERNAL", "Check-in did not return a result.");
+
+  revalidateEventPaths(eventId);
+  return ok({ eventId, userId });
+}
+
 const correctAttendanceSchema = z.object({
   eventId: z.string().uuid(),
   userId: z.string().uuid(),

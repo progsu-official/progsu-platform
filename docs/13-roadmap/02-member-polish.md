@@ -427,4 +427,4 @@ Budget 14-16 hours calendar time accounting for review + viewport QA + smoke pas
 - Email templates visual polish (separate workstream in `lib/email/events`).
 - Invite declined-recovery flow (privacy question; defer to R2 discussion).
 - Shared-events count badge on past events (R3 territory).
-- QR code display for check-in (plan §4 non-goal #10).
+- ~~QR code display for check-in (plan §4 non-goal #10)~~ — reopened as plan §7.5/D12, 2026-08-16. Tracked in `docs/09-events-platform-plan.md`, not this polish doc, since it's schema + RPC work, not UI polish.

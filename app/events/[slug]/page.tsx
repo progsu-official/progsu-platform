@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import QRCode from "qrcode";
+
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,7 @@ type HostRow = { display_name: string; sort_order: number };
 type RsvpRow = {
   status: "going" | "waitlisted" | "declined" | "cancelled";
   waitlisted_at: string | null;
+  checkin_token: string | null;
 };
 type AttendanceRow = { checked_in_at: string; method: string };
 
@@ -77,7 +80,7 @@ export default async function MemberEventDetailPage({
       .order("sort_order", { ascending: true }),
     supabase
       .from("event_rsvps")
-      .select("status, waitlisted_at")
+      .select("status, waitlisted_at, checkin_token")
       .eq("event_id", event.id)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -133,6 +136,15 @@ export default async function MemberEventDetailPage({
   const rsvpOpen = event.status === "published" && startMs > nowMs;
 
   const hostList = hosts.map((h) => h.display_name).join(" · ");
+
+  // D12/§7.5: QR is a second, additive check-in entry (staff scan it from
+  // /admin/events/[id]/check-in), not a replacement for the code-entry CTA
+  // below. Generated server-side, this page is already a server component.
+  const showQr =
+    !attendance && rsvp?.status === "going" && inCheckInWindow && rsvp.checkin_token;
+  const checkinQrDataUrl = showQr
+    ? await QRCode.toDataURL(rsvp.checkin_token as string, { margin: 1, width: 200 })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -209,10 +221,28 @@ export default async function MemberEventDetailPage({
       ) : null}
 
       {!attendance && rsvp?.status === "going" && inCheckInWindow ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3">
-          <p className="text-sm text-foreground">
-            You&apos;re going — time to check in.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-primary/30 bg-primary/5 px-4 py-3">
+          <div className="flex items-center gap-4">
+            {checkinQrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={checkinQrDataUrl}
+                alt="Your check-in QR code"
+                width={100}
+                height={100}
+                className="rounded-md border bg-white p-1"
+              />
+            ) : null}
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                You&apos;re going — time to check in.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Show this QR at the door, or check in yourself with the event
+                code.
+              </p>
+            </div>
+          </div>
           <Button asChild>
             <Link href={`/events/${event.slug}/check-in`}>Check in</Link>
           </Button>
