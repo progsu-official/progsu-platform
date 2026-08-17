@@ -75,10 +75,13 @@ export function ProfileForm({
         });
         return;
       }
-      // Consent is the next required step. Verify-email is a soft step reached
-      // via the step indicator or a dashboard nudge — it auto-populates
+      // Resume comes next in the visible stepper (Profile -> Resume -> Consent).
+      // It's a soft/skippable step (resume-uploader.tsx pushes on to consent
+      // itself after upload or skip), but it needs to actually be shown once,
+      // not silently bypassed. Verify-email is separately soft, reached via
+      // the step indicator or a dashboard nudge — it auto-populates
       // profiles.school on success but isn't required to finish the funnel.
-      router.push("/onboarding/consent");
+      router.push("/onboarding/resume");
       router.refresh();
     });
   }
