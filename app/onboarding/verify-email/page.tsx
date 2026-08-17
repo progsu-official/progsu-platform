@@ -28,8 +28,22 @@ export default async function VerifyEmailPage() {
     profile && !profile.student_email_verified ? profile.student_email ?? "" : "";
   const alreadyVerified = Boolean(profile?.student_email_verified);
 
+  // If old member data (Luma/Sheets import) matched this account on first
+  // login, let them know something got pre-filled instead of leaving it silent.
+  const { data: legacyMatch } = await supabase
+    .from("legacy_members")
+    .select("id")
+    .eq("claimed_profile_id", user.id)
+    .maybeSingle();
+
   return (
     <section className="space-y-6">
+      {legacyMatch && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          Welcome back! We found your info from Progsu&apos;s past events and
+          filled in what we had. Feel free to double-check it below.
+        </div>
+      )}
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           {alreadyVerified
