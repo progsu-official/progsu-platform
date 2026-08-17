@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { GoogleSignInButton } from "@/app/login/google-sign-in-button";
 
 export default function Home() {
   return (
@@ -9,9 +9,19 @@ export default function Home() {
       <p className="max-w-prose text-center text-muted-foreground">
         The member platform for builders at GSU.
       </p>
-      <Button asChild size="lg">
-        <Link href="/login">Continue with Google</Link>
-      </Button>
+      <div className="w-full max-w-xs">
+        <GoogleSignInButton />
+      </div>
+      {process.env.NODE_ENV !== "production" ? (
+        <div className="flex gap-3 text-xs text-muted-foreground">
+          <Link href="/api/dev-login?role=member" className="underline">
+            Dev bypass: member
+          </Link>
+          <Link href="/api/dev-login?role=admin" className="underline">
+            Dev bypass: admin
+          </Link>
+        </div>
+      ) : null}
     </main>
   );
 }

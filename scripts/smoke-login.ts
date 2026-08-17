@@ -65,12 +65,12 @@ async function main() {
     }
     console.log(`  ✓ GET /login?error=nonsense falls back`);
 
-    // 4. / landing page has a link to /login.
+    // 4. / landing page has the real Google sign-in button (no /login hop).
     const landing = await getHtml("/");
     if (landing.status !== 200) throw new Error(`/ status ${landing.status}`);
-    if (!landing.body.includes('href="/login"'))
-      throw new Error(`landing page missing /login link`);
-    console.log(`  ✓ GET / links to /login`);
+    if (!landing.body.includes("Continue with Google"))
+      throw new Error(`landing page missing Google sign-in CTA`);
+    console.log(`  ✓ GET / has Google sign-in CTA`);
 
     ok = true;
   } finally {

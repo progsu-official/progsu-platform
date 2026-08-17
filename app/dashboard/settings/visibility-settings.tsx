@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  setProfileSlug,
-  setProfileVisibility,
-} from "@/lib/actions/members";
+import { createClient } from "@/lib/supabase/browser";
+import { setProfileSlug, setProfileVisibility } from "@/lib/actions/members";
+
+const DISCORD_LINK_ERRORS: Record<string, string> = {
+  missing_code: "Discord didn't return a code. Please try again.",
+  exchange_failed: "Couldn't verify that Discord connection. Please try again.",
+  identity_missing: "Discord connected, but we couldn't read your account. Try again.",
+  access_denied: "You cancelled connecting Discord.",
+};
 
 type Props = {
   initial: {
@@ -18,6 +23,8 @@ type Props = {
     share_attended_events: boolean;
     share_shared_event_counts: boolean;
     profile_slug: string | null;
+    discord_username: string | null;
+    discord_user_id: string | null;
   };
   siteUrl: string;
   sharedEventsEnabled: boolean;
@@ -29,13 +36,36 @@ export function VisibilitySettings({
   sharedEventsEnabled,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState(initial);
   const [slugDraft, setSlugDraft] = useState(initial.profile_slug ?? "");
   const [editingSlug, setEditingSlug] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const code = searchParams.get("discord_error");
+    return code ? DISCORD_LINK_ERRORS[code] ?? "Couldn't connect Discord. Please try again." : null;
+  });
+  const [discordConnected, setDiscordConnected] = useState(
+    () => searchParams.get("discord_connected") === "1"
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const [reacceptHref, setReacceptHref] = useState<string | null>(null);
+
+  function connectDiscord() {
+    const supabase = createClient();
+    const redirectTo = new URL(
+      "/auth/discord/callback",
+      window.location.origin
+    ).toString();
+    startTransition(async () => {
+      const { error: linkErr } = await supabase.auth.linkIdentity({
+        provider: "discord",
+        options: { redirectTo },
+      });
+      if (linkErr) setError(linkErr.message);
+      // On success Supabase redirects the browser to Discord; no further work here.
+    });
+  }
 
   function updateToggle(
     key: "discoverable" | "share_attended_events" | "share_shared_event_counts",
@@ -87,11 +117,34 @@ export function VisibilitySettings({
     <div className="space-y-5">
       <Toggle
         label="Let other Progsu members find my profile"
-        description="When on, members can visit your profile and see your name, school, class standing, graduation term, and interested roles."
+        description="When on, members can visit your profile and see your name, school, class standing, graduation term, and interested roles. If you add a Discord username below, it also becomes visible to them so they can reach you there."
         checked={state.discoverable}
         onChange={(v) => updateToggle("discoverable", v)}
         disabled={pending}
       />
+
+      <div className="space-y-2 rounded-md border p-3">
+        <Label className="text-xs">Discord (optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Connect your real Discord account so other members can find and
+          message you there when visibility is on. Progsu doesn&apos;t
+          message anyone for you.
+        </p>
+        {state.discord_user_id ? (
+          <p className="text-sm">
+            Connected as <span className="font-medium">{state.discord_username ?? state.discord_user_id}</span>
+          </p>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            onClick={connectDiscord}
+            disabled={pending || !state.discoverable}
+          >
+            Connect Discord
+          </Button>
+        )}
+      </div>
 
       <Toggle
         label="Show events I've attended on my profile"
@@ -174,6 +227,22 @@ export function VisibilitySettings({
         </p>
       ) : null}
 
+      {discordConnected ? (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-md border border-green-600/30 bg-green-600/10 p-3 text-sm text-green-700 dark:text-green-400"
+        >
+          <p>Discord connected.</p>
+          <button
+            type="button"
+            onClick={() => setDiscordConnected(false)}
+            className="text-xs underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
       {error ? (
         <div
           role="alert"
@@ -211,6 +280,7 @@ function Toggle({
     <div className="flex items-start gap-3">
       <input
         type="checkbox"
+        aria-label={label}
         className="mt-1 h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}

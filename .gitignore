@@ -49,3 +49,4 @@ next-env.d.ts
 /supabase/.temp
 /supabase/.env
 .claude/
+pnpm-workspace.yaml

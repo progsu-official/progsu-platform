@@ -130,6 +130,38 @@ export default async function MemberProfilePage({
             <p className="mt-1 text-sm text-muted-foreground">—</p>
           )}
         </div>
+        {card.discord_user_id ? (
+          <div className="sm:col-span-2">
+            <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
+              Discord
+            </h3>
+            <p className="mt-1 text-sm">
+              <a
+                href={`https://discord.com/users/${card.discord_user_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-primary"
+              >
+                {card.discord_username ?? "Open Discord profile"}
+              </a>
+              <span className="ml-2 text-xs text-muted-foreground">
+                (opens if you share a server with them)
+              </span>
+            </p>
+          </div>
+        ) : card.discord_username ? (
+          <div className="sm:col-span-2">
+            <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
+              Discord
+            </h3>
+            <p className="mt-1 text-sm">
+              {card.discord_username}
+              <span className="ml-2 text-xs text-muted-foreground">
+                (find them in the Progsu Discord server)
+              </span>
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {card.share_attended_events ? (
