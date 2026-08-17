@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { DayOfRoster } from "./day-of-roster";
@@ -35,9 +36,16 @@ export default async function AdminEventCheckInPage({
     .maybeSingle();
   if (!event) notFound();
 
-  const { data: roster } = await admin.rpc("admin_event_roster_for", {
-    p_event_id: id,
-  });
+  // Must use the user-context client because admin_event_roster_for()
+  // checks public.is_admin(auth.uid()) server-side. Service-role has no
+  // auth.uid() and the RPC raises "admin only" (same fix as the Guests tab
+  // on the parent event page). The parent /admin layout already gated on
+  // is_admin so the caller here is guaranteed admin.
+  const supabase = await createClient();
+  const { data: roster, error: rosterError } = await supabase.rpc(
+    "admin_event_roster_for",
+    { p_event_id: id }
+  );
 
   // Focused day-of view: show everyone who's "going" plus anyone already
   // attended (e.g. walk-ins). Drop waitlisted/declined — they go through the
@@ -89,7 +97,13 @@ export default async function AdminEventCheckInPage({
 
       <QrScanner eventId={event.id as string} />
 
-      <DayOfRoster eventId={event.id as string} rows={rows} />
+      {rosterError ? (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t load roster: {rosterError.message}
+        </p>
+      ) : (
+        <DayOfRoster eventId={event.id as string} rows={rows} />
+      )}
     </div>
   );
 }

@@ -35,14 +35,15 @@ These decisions replace contradictory parts of the earlier swarm draft.
 | D2 | Event management authority | **Admin-only in Release 1.** No non-admin organizer auth surface under `/admin/*` in the first release. |
 | D3 | Event modeling | Event **status** and event **visibility** are separate concerns. Do not overload one column for both. |
 | D4 | Waitlist behavior | **Manual promotion only in Release 1.** No automatic waitlist promotion. |
-| D5 | Check-in code behavior | One active self-check-in code per event window. Stable by default during the window, but admins can rotate it manually. Supplemented, not replaced, by D12. |
+| D5 | Check-in code behavior | ~~One active self-check-in code per event window.~~ **Removed by D13, 2026-08-17.** See §7.4. |
 | D6 | Cancelled event visibility | Cancelled events disappear from general discovery feeds, but remain visible on direct detail/history surfaces for admins and RSVP’d members. |
 | D7 | Privileged writes | Event lifecycle mutations go through **server action -> RPC/helper -> audit**, not direct client table writes. |
 | D8 | Peer profile viewing | Member-to-member profile discovery is **not** public. It is feature-flagged, opt-in, and uses a sanitized member-card projection rather than raw `profiles` reads. |
 | D9 | Shared-event visibility | Shared-event history requires **mutual opt-in**, non-sensitive events, minimum attendee thresholds, and privacy-policy/copy updates before launch. |
 | D10 | Notifications trust model | Event confirmations/reminders/cancellations are treated as transactional only after the app’s privacy/settings copy is updated to say so explicitly. |
 | D11 | Document authority | This doc is self-contained. It does not rely on `/tmp` lane files or ephemeral swarm artifacts. |
-| D12 | QR check-in (reopens non-goal #10, 2026-08-16) | Per-attendee QR check-in ships as a **second, additive** entry path alongside the D5 shared code, not a replacement. A random `checkin_token` is generated on `event_rsvps` when status becomes `going`; the member's ticket view renders it as a QR. Staff scan it from the existing admin check-in screen, which resolves the token to the attendee and writes to `event_attendances` through the same helper/audit seam as every other check-in method. No new table, no "ticket" object, no payment concept, see §7.5. |
+| D12 | QR check-in (reopens non-goal #10, 2026-08-16) | Per-attendee QR check-in ships as a check-in entry path. A random `checkin_token` is generated on `event_rsvps` when status becomes `going`; the member's ticket view renders it as a QR. Staff scan it from the existing admin check-in screen, which resolves the token to the attendee and writes to `event_attendances` through the same helper/audit seam as every other check-in method. No new table, no "ticket" object, no payment concept, see §7.5. |
+| D13 | Cut D5, QR is the sole staff-facing check-in mechanism (2026-08-17) | The shared per-event code (D5) never matched Luma's actual pattern, checked against their real docs: Luma is QR scan + staff manual name-search, not a typed shared code. Removed `self_check_in`, `rotate_check_in_code_with_raw`, `check_in_code_hash`/`check_in_code_expires_at`. QR (D12) is now primary; the pre-existing `admin_check_in_member` roster-search flow is the fallback, matching Luma exactly, no new fallback work needed. |
 
 ---
 
@@ -195,7 +196,7 @@ These are out of scope for the current program unless reopened explicitly.
 | Role | Meaning | Release 1 authority |
 |---|---|---|
 | `admin` | `profiles.is_admin = true` | Full event management, roster access, check-in, analytics, settings |
-| `member` | authenticated + `fullyOnboarded = true` | Browse events, RSVP, self check-in, self history |
+| `member` | authenticated + `fullyOnboarded = true` | Browse events, RSVP, show QR at check-in, self history |
 | `target member` | another member in Release 2+ | Viewable only through opt-in member-card rules |
 | `unauthenticated` | no session | No event/profile access |
 
@@ -238,8 +239,6 @@ Do not conflate “people shown on the event page” with “people allowed to m
 
 - `/events`
 - `/events/[slug]`
-- `/events/[slug]/check-in`
-- `/events/[slug]/check-in/success`
 - optional `/dashboard/events` if we choose a dedicated dashboard subsection rather than only a summary card
 
 ### Release 1 new admin routes
@@ -306,39 +305,34 @@ Attendance is separate from RSVP.
 Canonical Release-1 model:
 
 - one row per `(event_id, user_id)` in `event_attendances`
-- rows are created by admin check-in or self check-in
+- rows are created by staff check-in, either QR scan or manual roster search (D13)
 - corrections update the row through a dedicated RPC/helper
 - audit log stores before/after history
 
 This avoids the previous contradiction between “append-only ledger” and `unique(event_id, user_id)`.
 
-### 7.4 Check-in code behavior
+### 7.4 Check-in code behavior — removed (D13, 2026-08-17)
 
-Release-1 rule:
+~~One active code per event window, compared server-side, self check-in requires a valid code plus a `going` RSVP.~~ Cut entirely. See D13 and §7.5. `self_check_in`, `rotate_check_in_code_with_raw`, and the `check_in_code_hash`/`check_in_code_expires_at` columns are dropped (migration `20260817000100_remove_shared_checkin_code.sql`). `attendance_method_t` keeps the `self_code` value for historical/schema reasons, Postgres can't drop an enum value cheaply, but nothing can produce it anymore.
 
-- one active code per event window
-- code is stable during the window unless an admin rotates it manually
-- code is compared server-side only
-- self check-in requires both a valid code and an existing `going` RSVP
+### 7.5 QR check-in (D12, 2026-08-16; sole staff-facing mechanism as of D13, 2026-08-17)
 
-### 7.5 QR check-in (D12, reopened 2026-08-16)
+Reference model: Luma's actual check-in flow, verified against their real help docs, not guessed (`help.luma.com/p/check-in` + `help.luma.com/p/external-check-in-integration`). Luma's real pattern is a static per-registration QR **plus staff manual name-search as the fallback**, it has no shared typed code at all. D5 (the shared code) predated this project's Luma research and didn't match what Luma actually does; D13 cuts it so the app matches the reference model instead of carrying two unrelated check-in mechanisms.
 
-Reference model: Luma's guest-ticket QR, verified against their real help docs before adopting the pattern (a static per-registration opaque token, not a rotating/signed code, `help.luma.com/p/check-in` + `help.luma.com/p/external-check-in-integration`).
+**What this is, precisely:**
 
-**What this adds, precisely:**
+- `event_rsvps.checkin_token` — nullable column, a random opaque value (`gen_random_uuid()`). Generated by the RSVP trigger the moment status becomes `going`; cleared if the RSVP moves to `declined`/`cancelled`.
+- Member's event page (`/events/[slug]`) renders the token as a QR when RSVP = `going` and the event window is open.
+- **Scanning happens from the existing admin check-in screen** (`/admin/events/[id]/check-in`), browser camera access, no native app. A scanned token resolves to the attendee and writes to `event_attendances` via `admin_check_in_by_token`.
+- **Fallback, matching Luma exactly: manual name/email search on the same admin check-in screen's roster**, already built (`admin_check_in_member`, predates this doc's QR work but is the correct Luma-equivalent fallback, not the removed shared code). No new work needed here, staff already can search a name and tap to check someone in without a working camera.
+- `attendance_method_t` values in active use: `qr_token` (QR scan), `admin_click` (manual roster search/tap). `self_code` is retired.
 
-- `event_rsvps.checkin_token` — new nullable column, a random opaque value (`gen_random_uuid()`, already available via the `pgcrypto` usage in `20260423000700_check_in_pgcrypto_search_path.sql`). Generated by `rsvp_to_event` the moment status becomes `going`; cleared if the RSVP moves to `declined`/`cancelled`.
-- Member's event page (`/events/[slug]`, the existing check-in CTA area) renders the token as a QR when RSVP = `going` and the event window is open. No new route needed.
-- **Scanning happens from the existing admin check-in screen** (`/admin/events/[id]/check-in`), not a new native app, camera access via the browser is enough. A scanned token is looked up and passed through the same path `admin_check_in_member` already uses to write `event_attendances`, just resolving the attendee by token instead of by manual roster search.
-- `attendance_method_t` gets one new value: `qr_token` (alongside existing `admin_click`, `self_code`), so the audit trail always shows which of the three paths a check-in came through.
-
-**What this does NOT add** (stays true to D12's "additive, not a rebuild" framing):
-- No new table. No "ticket" as its own object, attendance is still exactly one row per `(event_id, user_id)` in `event_attendances`, same as today.
+**What this does NOT add:**
+- No new table. No "ticket" as its own object, attendance is still exactly one row per `(event_id, user_id)` in `event_attendances`.
 - No payment/ticket-tier concept, non-goal #3 is untouched.
-- The D5 shared-code self-check-in path is unchanged and stays the default fallback (a member without a working camera, or staff triaging a line, can still use it).
 - No offline/kiosk mode, still out of scope.
 
-**Security note** (mirrors the reasoning already used for D5's check-in-code risk in §15): the token is unguessable (UUID-class entropy) and single-use in effect, because `event_attendances` has a `unique(event_id, user_id)` constraint, so a second scan of the same guest's QR after they're already checked in fails the same way a duplicate `self_check_in` call does today, no new race condition introduced. This is the appropriate security tier for an internal club event, not the rotating/signed-token tier used by resale-prone commercial ticketing.
+**Security note:** the token is unguessable (UUID-class entropy) and single-use in effect, `event_attendances` has a `unique(event_id, user_id)` constraint, so a second scan of an already-checked-in guest's QR fails the same way a duplicate manual check-in would, no new race condition. Appropriate security tier for an internal club event, not the rotating/signed-token tier used by resale-prone commercial ticketing.
 
 ---
 
@@ -438,7 +432,7 @@ Before Release 3 shared-event discovery:
 - `event_status_t`
 - `event_visibility_t`
 - `rsvp_status_t`
-- `attendance_method_t` (`admin_click`, `self_code`, `qr_token` — added D12, 2026-08-16)
+- `attendance_method_t` (`admin_click`, `qr_token` — added D12, 2026-08-16; `self_code` retired by D13, kept in the enum since Postgres can't drop values cheaply, but nothing produces it)
 
 **Tables**
 - `events`
@@ -467,8 +461,6 @@ Before Release 3 shared-event discovery:
 - `capacity`
 - `waitlist_enabled`
 - `cover_image_path`
-- `check_in_code_hash`
-- `check_in_code_expires_at`
 - `send_rsvp_email`
 - `send_reminder_email`
 - `reminder_sent_at`
@@ -596,9 +588,7 @@ Release 2+ also should avoid changing raw `profiles` if possible. Use projection
 - `promote_waitlisted_member`
 - `admin_check_in_member`
 - `admin_check_in_by_token` — added D12, 2026-08-16; resolves `checkin_token` to an attendee, then writes through the same seam as `admin_check_in_member`
-- `self_check_in`
 - `correct_attendance`
-- `rotate_check_in_code`
 - `can_view_event`
 - `is_fully_onboarded`
 
@@ -876,8 +866,7 @@ Canonical rollback posture should remain aligned with `docs/07`: use feature fla
 | Organizer/admin auth drift | High | admin-only Release 1 event management |
 | Notification trust gap | High | privacy/settings copy update before transactional event email rollout |
 | Bulk reminder/cancellation timeouts | High | use cron/job path or capped batching, not blind inline fan-out |
-| Check-in code abuse | Medium | short window, server-side compare, rotation, rate limits |
-| QR token forwarded/screenshotted (D12) | Low | unguessable token + `unique(event_id, user_id)` on `event_attendances` means only the first scan succeeds regardless of who holds the image; D5 code path remains available as a fallback, not a security boundary being removed |
+| QR token forwarded/screenshotted (D12) | Low | unguessable token + `unique(event_id, user_id)` on `event_attendances` means only the first scan succeeds regardless of who holds the image; manual roster search (`admin_check_in_member`) is the fallback if a camera's unavailable, not a security boundary being removed |
 | Private-invite event leakage through covers or projections | Medium | cover bucket gated by event visibility rules |
 | Shared-event inference in small/private groups | Critical for Release 3 | mutual opt-in, thresholding, no private-invite/sensitive overlap, audit |
 

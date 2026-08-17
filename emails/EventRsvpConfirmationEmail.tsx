@@ -83,8 +83,7 @@ export default function EventRsvpConfirmationEmail({
                   className="rounded-md border border-slate-200"
                 />
                 <Text className="text-sm text-slate-600">
-                  Show this QR at the door to check in, or check in yourself
-                  with the event code.
+                  Show this QR at the door and staff will scan you in.
                 </Text>
               </>
             ) : null}

@@ -3,14 +3,14 @@
 // docs/09-events-platform-plan.md §14.2:
 //
 //   pnpm tsx scripts/pilot-event.ts create    # seeds a draft pilot event
-//   pnpm tsx scripts/pilot-event.ts publish   # publishes + rotates code + enqueues reminders
+//   pnpm tsx scripts/pilot-event.ts publish   # publishes + enqueues reminders
 //   pnpm tsx scripts/pilot-event.ts status    # prints roster, RSVPs, attendance, pending jobs
 //   pnpm tsx scripts/pilot-event.ts cancel    # cancels w/ reason + fans out emails
 //   pnpm tsx scripts/pilot-event.ts archive   # archives a cancelled/completed pilot
 //
-// Uses SUPABASE_DB_URL if set for direct SQL, else the REST service-role
-// client. Designed to be run against production — prints every side effect
-// and asks before anything destructive.
+// REST service-role client throughout. Designed to be run against
+// production — prints every side effect and asks before anything
+// destructive.
 //
 // Picks up the most recent event whose slug starts with `pilot-` unless you
 // pass --id <uuid> or --slug <slug>.
@@ -18,7 +18,7 @@
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 
-import { randomUUID, randomBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 
 type Cmd = "create" | "publish" | "status" | "cancel" | "archive" | "help";
@@ -30,7 +30,8 @@ Usage:
 
 Commands:
   create                 Create a new draft pilot event (interactive).
-  publish [--id X]       Publish + rotate check-in code + enqueue reminders.
+  publish [--id X]       Publish + enqueue reminders. Check-in QR is generated
+                          automatically per-attendee on RSVP, nothing to set up.
   status [--id X]        Show current pilot event state (roster, jobs).
   cancel [--id X]        Cancel with a reason. Fans out cancellation emails.
   archive [--id X]       Archive a cancelled or past pilot.
@@ -225,7 +226,7 @@ async function main() {
     const { data: event } = await admin
       .from("events")
       .select(
-        "id, slug, title, status, visibility, starts_at, ends_at, capacity, waitlist_enabled, check_in_code_hash, check_in_code_expires_at, reminder_sent_at, cancelled_at, cancellation_reason, send_reminder_email, send_rsvp_email"
+        "id, slug, title, status, visibility, starts_at, ends_at, capacity, waitlist_enabled, reminder_sent_at, cancelled_at, cancellation_reason, send_reminder_email, send_rsvp_email"
       )
       .eq("id", target.id)
       .single();
@@ -271,13 +272,6 @@ async function main() {
     console.log(`   visibility: ${event?.visibility}`);
     console.log(`   when:       ${event?.starts_at} → ${event?.ends_at}`);
     console.log(`   capacity:   ${event?.capacity ?? "unlimited"}`);
-    if (event?.check_in_code_expires_at) {
-      console.log(
-        `   code:       SET (expires ${event.check_in_code_expires_at})`
-      );
-    } else {
-      console.log(`   code:       NOT SET`);
-    }
     if (event?.reminder_sent_at) {
       console.log(`   reminder:   SENT at ${event.reminder_sent_at}`);
     } else {
@@ -311,46 +305,16 @@ async function main() {
       process.exit(1);
     }
 
-    // Check-in code: 6 alphanumeric chars, easy to share out loud.
-    const raw = randomBytes(6)
-      .toString("base64")
-      .replace(/[^A-Za-z0-9]/g, "")
-      .slice(0, 6)
-      .toUpperCase();
-    if (raw.length < 4) {
-      throw new Error("random code too short — retry");
-    }
-
-    const { data: eventNow } = await admin
-      .from("events")
-      .select("ends_at")
-      .eq("id", target.id)
-      .single();
-    const expires = new Date(
-      new Date(eventNow?.ends_at as string).getTime() + 2 * 60 * 60 * 1000
-    ).toISOString();
-
-    const ok = await confirm(
-      `Publish "${target.title}" and rotate check-in code (expires ${expires})?`,
-      skip
-    );
+    const ok = await confirm(`Publish "${target.title}"?`, skip);
     if (!ok) return;
 
-    // Use SECURITY DEFINER helpers: rotate_check_in_code_with_raw requires an
-    // admin auth.uid(). Call via rpc() as service role — but service_role
-    // doesn't have auth.uid. Workaround: run raw SQL directly via the REST
-    // meta endpoint? Simpler: do the mutations ourselves.
     const adminId = await findAdmin();
-    const { pgcryptoCrypt } = await importPgcrypto();
-    const hash = await pgcryptoCrypt(raw);
 
     const { error: updErr } = await admin
       .from("events")
       .update({
         status: "published",
         published_at: new Date().toISOString(),
-        check_in_code_hash: hash,
-        check_in_code_expires_at: expires,
         updated_by: adminId,
       })
       .eq("id", target.id);
@@ -362,21 +326,11 @@ async function main() {
       p_target: null,
       p_metadata: { event_id: target.id, via: "pilot-event.ts" },
     });
-    await admin.rpc("write_audit", {
-      p_action: "event.rotate_check_in_code",
-      p_actor: adminId,
-      p_target: null,
-      p_metadata: {
-        event_id: target.id,
-        expires_at: expires,
-        via: "pilot-event.ts",
-      },
-    });
 
     console.log(`\n✓ Published.`);
-    console.log(`   check-in code: ${raw}`);
-    console.log(`     (share this verbally at the event — it won't be shown again)`);
-    console.log(`     expires:     ${expires}`);
+    console.log(
+      `   Each attendee's check-in QR generates automatically the moment they RSVP going, nothing to set up here.`
+    );
     console.log(
       `   event URL:     ${env.NEXT_PUBLIC_SITE_URL}/events/${target.slug}`
     );
@@ -506,30 +460,6 @@ async function main() {
   console.error(`Unknown command: ${cmd}`);
   console.log(HELP);
   process.exit(1);
-}
-
-// Hash a raw check-in code with pgcrypto's crypt/gen_salt so self_check_in's
-// crypt(p_code, v_hash) <> v_hash comparison matches. node-bcrypt produces
-// $2b$ prefixes that pgcrypto's crypt() does NOT accept, so we go direct to
-// the DB for the hash. Requires SUPABASE_DB_URL to be set (admin session).
-async function importPgcrypto() {
-  const dbUrl = process.env.SUPABASE_DB_URL;
-  if (!dbUrl) {
-    throw new Error(
-      "SUPABASE_DB_URL must be set to run the pilot tool (needed to generate pgcrypto-compatible hashes). See .env.example."
-    );
-  }
-  const postgres = (await import("postgres")).default;
-  const client = postgres(dbUrl, { prepare: false });
-  return {
-    pgcryptoCrypt: async (raw: string) => {
-      const rows = await client<Array<{ hash: string }>>`
-        select crypt(${raw}, gen_salt('bf', 10)) as hash;
-      `;
-      await client.end({ timeout: 1 });
-      return rows[0].hash;
-    },
-  };
 }
 
 main().catch((err) => {
