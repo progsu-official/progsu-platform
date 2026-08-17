@@ -19,13 +19,10 @@ import {
   cancelEventSchema,
   createEventCoverUploadUrlSchema,
   createEventSchema,
-  rotateCheckInCodeSchema,
   rsvpToEventSchema,
-  selfCheckInSchema,
   updateEventSchema,
   type CreateEventCoverUploadUrlInput,
   type CreateEventInput,
-  type RotateCheckInCodeInput,
   type RsvpDesired,
   type UpdateEventInput,
 } from "./event-schemas";
@@ -74,12 +71,7 @@ function mapPgError(error: { code?: string | null; message?: string } | null) {
       lower.includes("unauthenticated") ||
       lower.includes("service_role only") ||
       lower.includes("not visible") ||
-      lower.includes("no going rsvp") ||
-      lower.includes("already checked in") ||
-      lower.includes("invalid code") ||
-      lower.includes("code expired") ||
-      lower.includes("outside event window") ||
-      lower.includes("no code configured")
+      lower.includes("already checked in")
     ) {
       return err("FORBIDDEN", msg);
     }
@@ -486,36 +478,6 @@ export async function correctAttendance(
   return ok({ corrected: true });
 }
 
-export async function rotateCheckInCode(
-  eventId: string,
-  rawInput: RotateCheckInCodeInput
-): Promise<ActionResult<{ rotated: true }>> {
-  const idParsed = z.string().uuid().safeParse(eventId);
-  if (!idParsed.success) return err("INVALID_INPUT", "Invalid event id.");
-
-  const parsed = rotateCheckInCodeSchema.safeParse(rawInput);
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
-      field: first?.path.join("."),
-    });
-  }
-
-  const { supabase, user, isAdmin } = await requireAdminContext();
-  if (!user) return err("UNAUTHORIZED", "Sign in required.");
-  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
-
-  const { error } = await supabase.rpc("rotate_check_in_code_with_raw", {
-    p_event_id: eventId,
-    p_raw_code: parsed.data.raw_code,
-    p_expires_at: parsed.data.expires_at,
-  });
-  if (error) return mapPgError(error);
-
-  revalidateEventPaths(eventId);
-  return ok({ rotated: true });
-}
-
 // =====================================================================
 // Member actions (below the admin set). These share mapPgError above
 // and intentionally use the user-context `createClient()` — never the
@@ -609,31 +571,6 @@ export async function rsvpToEvent(
   // revalidate via its own server render on the next visit.
   revalidateMemberEventPaths();
   return ok({ effectiveStatus: status });
-}
-
-export async function selfCheckIn(
-  eventId: string,
-  rawCode: string
-): Promise<ActionResult<{ checkedIn: true }>> {
-  const parsed = selfCheckInSchema.safeParse({ eventId, rawCode });
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
-      field: first?.path.join("."),
-    });
-  }
-
-  const { supabase, user } = await requireAuthenticatedContext();
-  if (!user) return err("UNAUTHORIZED", "Sign in required.");
-
-  const { error } = await supabase.rpc("self_check_in", {
-    p_event_id: parsed.data.eventId,
-    p_code: parsed.data.rawCode,
-  });
-  if (error) return mapPgError(error);
-
-  revalidateMemberEventPaths();
-  return ok({ checkedIn: true });
 }
 
 // ---------------------------------------------------------------------------

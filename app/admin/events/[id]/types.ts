@@ -27,8 +27,6 @@ export type EventRecord = {
   waitlist_enabled: boolean;
   is_sensitive: boolean;
   cover_image_path: string | null;
-  check_in_code_hash: string | null;
-  check_in_code_expires_at: string | null;
   send_rsvp_email: boolean;
   send_reminder_email: boolean;
   reminder_sent_at: string | null;

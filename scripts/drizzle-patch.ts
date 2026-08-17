@@ -40,9 +40,18 @@ async function patchRelations() {
   let src = await readFile(RELATIONS_PATH, "utf8");
   const originalLength = src.length;
 
+  // usersInAuth's position in this import list isn't stable across
+  // introspection runs (drizzle-kit orders it by table processing order,
+  // which shifts whenever the schema changes), so strip it by name rather
+  // than assuming it's first.
   src = src.replace(
-    /import \{ usersInAuth, ([^}]+) \} from "\.\/schema";/,
-    'import { $1 } from "./schema";\n\n// auth.users relation intentionally omitted — auth schema is filtered out of\n// introspection. profiles.id still FK\'s to auth.users in Postgres.'
+    /import \{ ([^}]+) \} from "\.\/schema";/,
+    (full: string, names: string) => {
+      const list = names.split(",").map((n) => n.trim());
+      if (!list.includes("usersInAuth")) return full;
+      const rest = list.filter((n) => n !== "usersInAuth").join(", ");
+      return `import { ${rest} } from "./schema";\n\n// auth.users relation intentionally omitted — auth schema is filtered out of\n// introspection. profiles.id still FK's to auth.users in Postgres.`;
+    }
   );
   src = src.replace(
     /\tusersInAuth: one\(usersInAuth, \{\s*fields: \[profiles\.id\],\s*references: \[usersInAuth\.id\]\s*\}\),\n/g,

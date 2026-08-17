@@ -9,7 +9,6 @@ import { DetailsTab } from "./details-tab";
 import { AccessTab } from "./access-tab";
 import { GuestsTab } from "./guests-tab";
 import { NotificationsTab } from "./notifications-tab";
-import { CheckInTab } from "./check-in-tab";
 import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
 import { TabNav } from "./tab-nav";
@@ -17,12 +16,13 @@ import type { EventRecord, RosterRow } from "./types";
 
 export const dynamic = "force-dynamic";
 
+// Day-of check-in itself (QR scan + roster search) lives at its own route,
+// /admin/events/[id]/check-in, linked from the header below, not a tab here.
 type TabKey =
   | "details"
   | "access"
   | "guests"
   | "notifications"
-  | "check-in"
   | "analytics"
   | "activity";
 
@@ -31,7 +31,6 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "access", label: "Access" },
   { key: "guests", label: "Guests" },
   { key: "notifications", label: "Notifications" },
-  { key: "check-in", label: "Check-in" },
   { key: "analytics", label: "Analytics" },
   { key: "activity", label: "Activity" },
 ];
@@ -55,7 +54,7 @@ export default async function AdminEventDetailPage({
   const { data: event } = await admin
     .from("events")
     .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, check_in_code_hash, check_in_code_expires_at, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at"
+      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -82,9 +81,6 @@ export default async function AdminEventDetailPage({
     waitlist_enabled: !!event.waitlist_enabled,
     is_sensitive: !!event.is_sensitive,
     cover_image_path: (event.cover_image_path as string | null) ?? null,
-    check_in_code_hash: (event.check_in_code_hash as string | null) ?? null,
-    check_in_code_expires_at:
-      (event.check_in_code_expires_at as string | null) ?? null,
     send_rsvp_email: !!event.send_rsvp_email,
     send_reminder_email: !!event.send_reminder_email,
     reminder_sent_at: (event.reminder_sent_at as string | null) ?? null,
@@ -138,7 +134,6 @@ export default async function AdminEventDetailPage({
         {tab === "access" ? <AccessTabServer eventId={ev.id} event={ev} /> : null}
         {tab === "guests" ? <GuestsTabServer eventId={ev.id} /> : null}
         {tab === "notifications" ? <NotificationsTab event={ev} /> : null}
-        {tab === "check-in" ? <CheckInTab event={ev} /> : null}
         {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
         {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
       </section>

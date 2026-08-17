@@ -156,23 +156,6 @@ export const updateEventSchema = z
 export type UpdateEventInput = z.input<typeof updateEventSchema>;
 export type UpdateEventPayload = z.output<typeof updateEventSchema>;
 
-export const rotateCheckInCodeSchema = z
-  .object({
-    raw_code: z
-      .string()
-      .trim()
-      .min(4, "Code must be 4-20 characters")
-      .max(20, "Code must be 4-20 characters"),
-    expires_at: datetimeInputSchema,
-  })
-  .strict()
-  .refine((d) => new Date(d.expires_at).getTime() > Date.now(), {
-    message: "Expiration must be in the future",
-    path: ["expires_at"],
-  });
-
-export type RotateCheckInCodeInput = z.input<typeof rotateCheckInCodeSchema>;
-
 export const cancelEventSchema = z.object({
   reason: z
     .string()
@@ -200,23 +183,6 @@ export const rsvpToEventSchema = z.object({
 });
 
 export type RsvpToEventInput = z.input<typeof rsvpToEventSchema>;
-
-// Self-check-in raw code input. Trim + alphanumeric enforcement mirrors
-// rotate_check_in_code_with_raw's DB-side length check (4-20). Alphanumeric is
-// a stricter superset than the DB accepts; we keep it as a client hint so
-// users don't paste whitespace/symbols that wouldn't match the admin-seeded
-// code anyway. Actual comparison happens inside the RPC via pgcrypto.crypt().
-export const selfCheckInSchema = z.object({
-  eventId: z.string().uuid("Invalid event id."),
-  rawCode: z
-    .string()
-    .trim()
-    .min(4, "Code must be 4-20 characters")
-    .max(20, "Code must be 4-20 characters")
-    .regex(/^[A-Za-z0-9]+$/, "Code must be letters and numbers only"),
-});
-
-export type SelfCheckInInput = z.input<typeof selfCheckInSchema>;
 
 // Cover-image upload. Limit of 5 MB mirrors the DB's event-covers bucket
 // `file_size_limit`. Allowed MIME types match the bucket's `allowed_mime_types`.

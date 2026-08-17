@@ -125,8 +125,8 @@ export function QrScanner({ eventId }: { eventId: string }) {
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Starts your camera to scan a guest&apos;s personal QR. Falls back to the
-          roster below or the shared event code if a camera isn&apos;t available.
+          Starts your camera to scan a guest&apos;s personal QR. Search the roster
+          below to check someone in manually if a camera isn&apos;t available.
         </p>
       )}
 
