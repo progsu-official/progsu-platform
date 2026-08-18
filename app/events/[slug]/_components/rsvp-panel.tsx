@@ -59,7 +59,7 @@ export function RsvpPanel({
 
   if (!rsvpOpen) {
     return (
-      <section className="rounded-md border p-4 text-sm">
+      <section className="rounded-2xl border border-border/70 bg-card/70 p-5 text-sm backdrop-blur">
         <p className="text-muted-foreground">
           RSVPs are closed for this event.
         </p>
@@ -68,7 +68,7 @@ export function RsvpPanel({
   }
 
   return (
-    <section className="space-y-3 rounded-md border p-4">
+    <section className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-lg shadow-black/20 backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
@@ -209,12 +209,17 @@ function NoRsvpForm({
           maxLength={500}
           rows={2}
           disabled={pending}
-          className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="block w-full rounded-xl border border-input bg-background/60 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Questions for the hosts? Share them here."
         />
       </label>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={onGoing} disabled={pending}>
+        <Button
+          type="button"
+          onClick={onGoing}
+          disabled={pending}
+          className="h-11 flex-1 rounded-full text-[15px]"
+        >
           {pending ? "Saving…" : goingLabel}
         </Button>
         <Button
@@ -222,6 +227,7 @@ function NoRsvpForm({
           variant="outline"
           onClick={onDeclined}
           disabled={pending}
+          className="h-11 rounded-full px-6 text-[15px]"
         >
           {pending ? "Saving…" : "Not going"}
         </Button>
@@ -258,6 +264,7 @@ function ActionButtons({
           variant={b.variant}
           onClick={b.onClick}
           disabled={pending}
+          className="h-11 rounded-full px-6 text-[15px]"
         >
           {pending ? "Saving…" : b.label}
         </Button>

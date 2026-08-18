@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 
 import { listMemberCards } from "@/lib/actions/members";
 
@@ -30,10 +31,10 @@ export default async function MembersDirectoryPage({
   if (!result.ok) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Members</h1>
         <p
           role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
         >
           {result.error.message}
         </p>
@@ -52,15 +53,15 @@ export default async function MembersDirectoryPage({
     : null;
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+    <div className="space-y-8">
+      <header className="space-y-1.5">
+        <h1 className="text-4xl font-bold tracking-tight">Members</h1>
         <p className="text-sm text-muted-foreground">
           Progsu members who&apos;ve opted into the directory. Turn on your own
           visibility in{" "}
           <Link
             href="/dashboard/settings#visibility"
-            className="underline underline-offset-4"
+            className="text-foreground underline underline-offset-4"
           >
             settings
           </Link>
@@ -68,25 +69,25 @@ export default async function MembersDirectoryPage({
         </p>
       </header>
 
-      <form method="get" className="flex gap-2">
+      <form method="get" className="relative max-w-sm">
+        <Search
+          size={15}
+          strokeWidth={1.75}
+          aria-hidden
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
         <input
           type="search"
           name="q"
           defaultValue={q}
           placeholder="Search by name"
-          className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="w-full rounded-full border border-border/70 bg-card py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           maxLength={64}
         />
-        <button
-          type="submit"
-          className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent/10"
-        >
-          Search
-        </button>
       </form>
 
       {cards.length === 0 ? (
-        <div className="rounded-md border border-dashed p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-border/80 px-8 py-14 text-center">
           <p className="text-sm text-muted-foreground">
             {q
               ? `No members match "${q}".`
@@ -94,18 +95,18 @@ export default async function MembersDirectoryPage({
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {cards.map((card) => (
             <li key={card.user_id}>
               {card.profile_slug ? (
                 <Link
                   href={`/members/${card.profile_slug}`}
-                  className="block rounded-md border p-4 transition hover:border-primary/50 hover:bg-accent/5"
+                  className="block h-full rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg hover:shadow-black/20"
                 >
                   <MemberCardPreview card={card} />
                 </Link>
               ) : (
-                <div className="block rounded-md border p-4 opacity-70">
+                <div className="block h-full rounded-2xl border border-border/70 bg-card p-5 opacity-70">
                   <MemberCardPreview card={card} />
                 </div>
               )}
@@ -118,7 +119,7 @@ export default async function MembersDirectoryPage({
         <div className="flex justify-center">
           <Link
             href={`/members?${nextQs}`}
-            className="rounded-md border border-input px-4 py-2 text-sm hover:bg-accent/10"
+            className="rounded-full border border-border px-5 py-2 text-sm transition-colors hover:bg-muted/60"
           >
             Next page
           </Link>
@@ -148,20 +149,25 @@ function MemberCardPreview({
   const topRoles = (card.interested_roles ?? []).slice(0, 3);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center gap-3">
         {card.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={card.avatar_url}
             alt=""
-            className="h-10 w-10 rounded-full border object-cover"
+            className="h-12 w-12 rounded-full border border-border object-cover"
           />
         ) : (
-          <div className="h-10 w-10 rounded-full border bg-muted" />
+          <div
+            aria-hidden
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted text-sm font-semibold uppercase text-muted-foreground"
+          >
+            {(card.display_name ?? "?").charAt(0)}
+          </div>
         )}
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
+          <p className="truncate text-sm font-semibold">
             {card.display_name ?? "Member"}
           </p>
           <p className="truncate text-xs text-muted-foreground">
@@ -169,14 +175,16 @@ function MemberCardPreview({
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
         {card.class_standing ? (
-          <span className="rounded-full border px-2 py-0.5 capitalize">
+          <span className="rounded-full border border-border/70 px-2 py-0.5 capitalize">
             {card.class_standing}
           </span>
         ) : null}
         {gradLabel ? (
-          <span className="rounded-full border px-2 py-0.5">{gradLabel}</span>
+          <span className="rounded-full border border-border/70 px-2 py-0.5">
+            {gradLabel}
+          </span>
         ) : null}
       </div>
       {topRoles.length > 0 ? (

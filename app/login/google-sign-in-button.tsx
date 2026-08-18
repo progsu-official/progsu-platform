@@ -47,7 +47,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
         onClick={onClick}
         disabled={pending}
         size="lg"
-        className="w-full"
+        className="h-12 w-full rounded-full text-[15px]"
       >
         <GoogleMark className="mr-2 h-4 w-4" />
         {pending ? "Redirecting to Google…" : "Continue with Google"}

@@ -1,12 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
-import { signOut } from "@/lib/actions/session";
 
-import { SiteNav } from "@/app/_components/site-nav";
+import { MemberHeader } from "@/app/_components/member-header";
 
 export const dynamic = "force-dynamic";
 
@@ -39,31 +37,14 @@ export default async function DashboardLayout({
     profile?.first_name ?? user.user_metadata?.given_name ?? "You";
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Link href="/dashboard" className="text-base font-semibold tracking-tight">
-            Progsu
-          </Link>
-          <nav className="flex items-center gap-4 text-sm">
-            <SiteNav
-              showMembers={env.FEATURE_MEMBER_DIRECTORY}
-              showEvents={env.FEATURE_EVENTS}
-              isAdmin={state.isAdmin}
-            />
-            <span aria-hidden className="h-4 w-px bg-muted-foreground/20" />
-            <span className="text-sm text-muted-foreground">{displayName}</span>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-md border border-input px-3 py-1.5 text-xs font-medium hover:bg-accent/10"
-              >
-                Sign out
-              </button>
-            </form>
-          </nav>
-        </div>
-      </header>
+    <div className="dark min-h-screen bg-background text-foreground">
+      <MemberHeader
+        displayName={displayName}
+        avatarUrl={profile?.avatar_url ?? null}
+        isAdmin={state.isAdmin}
+        showMembers={env.FEATURE_MEMBER_DIRECTORY}
+        showEvents={env.FEATURE_EVENTS}
+      />
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
     </div>
   );

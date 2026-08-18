@@ -32,7 +32,42 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 262 83% 58%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+  }
+
+  /* Member-surface theme. Applied as a class on the public-side layout
+     roots (dashboard/events/members/login/onboarding) so the admin side
+     keeps the light defaults above. */
+  .dark {
+    --background: 260 10% 5.5%;
+    --foreground: 260 10% 96%;
+
+    --card: 260 8% 8.5%;
+    --card-foreground: 260 10% 96%;
+
+    --popover: 260 8% 8.5%;
+    --popover-foreground: 260 10% 96%;
+
+    --primary: 258 92% 69%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 260 7% 13%;
+    --secondary-foreground: 260 10% 92%;
+
+    --muted: 260 7% 13.5%;
+    --muted-foreground: 255 7% 64%;
+
+    --accent: 258 92% 69%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 260 8% 16%;
+    --input: 260 8% 18%;
+    --ring: 258 92% 69%;
+
+    color-scheme: dark;
   }
 }
 
@@ -42,5 +77,8 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+  .dark ::selection {
+    background: hsl(258 92% 69% / 0.35);
   }
 }

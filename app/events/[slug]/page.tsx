@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, MapPin, Users } from "lucide-react";
 
 import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 
-import { EventDate } from "../_components/event-date";
+import { formatTimeRange } from "../_components/event-date";
 import { EventDescription } from "./_components/event-description";
 import { RsvpPanel } from "./_components/rsvp-panel";
 
@@ -39,6 +40,15 @@ type RsvpRow = {
 type AttendanceRow = { checked_in_at: string; method: string };
 
 const CHECK_IN_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h before start to 2h after end.
+
+const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
+const monthShortFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+});
 
 export default async function MemberEventDetailPage({
   params,
@@ -123,7 +133,8 @@ export default async function MemberEventDetailPage({
 
   const coverUrl = await resolveCoverUrl(supabase, event.cover_image_path);
   const nowMs = Date.now();
-  const startMs = new Date(event.starts_at).getTime();
+  const startDate = new Date(event.starts_at);
+  const startMs = startDate.getTime();
   const endMs = new Date(event.ends_at).getTime();
   const inCheckInWindow =
     nowMs >= startMs - CHECK_IN_WINDOW_MS &&
@@ -133,8 +144,6 @@ export default async function MemberEventDetailPage({
   // draft. The DB also enforces this — hide the form so we don't tease a
   // button that will 400.
   const rsvpOpen = event.status === "published" && startMs > nowMs;
-
-  const hostList = hosts.map((h) => h.display_name).join(" · ");
 
   // D12: QR is the check-in entry, staff scan it from
   // /admin/events/[id]/check-in (roster search there is the manual
@@ -146,144 +155,222 @@ export default async function MemberEventDetailPage({
     : null;
 
   return (
-    <div className="space-y-6">
-      <nav className="text-xs text-muted-foreground">
-        <Link href="/events" className="hover:underline">
-          &larr; All events
-        </Link>
-      </nav>
-
-      {event.status === "cancelled" ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm"
-        >
-          <p className="font-semibold text-destructive">
-            This event was cancelled
-            {event.cancelled_at
-              ? ` on ${new Date(event.cancelled_at).toLocaleString()}`
-              : ""}
-            .
-          </p>
-          {event.cancellation_reason ? (
-            <p className="mt-1 text-destructive/80">
-              {event.cancellation_reason}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {coverUrl ? (
-        <div className="aspect-[3/1] w-full overflow-hidden rounded-md border bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+    <div className="relative">
+      {/* Partiful-style ambience: the cover art itself, blown up and blurred,
+          washes color behind the whole page. Falls back to a primary glow
+          when the event has no cover. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[-5.5rem] -z-10 h-[34rem] w-screen -translate-x-1/2 overflow-hidden"
+      >
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={coverUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full scale-125 object-cover opacity-35 blur-3xl saturate-150"
           />
-        </div>
-      ) : null}
+        ) : (
+          <div className="absolute left-1/2 top-0 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/55 to-background" />
+      </div>
 
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {event.title}
-        </h1>
-        {hostList ? (
-          <p className="text-sm text-muted-foreground">{hostList}</p>
-        ) : null}
-        <p className="text-sm text-muted-foreground">
-          <EventDate startsAt={event.starts_at} endsAt={event.ends_at} />
-        </p>
-        {event.location_text || event.location_url ? (
-          <p className="text-sm text-muted-foreground">
-            {event.location_url ? (
-              <a
-                href={event.location_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4"
-              >
-                {event.location_text ?? event.location_url}
-              </a>
-            ) : (
-              event.location_text
-            )}
-          </p>
-        ) : null}
-      </header>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <nav>
+          <Link
+            href="/events"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft size={15} aria-hidden />
+            All events
+          </Link>
+        </nav>
 
-      {attendance ? (
-        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300">
-          <span aria-hidden>✓</span> Checked in at{" "}
-          {new Date(attendance.checked_in_at).toLocaleString()}.
-        </div>
-      ) : null}
-
-      {!attendance && rsvp?.status === "going" && inCheckInWindow ? (
-        <div className="flex flex-wrap items-center gap-4 rounded-md border border-primary/30 bg-primary/5 px-4 py-3">
-          {checkinQrDataUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={checkinQrDataUrl}
-              alt="Your check-in QR code"
-              width={100}
-              height={100}
-              className="rounded-md border bg-white p-1"
-            />
-          ) : null}
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              You&apos;re going — time to check in.
+        {event.status === "cancelled" ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm"
+          >
+            <p className="font-semibold text-destructive">
+              This event was cancelled
+              {event.cancelled_at
+                ? ` on ${new Date(event.cancelled_at).toLocaleString()}`
+                : ""}
+              .
             </p>
-            <p className="text-sm text-muted-foreground">
-              Show this QR at the door and staff will scan you in.
+            {event.cancellation_reason ? (
+              <p className="mt-1 text-destructive/80">
+                {event.cancellation_reason}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="grid gap-8 lg:grid-cols-[19rem_1fr] lg:gap-12">
+          {/* Left rail: cover art + hosts + crowd, Luma-style. */}
+          <div className="space-y-5">
+            <div className="aspect-square w-full max-w-[19rem] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-muted to-primary/20 shadow-2xl shadow-black/40">
+              {coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </div>
+
+            {hosts.length > 0 ? (
+              <section className="space-y-2.5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Hosted by
+                </h2>
+                <ul className="space-y-2">
+                  {hosts.map((h) => (
+                    <li
+                      key={`${h.sort_order}-${h.display_name}`}
+                      className="flex items-center gap-2.5 text-sm text-foreground"
+                    >
+                      <span
+                        aria-hidden
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold uppercase text-primary"
+                      >
+                        {h.display_name.charAt(0)}
+                      </span>
+                      {h.display_name}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users size={15} strokeWidth={1.75} aria-hidden />
+              {goingCount ?? 0} going
+              {event.waitlist_enabled && (waitlistedCount ?? 0) > 0
+                ? ` · ${waitlistedCount} waitlisted`
+                : ""}
             </p>
           </div>
+
+          {/* Right column: title, when/where, RSVP, about. */}
+          <div className="min-w-0 space-y-6">
+            <h1 className="text-balance text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
+              {event.title}
+            </h1>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div
+                  aria-hidden
+                  className="w-11 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-card text-center"
+                >
+                  <p className="bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {monthShortFormatter.format(startDate)}
+                  </p>
+                  <p className="py-0.5 text-sm font-semibold tabular-nums">
+                    {startDate.getDate()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    <time dateTime={event.starts_at}>
+                      {fullDateFormatter.format(startDate)}
+                    </time>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatTimeRange(event.starts_at, event.ends_at)}
+                  </p>
+                </div>
+              </div>
+
+              {event.location_text || event.location_url ? (
+                <div className="flex items-center gap-3">
+                  <div
+                    aria-hidden
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-card"
+                  >
+                    <MapPin
+                      size={17}
+                      strokeWidth={1.75}
+                      className="text-muted-foreground"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    {event.location_url ? (
+                      <a
+                        href={event.location_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        {event.location_text ?? event.location_url}
+                      </a>
+                    ) : (
+                      <p className="text-sm font-medium text-foreground">
+                        {event.location_text}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {attendance ? (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                <span aria-hidden>✓</span> Checked in at{" "}
+                {new Date(attendance.checked_in_at).toLocaleString()}.
+              </div>
+            ) : null}
+
+            {!attendance && rsvp?.status === "going" && inCheckInWindow ? (
+              <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4">
+                {checkinQrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={checkinQrDataUrl}
+                    alt="Your check-in QR code"
+                    width={100}
+                    height={100}
+                    className="rounded-lg border bg-white p-1"
+                  />
+                ) : null}
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    You&apos;re going — time to check in.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Show this QR at the door and staff will scan you in.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <RsvpPanel
+              eventId={event.id}
+              initial={{
+                status: rsvp?.status ?? null,
+                waitlistPosition,
+              }}
+              rsvpOpen={rsvpOpen}
+              capacity={event.capacity}
+              goingCount={goingCount ?? 0}
+              waitlistEnabled={event.waitlist_enabled}
+              waitlistedCount={waitlistedCount ?? 0}
+            />
+
+            {event.description_md ? (
+              <section className="space-y-3 border-t border-border/60 pt-6">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  About this event
+                </h2>
+                <EventDescription md={event.description_md} />
+              </section>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-
-      <RsvpPanel
-        eventId={event.id}
-        initial={{
-          status: rsvp?.status ?? null,
-          waitlistPosition,
-        }}
-        rsvpOpen={rsvpOpen}
-        capacity={event.capacity}
-        goingCount={goingCount ?? 0}
-        waitlistEnabled={event.waitlist_enabled}
-        waitlistedCount={waitlistedCount ?? 0}
-      />
-
-      <section className="rounded-md border p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          Event capacity
-        </h2>
-        <p className="mt-1 text-sm">
-          {event.capacity === null ? (
-            <>{goingCount ?? 0} going</>
-          ) : (
-            <>
-              {goingCount ?? 0} of {event.capacity} going
-              {event.waitlist_enabled ? ` · Waitlist: ${waitlistedCount ?? 0}` : ""}
-            </>
-          )}
-        </p>
-      </section>
-
-      {event.description_md ? (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            About this event
-          </h2>
-          <EventDescription md={event.description_md} />
-        </section>
-      ) : null}
+      </div>
     </div>
   );
 }
-
-// ---------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------
-

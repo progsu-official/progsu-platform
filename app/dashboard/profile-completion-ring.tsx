@@ -23,7 +23,7 @@ export function ProfileCompletionRing({
 
   if (completed === total) {
     return (
-      <section className="flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+      <section className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
         <div>
           <p className="font-medium text-foreground">Profile complete</p>
           <p className="text-xs text-muted-foreground">
@@ -44,7 +44,7 @@ export function ProfileCompletionRing({
   const dashOffset = RING_CIRC * (1 - pct);
 
   return (
-    <section className="flex items-start gap-4 rounded-md border bg-background p-4">
+    <section className="flex items-start gap-4 rounded-2xl border border-border/70 bg-card p-5">
       <Link
         href="/dashboard/settings?tab=profile"
         className="shrink-0"

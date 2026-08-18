@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
 
-import { EventDate } from "./_components/event-date";
+import { formatTimeRange } from "./_components/event-date";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +65,7 @@ type InviteRow = {
 function joinHosts(hosts: HostRef[] | null | undefined): string | null {
   if (!hosts || hosts.length === 0) return null;
   const sorted = [...hosts].sort((a, b) => a.sort_order - b.sort_order);
-  return sorted.map((h) => h.display_name).join(" · ");
+  return sorted.map((h) => h.display_name).join(", ");
 }
 
 export default async function MemberEventsPage({
@@ -78,35 +78,33 @@ export default async function MemberEventsPage({
   const supabase = await createClient();
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Events</h1>
-          <p className="text-sm text-muted-foreground">
-            Browse upcoming Progsu events, your plans, and past attendance.
-          </p>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-8">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-4xl font-bold tracking-tight">Events</h1>
+        <nav
+          aria-label="Event views"
+          className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-card p-1"
+        >
+          {TABS.map((t) => {
+            const active = t.key === tab;
+            return (
+              <Link
+                key={t.key}
+                href={`/events?tab=${t.key}`}
+                aria-current={active ? "page" : undefined}
+                className={
+                  "rounded-full px-4 py-1.5 text-sm transition-colors " +
+                  (active
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </nav>
       </header>
-
-      <nav className="flex flex-wrap gap-1 border-b text-sm">
-        {TABS.map((t) => {
-          const active = t.key === tab;
-          return (
-            <Link
-              key={t.key}
-              href={`/events?tab=${t.key}`}
-              className={
-                "-mb-px border-b-2 px-3 py-2 " +
-                (active
-                  ? "border-primary font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground")
-              }
-            >
-              {t.label}
-            </Link>
-          );
-        })}
-      </nav>
 
       {tab === "upcoming" ? <UpcomingTab supabase={supabase} /> : null}
       {tab === "my-plans" ? <MyPlansTab supabase={supabase} /> : null}
@@ -172,21 +170,19 @@ async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {rows.map((ev, i) => (
-        <EventCard
-          key={ev.id}
-          href={`/events/${ev.slug}`}
-          title={ev.title}
-          hosts={joinHosts(ev.hosts)}
-          startsAt={ev.starts_at}
-          endsAt={ev.ends_at}
-          location={ev.location_text}
-          coverUrl={coverUrls[i] ?? null}
-          footer={<CapacityLine ev={ev} />}
-        />
-      ))}
-    </ul>
+    <EventTimeline
+      items={rows.map((ev, i) => ({
+        key: ev.id,
+        href: `/events/${ev.slug}`,
+        title: ev.title,
+        hosts: joinHosts(ev.hosts),
+        startsAt: ev.starts_at,
+        endsAt: ev.ends_at,
+        location: ev.location_text,
+        coverUrl: coverUrls[i] ?? null,
+        footer: <CapacityLine ev={ev} />,
+      }))}
+    />
   );
 }
 
@@ -262,45 +258,51 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {/* Pending invites render first — they need a response and bubbling
-          them above "Going" rows makes that obvious. */}
-      {pendingInvites.map((ev, i) => (
-        <EventCard
-          key={ev.event_id}
-          href={`/events/${ev.slug}`}
-          title={ev.title}
-          hosts={null}
-          startsAt={ev.starts_at}
-          endsAt={ev.ends_at}
-          location={ev.location_text}
-          coverUrl={inviteCoverUrls[i] ?? null}
-          footer={<Badge tone="invite">Invited · RSVP</Badge>}
-        />
-      ))}
-      {historyRows.map((ev, i) => {
-        const badge =
-          ev.rsvp_status === "going" ? (
-            <Badge tone="primary">Going</Badge>
-          ) : ev.rsvp_status === "waitlisted" ? (
-            <Badge tone="amber">Waitlisted</Badge>
-          ) : null;
-        return (
-          <EventCard
-            key={ev.event_id}
-            href={`/events/${ev.slug}`}
-            title={ev.title}
-            hosts={null}
-            startsAt={ev.starts_at}
-            endsAt={ev.ends_at}
-            location={ev.location_text}
-            cancelled={ev.status === "cancelled"}
-            coverUrl={historyCoverUrls[i] ?? null}
-            footer={badge}
-          />
-        );
-      })}
-    </ul>
+    <div className="space-y-10">
+      {pendingInvites.length > 0 ? (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Needs your response
+          </h2>
+          <ul className="space-y-4">
+            {pendingInvites.map((ev, i) => (
+              <EventCard
+                key={ev.event_id}
+                href={`/events/${ev.slug}`}
+                title={ev.title}
+                hosts={null}
+                startsAt={ev.starts_at}
+                endsAt={ev.ends_at}
+                location={ev.location_text}
+                coverUrl={inviteCoverUrls[i] ?? null}
+                showDate
+                footer={<Badge tone="invite">Invited · RSVP</Badge>}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <EventTimeline
+        items={historyRows.map((ev, i) => ({
+          key: ev.event_id,
+          href: `/events/${ev.slug}`,
+          title: ev.title,
+          hosts: null,
+          startsAt: ev.starts_at,
+          endsAt: ev.ends_at,
+          location: ev.location_text,
+          cancelled: ev.status === "cancelled",
+          coverUrl: historyCoverUrls[i] ?? null,
+          footer:
+            ev.rsvp_status === "going" ? (
+              <Badge tone="primary">Going</Badge>
+            ) : ev.rsvp_status === "waitlisted" ? (
+              <Badge tone="amber">Waitlisted</Badge>
+            ) : null,
+        }))}
+      />
+    </div>
   );
 }
 
@@ -405,25 +407,20 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {rows.map((ev, i) => {
-        const badge = buildPastBadge(ev);
-        return (
-          <EventCard
-            key={ev.event_id}
-            href={`/events/${ev.slug}`}
-            title={ev.title}
-            hosts={null}
-            startsAt={ev.starts_at}
-            endsAt={ev.ends_at}
-            location={ev.location_text}
-            cancelled={ev.status === "cancelled"}
-            coverUrl={pastCoverUrls[i] ?? null}
-            footer={badge}
-          />
-        );
-      })}
-    </ul>
+    <EventTimeline
+      items={rows.map((ev, i) => ({
+        key: ev.event_id,
+        href: `/events/${ev.slug}`,
+        title: ev.title,
+        hosts: null,
+        startsAt: ev.starts_at,
+        endsAt: ev.ends_at,
+        location: ev.location_text,
+        cancelled: ev.status === "cancelled",
+        coverUrl: pastCoverUrls[i] ?? null,
+        footer: buildPastBadge(ev),
+      }))}
+    />
   );
 }
 
@@ -450,6 +447,111 @@ function buildPastBadge(ev: HistoryRow) {
 }
 
 // --------------------------------------------------------------------
+// Timeline
+// --------------------------------------------------------------------
+
+type TimelineItem = {
+  key: string;
+  href: string;
+  title: string;
+  hosts: string | null;
+  startsAt: string;
+  endsAt: string;
+  location: string | null;
+  cancelled?: boolean;
+  coverUrl: string | null;
+  footer?: React.ReactNode;
+};
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const weekdayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+});
+const monthDayFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+});
+
+// "Today / Wednesday", "Tomorrow / Thursday", "Friday / Aug 21",
+// "Aug 25 / Monday" — mirrors Luma's date rail.
+function dayLabels(day: Date, now: Date): [string, string] {
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(day) - startOfDay(now)) / MS_PER_DAY);
+  const weekday = weekdayFormatter.format(day);
+  const monthDay = monthDayFormatter.format(day);
+  if (diffDays === 0) return ["Today", weekday];
+  if (diffDays === 1) return ["Tomorrow", weekday];
+  if (diffDays > 1 && diffDays < 7) return [weekday, monthDay];
+  return [monthDay, weekday];
+}
+
+// Groups items by calendar day (preserving incoming order) and renders the
+// Luma-style rail: day labels on the left, dotted spine, cards on the right.
+function EventTimeline({ items }: { items: TimelineItem[] }) {
+  const now = new Date();
+  const groups: Array<{ dayKey: string; day: Date; items: TimelineItem[] }> = [];
+  for (const item of items) {
+    const day = new Date(item.startsAt);
+    const dayKey = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+    const last = groups[groups.length - 1];
+    if (last && last.dayKey === dayKey) {
+      last.items.push(item);
+    } else {
+      groups.push({ dayKey, day, items: [item] });
+    }
+  }
+
+  return (
+    <section className="relative">
+      <div
+        aria-hidden
+        className="absolute bottom-6 top-2 hidden border-l border-dashed border-border sm:left-[8.25rem] sm:block"
+      />
+      <ol>
+        {groups.map(({ dayKey, day, items: dayItems }) => {
+        const [primary, secondary] = dayLabels(day, now);
+        return (
+          <li
+            key={dayKey}
+            className="relative pb-10 last:pb-0 sm:grid sm:grid-cols-[7.25rem_1fr] sm:gap-9"
+          >
+            <span
+              aria-hidden
+              className="absolute top-2 hidden h-2 w-2 rounded-full bg-muted-foreground/40 sm:left-[calc(8.25rem-4px)] sm:block"
+            />
+            <div className="mb-3 flex items-baseline gap-2 sm:mb-0 sm:block sm:self-start">
+              <p className="text-base font-semibold text-foreground">
+                {primary}
+              </p>
+              <p className="text-sm text-muted-foreground">{secondary}</p>
+            </div>
+            <ul className="space-y-4">
+              {dayItems.map((item) => (
+                <EventCard
+                  key={item.key}
+                  href={item.href}
+                  title={item.title}
+                  hosts={item.hosts}
+                  startsAt={item.startsAt}
+                  endsAt={item.endsAt}
+                  location={item.location}
+                  cancelled={item.cancelled}
+                  coverUrl={item.coverUrl}
+                  footer={item.footer}
+                />
+              ))}
+            </ul>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+// --------------------------------------------------------------------
 // Presentational helpers
 // --------------------------------------------------------------------
 
@@ -463,6 +565,7 @@ function EventCard({
   cancelled,
   coverUrl,
   footer,
+  showDate,
 }: {
   href: string;
   title: string;
@@ -473,48 +576,59 @@ function EventCard({
   cancelled?: boolean;
   coverUrl?: string | null;
   footer?: React.ReactNode;
+  showDate?: boolean;
 }) {
+  const timeLabel = showDate
+    ? `${monthDayFormatter.format(new Date(startsAt))} · ${formatTimeRange(startsAt, endsAt)}`
+    : formatTimeRange(startsAt, endsAt);
   return (
-    <li>
+    <li className="list-none">
       <Link
         href={href}
-        className="group flex h-full flex-col overflow-hidden rounded-md border transition-colors hover:border-primary hover:bg-accent/5"
+        className="group flex gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg hover:shadow-black/20"
       >
-        <div className="relative aspect-[3/1] w-full bg-gradient-to-br from-muted to-accent/30">
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm text-muted-foreground">
+            <time dateTime={startsAt}>{timeLabel}</time>
+          </p>
+          <h3
+            className={
+              "text-lg font-semibold leading-snug transition-colors group-hover:text-primary " +
+              (cancelled ? "text-muted-foreground line-through" : "text-foreground")
+            }
+          >
+            {title}
+          </h3>
+          {hosts ? (
+            <p className="truncate text-sm text-muted-foreground">By {hosts}</p>
+          ) : null}
+          {location ? (
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <MapPin size={14} strokeWidth={1.75} aria-hidden className="shrink-0" />
+              <span className="truncate">{location}</span>
+            </p>
+          ) : null}
+          {footer ? <div className="pt-1.5 text-xs">{footer}</div> : null}
+        </div>
+        <div
+          className={
+            "relative h-24 w-24 shrink-0 self-start overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted to-primary/20 sm:h-[6.5rem] sm:w-[6.5rem] " +
+            (cancelled ? "opacity-50 grayscale" : "")
+          }
+        >
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={coverUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : null}
-          {cancelled ? (
-            <div className="absolute inset-x-0 bottom-0 bg-destructive/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-destructive-foreground">
-              Cancelled
+            <img src={coverUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <CalendarDays
+                size={22}
+                strokeWidth={1.5}
+                className="text-muted-foreground/60"
+                aria-hidden
+              />
             </div>
-          ) : null}
-        </div>
-        <div className="flex flex-1 flex-col justify-between gap-3 p-4">
-          <div className="space-y-1">
-            <h2 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary">
-              {title}
-            </h2>
-            {hosts ? (
-              <p className="text-xs text-muted-foreground">{hosts}</p>
-            ) : null}
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CalendarDays size={12} strokeWidth={1.75} />
-              <EventDate startsAt={startsAt} endsAt={endsAt} />
-            </p>
-            {location ? (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapPin size={12} strokeWidth={1.75} />
-                <span className="truncate">{location}</span>
-              </p>
-            ) : null}
-          </div>
-          {footer ? <div className="text-xs">{footer}</div> : null}
+          )}
         </div>
       </Link>
     </li>
@@ -524,11 +638,7 @@ function EventCard({
 function CapacityLine({ ev }: { ev: UpcomingRow }) {
   const going = ev.going_count ?? 0;
   if (ev.capacity === null) {
-    return (
-      <span className="text-muted-foreground">
-        {going} going
-      </span>
-    );
+    return <span className="text-muted-foreground">{going} going</span>;
   }
   const full = going >= ev.capacity;
   return (
@@ -553,17 +663,17 @@ function Badge({
 }) {
   const toneClass =
     tone === "primary"
-      ? "bg-primary/10 text-primary"
+      ? "bg-primary/15 text-primary"
       : tone === "amber"
-        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+        ? "bg-amber-400/15 text-amber-300"
         : tone === "destructive"
-          ? "bg-destructive/10 text-destructive"
+          ? "bg-destructive/15 text-destructive"
           : tone === "invite"
-            ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
+            ? "bg-indigo-400/15 text-indigo-300"
             : "bg-muted text-muted-foreground";
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${toneClass}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${toneClass}`}
     >
       {children}
     </span>
@@ -582,9 +692,9 @@ function EmptyState({
   icon?: LucideIcon;
 }) {
   return (
-    <div className="rounded-md border border-dashed p-8 text-center">
+    <div className="rounded-2xl border border-dashed border-border/80 px-8 py-14 text-center">
       {Icon ? (
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
           <Icon size={20} className="text-muted-foreground" strokeWidth={1.5} />
         </div>
       ) : null}
@@ -593,7 +703,7 @@ function EmptyState({
       {cta ? (
         <Link
           href={cta.href}
-          className="mt-3 inline-block text-sm text-primary underline underline-offset-4"
+          className="mt-4 inline-block rounded-full border border-border px-4 py-1.5 text-sm text-foreground transition-colors hover:bg-muted/60"
         >
           {cta.label}
         </Link>

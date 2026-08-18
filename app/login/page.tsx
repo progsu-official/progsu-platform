@@ -51,29 +51,38 @@ export default async function LoginPage({
         : null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-sm space-y-8">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12 text-foreground">
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-48 left-1/2 h-[420px] w-[640px] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-sm animate-fade-up space-y-6">
         <header className="space-y-2 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">Progsu</h1>
+          <p className="text-sm font-bold tracking-tight text-muted-foreground">
+            progsu
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
           <p className="text-sm text-muted-foreground">
             Sign in to continue to the member platform.
           </p>
         </header>
 
-        {errorMessage ? (
-          <div
-            role="alert"
-            className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            {errorMessage}
-          </div>
-        ) : null}
+        <div className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-6 shadow-xl shadow-black/20 backdrop-blur">
+          {errorMessage ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              {errorMessage}
+            </div>
+          ) : null}
 
-        <GoogleSignInButton next={params.next} />
+          <GoogleSignInButton next={params.next} />
 
-        <p className="text-center text-xs text-muted-foreground">
-          You&apos;ll verify your student email in the next step.
-        </p>
+          <p className="text-center text-xs text-muted-foreground">
+            You&apos;ll verify your student email in the next step.
+          </p>
+        </div>
       </div>
     </main>
   );

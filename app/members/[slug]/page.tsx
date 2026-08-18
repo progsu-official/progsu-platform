@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
@@ -58,17 +59,21 @@ export default async function MemberProfilePage({
         : null;
 
   return (
-    <div className="space-y-6">
-      <nav className="text-xs text-muted-foreground">
-        <Link href="/members" className="hover:underline">
-          ← All members
+    <div className="mx-auto max-w-2xl space-y-8">
+      <nav>
+        <Link
+          href="/members"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft size={15} aria-hidden />
+          All members
         </Link>
       </nav>
 
       {isSelf ? (
-        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+        <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm">
           <p className="font-medium">This is your public card.</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Other members see what&apos;s shown here when your directory
             visibility is on.{" "}
             <Link
@@ -82,19 +87,24 @@ export default async function MemberProfilePage({
         </div>
       ) : null}
 
-      <header className="flex items-center gap-4">
+      <header className="flex items-center gap-5">
         {card.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={card.avatar_url}
             alt=""
-            className="h-16 w-16 rounded-full border object-cover"
+            className="h-20 w-20 rounded-full border border-border object-cover shadow-lg shadow-black/30"
           />
         ) : (
-          <div className="h-16 w-16 rounded-full border bg-muted" />
+          <div
+            aria-hidden
+            className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-muted text-xl font-semibold uppercase text-muted-foreground"
+          >
+            {(card.display_name ?? "?").charAt(0)}
+          </div>
         )}
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold tracking-tight">
+          <h1 className="truncate text-3xl font-bold tracking-tight">
             {card.display_name ?? "Member"}
           </h1>
           {card.school ? (
@@ -102,51 +112,70 @@ export default async function MemberProfilePage({
               {card.school}
             </p>
           ) : null}
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+            {card.class_standing ? (
+              <span className="rounded-full border border-border/70 px-2 py-0.5 capitalize">
+                {card.class_standing}
+              </span>
+            ) : null}
+            {gradLabel ? (
+              <span className="rounded-full border border-border/70 px-2 py-0.5">
+                {gradLabel}
+              </span>
+            ) : null}
+          </div>
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <InfoCard
-          title="Class standing"
-          value={card.class_standing ? capitalize(card.class_standing) : "—"}
-        />
-        <InfoCard title="Graduation" value={gradLabel ?? "—"} />
-        <div className="sm:col-span-2">
-          <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
-            Interested in
-          </h3>
-          {card.interested_roles && card.interested_roles.length > 0 ? (
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {card.interested_roles.map((role) => (
-                <li
-                  key={role}
-                  className="rounded-full border px-3 py-1 text-xs capitalize"
-                >
-                  {role.replaceAll("_", " ")}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">—</p>
-          )}
-        </div>
+      <section className="rounded-2xl border border-border/70 bg-card p-5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Interested in
+        </h2>
+        {card.interested_roles && card.interested_roles.length > 0 ? (
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {card.interested_roles.map((role) => (
+              <li
+                key={role}
+                className="rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs capitalize"
+              >
+                {role.replaceAll("_", " ")}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Nothing listed yet.
+          </p>
+        )}
       </section>
 
       {card.share_attended_events ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Events attended</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Events attended
+          </h2>
           {attendedEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No attended events to show.
             </p>
           ) : (
-            <ul className="divide-y rounded-md border">
+            <ul className="divide-y divide-border/60 rounded-2xl border border-border/70 bg-card">
               {attendedEvents.map((ev) => (
-                <li key={ev.event_id} className="flex items-center justify-between gap-4 p-3">
+                <li
+                  key={ev.event_id}
+                  className="flex items-center justify-between gap-4 px-5 py-3.5"
+                >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{ev.event_title}</p>
+                    <p className="truncate text-sm font-medium">
+                      {ev.event_title}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(ev.starts_at).toLocaleDateString()}
+                      {new Date(ev.starts_at).toLocaleDateString(undefined, {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </p>
                   </div>
                 </li>
@@ -158,7 +187,9 @@ export default async function MemberProfilePage({
 
       {sharedEvents && sharedEvents.aggregate_count > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Shared events with you</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Shared events with you
+          </h2>
           {sharedEvents.named_events.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               You and {card.display_name ?? "this member"} have attended{" "}
@@ -167,21 +198,26 @@ export default async function MemberProfilePage({
             </p>
           ) : (
             <>
-              <ul className="divide-y rounded-md border">
+              <ul className="divide-y divide-border/60 rounded-2xl border border-border/70 bg-card">
                 {sharedEvents.named_events.map((ev) => (
                   <li
                     key={ev.event_id}
-                    className="flex items-center justify-between gap-4 p-3"
+                    className="flex items-center justify-between gap-4 px-5 py-3.5"
                   >
                     <div className="min-w-0">
                       <Link
                         href={`/events/${ev.event_slug}`}
-                        className="truncate text-sm font-medium hover:underline"
+                        className="truncate text-sm font-medium hover:text-primary"
                       >
                         {ev.event_title}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(ev.starts_at).toLocaleDateString()}
+                        {new Date(ev.starts_at).toLocaleDateString(undefined, {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                       </p>
                     </div>
                   </li>
@@ -207,19 +243,4 @@ export default async function MemberProfilePage({
       ) : null}
     </div>
   );
-}
-
-function InfoCard({ title, value }: { title: string; value: string }) {
-  return (
-    <div>
-      <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      <p className="mt-1 text-sm">{value}</p>
-    </div>
-  );
-}
-
-function capitalize(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
