@@ -18,8 +18,13 @@ export default async function OnboardingLayout({ children }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Admins are never FORCED through this funnel (the member layouts skip the
+  // cascade for them, D8) but they must be able to walk it voluntarily — the
+  // DB-side is_fully_onboarded() gate still applies to them for member
+  // actions like rsvp_to_event, and the admin shell nudges them here.
+  // (A blanket isAdmin redirect used to live here; it made re-consent after
+  // a privacy version bump impossible for admins.)
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">

@@ -15,7 +15,6 @@ export default async function OnboardingDonePage() {
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
 
   // If they arrived here without being fully done, send them to the next outstanding step.
   if (!state.fullyOnboarded) {

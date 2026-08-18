@@ -15,7 +15,6 @@ export default async function OnboardingResumePage() {
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
   if (!state.profileFieldsComplete) redirect("/onboarding/profile");
   // Resume is a soft step — nextStep is never "resume" (see lib/auth/onboarding).
   // Allowed arrivals here: a freshly-onboarded user post-profile

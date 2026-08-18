@@ -15,7 +15,6 @@ export default async function OnboardingConsentPage() {
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
   if (!state.profileFieldsComplete) redirect("/onboarding/profile");
   // Note: we do NOT redirect back to /onboarding/resume here. Resume is a
   // soft step — users can Skip for now and still complete consent. The

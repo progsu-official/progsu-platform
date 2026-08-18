@@ -15,7 +15,6 @@ export default async function VerifyEmailPage() {
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
 
   // Pre-fill with an existing (but unverified) student email so a user who refreshes
   // mid-flow can resume instead of re-typing.
