@@ -47,7 +47,14 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // E2E_BROWSER_CHANNEL=chrome runs against the system Chrome install —
+        // useful when the Playwright-managed browser download is unavailable.
+        ...(process.env.E2E_BROWSER_CHANNEL
+          ? { channel: process.env.E2E_BROWSER_CHANNEL }
+          : {}),
+      },
     },
   ],
 
