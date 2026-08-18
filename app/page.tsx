@@ -12,6 +12,10 @@ type Tile = {
   tilt: string;
   size: string;
   duration: string;
+  // Negative on purpose: a positive delay leaves the card at its base
+  // position until the delay elapses, then snaps it to the 0% keyframe
+  // (translateY(-7px)) — a visible one-time upward jump on load. Negative
+  // delays start every card mid-cycle on the first paint instead.
   delay: string;
 };
 
@@ -64,7 +68,7 @@ const TILES: Tile[] = [
     tilt: "rotate-3",
     size: "h-36 w-36",
     duration: "9s",
-    delay: "1.2s",
+    delay: "-1.2s",
   },
   {
     art: (
@@ -80,7 +84,7 @@ const TILES: Tile[] = [
     tilt: "rotate-6",
     size: "h-44 w-44",
     duration: "7.5s",
-    delay: "0.6s",
+    delay: "-0.6s",
   },
   {
     art: (
@@ -96,7 +100,7 @@ const TILES: Tile[] = [
     tilt: "rotate-2",
     size: "h-40 w-40",
     duration: "8.5s",
-    delay: "2s",
+    delay: "-2s",
   },
   {
     art: (
@@ -112,7 +116,7 @@ const TILES: Tile[] = [
     tilt: "-rotate-3",
     size: "h-36 w-36",
     duration: "9.5s",
-    delay: "0.3s",
+    delay: "-0.3s",
   },
   {
     art: (
@@ -128,7 +132,7 @@ const TILES: Tile[] = [
     tilt: "rotate-6",
     size: "h-[9.5rem] w-[9.5rem]",
     duration: "7s",
-    delay: "1.6s",
+    delay: "-1.6s",
   },
   {
     art: (
@@ -146,7 +150,7 @@ const TILES: Tile[] = [
     tilt: "-rotate-6",
     size: "h-36 w-36",
     duration: "8.2s",
-    delay: "0.9s",
+    delay: "-0.9s",
   },
   {
     art: (
@@ -162,7 +166,7 @@ const TILES: Tile[] = [
     tilt: "rotate-3",
     size: "h-40 w-40",
     duration: "8.8s",
-    delay: "1.9s",
+    delay: "-1.9s",
   },
   {
     art: (
@@ -178,7 +182,7 @@ const TILES: Tile[] = [
     tilt: "-rotate-3",
     size: "h-36 w-36",
     duration: "9s",
-    delay: "2.4s",
+    delay: "-2.4s",
   },
   {
     art: (
@@ -194,7 +198,7 @@ const TILES: Tile[] = [
     tilt: "-rotate-2",
     size: "h-36 w-36",
     duration: "7.8s",
-    delay: "1.4s",
+    delay: "-1.4s",
   },
 ];
 
