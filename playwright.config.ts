@@ -18,9 +18,10 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  // 60s default — covers cold-compile paths on dev server; test.slow() takes
-  // individual heavy scenarios to 180s.
-  timeout: 60_000,
+  // 120s default — fixture setup (admin + member page loads) happens before
+  // test.slow() can widen the budget, and cold dev-server compiles have been
+  // observed at 30s+ per route under load. Passing tests don't feel this.
+  timeout: 120_000,
   expect: { timeout: 5_000 },
   // Parallel E2E against a single dev server flakes on hot-reload contention.
   // One worker is enough at our scale (3–7 scenarios). Revisit if the suite
