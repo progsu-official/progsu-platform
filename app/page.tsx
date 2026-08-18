@@ -242,8 +242,11 @@ export default function Home() {
       </div>
 
       <div className="relative flex max-w-2xl animate-fade-up flex-col items-center text-center">
-        <p className="text-[15px] font-semibold tracking-tight text-white/40">
+        <p className="flex items-baseline gap-2 text-[15px] font-semibold tracking-tight text-white/40">
           progsu
+          <span className="rounded-full border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/45">
+            beta
+          </span>
         </p>
 
         <h1 className="mt-5 text-[56px] font-medium leading-[0.92] tracking-[-0.01em] text-white sm:text-[68px] lg:text-[80px]">
@@ -271,6 +274,10 @@ export default function Home() {
 
         <p className="mt-6 text-base font-medium text-white/50">
           only takes a few seconds.
+        </p>
+
+        <p className="mt-2 text-[13px] text-white/30">
+          we&apos;re in beta — expect fresh paint and moving parts.
         </p>
       </div>
     </main>

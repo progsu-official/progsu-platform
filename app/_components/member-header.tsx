@@ -25,9 +25,15 @@ export function MemberHeader({
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
         <Link
           href="/dashboard"
-          className="text-[15px] font-bold tracking-tight text-foreground"
+          className="flex items-baseline gap-1.5 text-[15px] font-bold tracking-tight text-foreground"
         >
           progsu
+          <span
+            title="Progsu is in beta — things may move around while we build."
+            className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary"
+          >
+            beta
+          </span>
         </Link>
 
         <nav className="flex items-center gap-0.5">
