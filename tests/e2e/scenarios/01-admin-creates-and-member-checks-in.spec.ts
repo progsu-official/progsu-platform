@@ -1,26 +1,27 @@
 import { test, expect } from "../fixtures";
 import { adminClient } from "../helpers/session";
 
-// Happy path: admin creates a published event with a check-in code, a member
-// RSVPs "going", the member self-checks-in with the code, the admin sees the
-// attendance on the day-of roster. Exercises server actions, router.refresh,
-// the RSVP panel state, the check-in form, and the admin roster view.
+// Happy path, QR-ticket era (D12/D13): admin creates + publishes an event, a
+// member RSVPs "going" and receives a personal ticket whose QR encodes their
+// unique checkin_token, staff check them in from the admin roster (the manual
+// fallback for the camera scan — headless Chromium has no camera), and the
+// member's ticket flips to its checked-in state. Exercises server actions,
+// router.refresh, the RSVP panel, the ticket render, and the day-of roster.
 
 function toLocalInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-test("full happy path: create → rsvp → check-in → roster", async ({
+test("full happy path: create → rsvp → ticket → check-in → roster", async ({
   adminPage,
   memberPage,
+  memberUserId,
   suffix,
 }) => {
   // Longest happy-path scenario: cold-compiles /admin/events/new,
-  // /admin/events/[id] (both tabs), /events/[slug], /events/[slug]/check-in,
-  // /events/[slug]/check-in/success, /admin/events/[id]/check-in — six
+  // /admin/events/[id], /events/[slug], /admin/events/[id]/check-in — four
   // distinct routes in one run. slow() triples the per-test budget (60s → 180s).
-  // Global navigationTimeout is already 45s per playwright.config.ts.
   test.slow();
   const slug = `happy-${suffix}`.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
   const title = "Happy Path E2E";
@@ -39,29 +40,16 @@ test("full happy path: create → rsvp → check-in → roster", async ({
   await adminPage.getByLabel(/ends/i).fill(toLocalInput(ends));
 
   await adminPage.getByRole("button", { name: /create draft event/i }).click();
-  // First compile of /admin/events/[id] can take ~2.5s cold; give it room.
+  // First compile of /admin/events/[id] has been observed at 17s+ cold; match
+  // the global navigationTimeout budget.
   await expect(adminPage).toHaveURL(/\/admin\/events\/[0-9a-f-]{36}/, {
-    timeout: 15_000,
+    timeout: 45_000,
   });
 
   // --- Admin publishes -----------------------------------------------------
   await adminPage.getByRole("button", { name: /^publish$/i }).click();
   await expect(
     adminPage.getByText(/published/i).first()
-  ).toBeVisible({ timeout: 10_000 });
-
-  // --- Admin rotates a check-in code via the check-in tab ------------------
-  // Navigate directly to the tab to avoid ambiguity with the "Day-of check-in"
-  // header link that also matches /check-in/i.
-  const eventDetailUrl = adminPage.url();
-  await adminPage.goto(eventDetailUrl.split("?")[0] + "?tab=check-in");
-  await adminPage.getByLabel(/raw code/i).fill("HAPPY42");
-  await adminPage
-    .getByLabel(/expires at/i)
-    .fill(toLocalInput(new Date(Date.now() + 3 * 60 * 60_000)));
-  await adminPage.getByRole("button", { name: /^rotate/i }).click();
-  await expect(
-    adminPage.getByText(/code rotated|active/i).first()
   ).toBeVisible({ timeout: 10_000 });
 
   // --- Member RSVPs going --------------------------------------------------
@@ -72,22 +60,11 @@ test("full happy path: create → rsvp → check-in → roster", async ({
     memberPage.getByText(/you'?re going\./i).first()
   ).toBeVisible({ timeout: 10_000 });
 
-  // --- Member self-checks-in -----------------------------------------------
-  // The event hasn't started yet but is within the 2h window, so check-in is
-  // allowed. A "Check in" CTA should appear once RSVP is going + in window.
-  // Match the detail-page banner specifically — tighter than just "check in".
-  await memberPage.goto(`/events/${slug}/check-in`);
-  await expect(memberPage).toHaveURL(new RegExp(`/events/${slug}/check-in$`));
-  await memberPage.getByLabel(/code/i).fill("HAPPY42");
-  await memberPage.getByRole("button", { name: /^check in|submit/i }).click();
-  // /check-in/success cold-compile + router.push can take > 20s on a cold
-  // dev server; give the same headroom as the global navigationTimeout.
-  await memberPage.waitForURL(
-    new RegExp(`/events/${slug}/check-in/success`),
-    { timeout: 45_000 }
-  );
-
-  // --- Admin sees the attendance on the day-of roster ----------------------
+  // --- Member holds a personal ticket --------------------------------------
+  // The RSVP trigger minted a unique checkin_token; the page renders it as a
+  // QR on the ticket, plus the holder's name and a ticket number derived from
+  // the token — assert the rendered number matches the DB so we know THIS
+  // member's ticket is bound to THIS member's token.
   const admin = adminClient();
   const { data: evt } = await admin
     .from("events")
@@ -96,10 +73,48 @@ test("full happy path: create → rsvp → check-in → roster", async ({
     .single();
   const eventId = (evt as { id: string }).id;
 
-  await adminPage.goto(`/admin/events/${eventId}/check-in`);
-  // Look for any evidence the member shows as attended. The day-of page
-  // renders "N / M checked in" somewhere.
+  const { data: rsvpRow, error: rsvpErr } = await admin
+    .from("event_rsvps")
+    .select("checkin_token")
+    .eq("event_id", eventId)
+    .eq("user_id", memberUserId)
+    .single();
+  if (rsvpErr || !rsvpRow) {
+    throw new Error(
+      `event_rsvps read failed for event=${eventId} user=${memberUserId}: ${rsvpErr?.message ?? "no row"}`
+    );
+  }
+  const token = (rsvpRow as { checkin_token: string | null }).checkin_token;
+  expect(token).toBeTruthy();
+
+  await memberPage.reload();
+  const ticket = memberPage.getByRole("region", { name: /your ticket/i });
+  await expect(ticket).toBeVisible({ timeout: 10_000 });
+  await expect(ticket.getByText(/general admission/i)).toBeVisible();
+  await expect(ticket.getByText("Member E2E")).toBeVisible();
   await expect(
-    adminPage.getByText(/checked in|attended|1 \//i).first()
-  ).toBeVisible({ timeout: 10_000 });
+    ticket.getByText((token as string).slice(0, 8).toUpperCase())
+  ).toBeVisible();
+  await expect(
+    ticket.getByAltText(/your check-in qr code/i)
+  ).toBeVisible();
+
+  // --- Staff check the member in from the day-of roster --------------------
+  // Camera scan (adminCheckInByToken) needs getUserMedia; headless Chromium
+  // has no camera, so exercise the documented manual fallback instead.
+  await adminPage.goto(`/admin/events/${eventId}/check-in`);
+  await adminPage.getByRole("button", { name: /^check in$/i }).click();
+  // The action + router.refresh round-trip has been observed > 10s when the
+  // dev server is under full-suite load.
+  await expect(
+    adminPage.getByRole("button", { name: /undo/i })
+  ).toBeVisible({ timeout: 30_000 });
+
+  // --- Member's ticket flips to its checked-in state -----------------------
+  await memberPage.reload();
+  const stampedTicket = memberPage.getByRole("region", { name: /your ticket/i });
+  await expect(stampedTicket).toBeVisible({ timeout: 10_000 });
+  await expect(
+    stampedTicket.getByText(/checked in/i).first()
+  ).toBeVisible();
 });
