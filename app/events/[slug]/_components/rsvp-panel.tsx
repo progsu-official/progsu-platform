@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -81,12 +82,32 @@ export function RsvpPanel({
       ) : null}
 
       {error ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-        >
-          {error}
-        </div>
+        // "Not fully onboarded" can only reach this panel for admins — member
+        // layouts route everyone else through the onboarding cascade before
+        // they ever see an RSVP button (D8). Give it a path, not a dead end.
+        error.toLowerCase().includes("not fully onboarded") ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs"
+          >
+            <span className="text-amber-200">
+              Finish setting up your member profile to RSVP.
+            </span>
+            <Link
+              href="/onboarding/consent"
+              className="font-semibold text-amber-300 underline-offset-2 hover:underline"
+            >
+              Finish setup →
+            </Link>
+          </div>
+        ) : (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          >
+            {error}
+          </div>
+        )
       ) : null}
 
       {current.status === null ? (
