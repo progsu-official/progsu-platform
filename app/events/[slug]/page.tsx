@@ -2,13 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Users } from "lucide-react";
 
-import QRCode from "qrcode";
-
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 
 import { formatTimeRange } from "../_components/event-date";
 import { EventDescription } from "./_components/event-description";
+import { EventTicket } from "./_components/event-ticket";
 import { RsvpPanel } from "./_components/rsvp-panel";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +80,7 @@ export default async function MemberEventDetailPage({
     { data: attendanceRaw },
     { count: goingCount },
     { count: waitlistedCount },
+    { data: holderRaw },
   ] = await Promise.all([
     supabase
       .from("event_hosts")
@@ -109,6 +109,11 @@ export default async function MemberEventDetailPage({
       .select("*", { count: "exact", head: true })
       .eq("event_id", event.id)
       .eq("status", "waitlisted"),
+    supabase
+      .from("profiles")
+      .select("preferred_name, first_name, last_name")
+      .eq("id", user.id)
+      .maybeSingle(),
   ]);
 
   const hosts = ((hostsRaw ?? []) as HostRow[]).map((h) => ({
@@ -145,14 +150,24 @@ export default async function MemberEventDetailPage({
   // button that will 400.
   const rsvpOpen = event.status === "published" && startMs > nowMs;
 
-  // D12: QR is the check-in entry, staff scan it from
-  // /admin/events/[id]/check-in (roster search there is the manual
-  // fallback). Generated server-side, this page is already a server component.
-  const showQr =
-    !attendance && rsvp?.status === "going" && inCheckInWindow && rsvp.checkin_token;
-  const checkinQrDataUrl = showQr
-    ? await QRCode.toDataURL(rsvp.checkin_token as string, { margin: 1, width: 200 })
+  // D12: the personal ticket is the check-in entry — staff scan its QR from
+  // /admin/events/[id]/check-in (roster search there is the manual fallback).
+  // Shown from the moment the RSVP lands on `going`; redemption is admin-only
+  // server-side, so early visibility is safe.
+  const holder = holderRaw as {
+    preferred_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
+  const holderName = holder
+    ? [holder.preferred_name || holder.first_name, holder.last_name]
+        .filter(Boolean)
+        .join(" ") || null
     : null;
+  const hasTicket =
+    event.status === "published" &&
+    rsvp?.status === "going" &&
+    !!rsvp.checkin_token;
 
   return (
     <div className="relative">
@@ -317,33 +332,20 @@ export default async function MemberEventDetailPage({
               ) : null}
             </div>
 
-            {attendance ? (
+            {hasTicket ? (
+              <EventTicket
+                eventId={event.id}
+                title={event.title}
+                startsAt={event.starts_at}
+                token={rsvp!.checkin_token as string}
+                holderName={holderName}
+                checkedInAt={attendance?.checked_in_at ?? null}
+                inCheckInWindow={inCheckInWindow}
+              />
+            ) : attendance ? (
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
                 <span aria-hidden>✓</span> Checked in at{" "}
                 {new Date(attendance.checked_in_at).toLocaleString()}.
-              </div>
-            ) : null}
-
-            {!attendance && rsvp?.status === "going" && inCheckInWindow ? (
-              <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-4">
-                {checkinQrDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={checkinQrDataUrl}
-                    alt="Your check-in QR code"
-                    width={100}
-                    height={100}
-                    className="rounded-lg border bg-white p-1"
-                  />
-                ) : null}
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    You&apos;re going — time to check in.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Show this QR at the door and staff will scan you in.
-                  </p>
-                </div>
               </div>
             ) : null}
 
