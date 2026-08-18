@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowUpRight, Eye } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
@@ -8,6 +9,8 @@ import {
   loadOnboardingState,
   onboardingPathFor,
 } from "@/lib/auth/onboarding";
+
+import { AdminNav } from "./_components/admin-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -39,57 +42,85 @@ export default async function AdminLayout({
   const onboardingHref =
     onboardingPathFor(onboarding.nextStep) ?? "/onboarding/profile";
 
+  const displayName = profile.first_name ?? user.email ?? "Admin";
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="dark min-h-screen bg-background text-foreground antialiased">
       <div className="flex min-h-screen">
-        <aside className="hidden w-56 border-r bg-muted/20 md:flex md:flex-col">
-          <div className="border-b px-4 py-4">
-            <Link href="/admin" className="text-base font-semibold tracking-tight">
-              Progsu · Admin
+        <aside className="hidden w-60 flex-col border-r border-border/60 bg-card/30 md:flex">
+          <div className="px-5 pb-2 pt-5">
+            <Link href="/admin" className="flex items-baseline gap-2">
+              <span className="text-[15px] font-bold tracking-tight text-foreground">
+                progsu
+              </span>
+              <span className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary">
+                admin
+              </span>
             </Link>
           </div>
-          <nav className="flex-1 space-y-1 px-2 py-3 text-sm">
-            <AdminNavLink href="/admin">Overview</AdminNavLink>
-            <AdminNavLink href="/admin/members">Members</AdminNavLink>
-            {env.FEATURE_EVENTS ? (
-              <AdminNavLink href="/admin/events">Events</AdminNavLink>
-            ) : null}
-            <AdminNavLink href="/admin/export">Export</AdminNavLink>
-            <AdminNavLink href="/admin/domain-requests">
-              Domain requests
-            </AdminNavLink>
-            <AdminNavLink href="/admin/audit">Audit log</AdminNavLink>
-            <AdminNavLink href="/admin/settings">Settings</AdminNavLink>
-            <div className="my-2 border-t" />
-            <AdminNavLink href="/dashboard">View as member</AdminNavLink>
-          </nav>
-          <div className="border-t px-4 py-3 text-xs text-muted-foreground">
-            Signed in as {profile.first_name ?? user.email}
-            <form action={signOut} className="mt-2">
+
+          <AdminNav showEvents={env.FEATURE_EVENTS} />
+
+          {/* Deliberately louder than the nav: switching surfaces is the one
+              action here that leaves the admin, so it reads as a button, not
+              a nav row. */}
+          <div className="px-3 pb-3">
+            <Link
+              href="/dashboard"
+              className="group flex items-center justify-between gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-3 text-sm font-medium text-primary transition-colors hover:border-primary/60 hover:bg-primary/20"
+            >
+              <span className="flex items-center gap-2.5">
+                <Eye size={15} strokeWidth={1.75} aria-hidden />
+                View as member
+              </span>
+              <ArrowUpRight
+                size={14}
+                strokeWidth={2}
+                aria-hidden
+                className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              />
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2.5 border-t border-border/60 px-4 py-3.5">
+            <span
+              aria-hidden
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold uppercase text-primary"
+            >
+              {displayName.charAt(0)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-foreground">
+                {displayName}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Signed in</p>
+            </div>
+            <form action={signOut}>
               <button
                 type="submit"
-                className="w-full rounded-md border border-input px-3 py-1.5 text-xs font-medium hover:bg-accent/10"
+                className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
               >
                 Sign out
               </button>
             </form>
           </div>
         </aside>
-        <main className="flex-1 p-6">
+
+        <main className="min-w-0 flex-1 p-6 lg:p-8">
           {!onboarding.fullyOnboarded ? (
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3">
               <div className="text-sm">
-                <p className="font-medium text-amber-900">
+                <p className="font-medium text-amber-200">
                   Your member profile isn&apos;t set up yet.
                 </p>
-                <p className="text-amber-800/80">
+                <p className="text-amber-200/70">
                   Admin access works without it, but events, the member
                   directory, and recruiter exports need a completed profile.
                 </p>
               </div>
               <Link
                 href={onboardingHref}
-                className="shrink-0 rounded-md bg-amber-900 px-3 py-1.5 text-xs font-medium text-amber-50 transition-colors hover:bg-amber-800"
+                className="shrink-0 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-300"
               >
                 Finish setup
               </Link>
@@ -99,16 +130,5 @@ export default async function AdminLayout({
         </main>
       </div>
     </div>
-  );
-}
-
-function AdminNavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
-    >
-      {children}
-    </Link>
   );
 }
