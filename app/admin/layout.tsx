@@ -4,6 +4,10 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { signOut } from "@/lib/actions/session";
+import {
+  loadOnboardingState,
+  onboardingPathFor,
+} from "@/lib/auth/onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +30,14 @@ export default async function AdminLayout({
 
   // 404 (not 403) for non-admins so admin surface doesn't leak route existence.
   if (!profile?.is_admin) notFound();
+
+  // D8: admins bypass the member onboarding cascade, so a brand-new admin can
+  // land here with no member profile at all. Nudge (persistently, on every
+  // admin page) rather than gate — their member profile feeds events, the
+  // directory, and recruiter exports.
+  const onboarding = await loadOnboardingState(supabase, user.id);
+  const onboardingHref =
+    onboardingPathFor(onboarding.nextStep) ?? "/onboarding/profile";
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,7 +75,28 @@ export default async function AdminLayout({
             </form>
           </div>
         </aside>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6">
+          {!onboarding.fullyOnboarded ? (
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+              <div className="text-sm">
+                <p className="font-medium text-amber-900">
+                  Your member profile isn&apos;t set up yet.
+                </p>
+                <p className="text-amber-800/80">
+                  Admin access works without it, but events, the member
+                  directory, and recruiter exports need a completed profile.
+                </p>
+              </div>
+              <Link
+                href={onboardingHref}
+                className="shrink-0 rounded-md bg-amber-900 px-3 py-1.5 text-xs font-medium text-amber-50 transition-colors hover:bg-amber-800"
+              >
+                Finish setup
+              </Link>
+            </div>
+          ) : null}
+          {children}
+        </main>
       </div>
     </div>
   );
