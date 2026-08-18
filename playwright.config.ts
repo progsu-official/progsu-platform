@@ -10,7 +10,10 @@ loadEnv({ path: ".env.local" });
 // automatically; reuses an already-running dev server locally to avoid boot
 // overhead during iteration.
 
-const PORT = 3000;
+// E2E_PORT escape hatch: reuseExistingServer treats ANY server answering on
+// the port as ours, so when an unrelated dev server holds 3000, point the
+// suite somewhere free (cookie injection is host-scoped, port-agnostic).
+const PORT = Number(process.env.E2E_PORT ?? 3000);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
@@ -49,7 +52,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "pnpm dev --hostname 127.0.0.1 --port 3000",
+    command: `pnpm dev --hostname 127.0.0.1 --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
