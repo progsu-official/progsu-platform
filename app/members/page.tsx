@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { listMemberCards } from "@/lib/actions/members";
+import { Avatar } from "@/app/_components/avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -151,21 +152,12 @@ function MemberCardPreview({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        {card.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={card.avatar_url}
-            alt=""
-            className="h-12 w-12 rounded-full border border-border object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted text-sm font-semibold uppercase text-muted-foreground"
-          >
-            {(card.display_name ?? "?").charAt(0)}
-          </div>
-        )}
+        <Avatar
+          src={card.avatar_url}
+          name={card.display_name ?? "?"}
+          className="h-12 w-12 shrink-0 rounded-full"
+          textClassName="text-sm"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">
             {card.display_name ?? "Member"}

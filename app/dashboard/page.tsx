@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Camera } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
 import { loadProfileCompletion } from "@/lib/auth/profile-completion";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/app/_components/avatar";
 
 import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
 import { ProfileCompletionRing } from "./profile-completion-ring";
@@ -131,22 +132,13 @@ export default async function DashboardHome() {
   return (
     <div className="space-y-8">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-7">
-        {profile?.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.avatar_url}
-            alt=""
-            className="h-24 w-24 shrink-0 rounded-full border border-border object-cover shadow-lg shadow-black/30"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-2xl font-semibold uppercase text-muted-foreground"
-          >
-            {(displayName || "?").charAt(0)}
-          </div>
-        )}
-        <div className="min-w-0 space-y-2">
+        <Avatar
+          src={profile?.avatar_url ?? null}
+          name={displayName || "?"}
+          className="h-24 w-24 shrink-0 rounded-full shadow-lg shadow-black/30"
+          textClassName="text-2xl"
+        />
+        <div className="min-w-0 flex-1 space-y-2">
           <div>
             <h1 className="truncate text-3xl font-bold tracking-tight">
               {displayName || "Member"}
@@ -206,11 +198,14 @@ export default async function DashboardHome() {
             </div>
           ) : null}
         </div>
+        <div className="shrink-0 sm:self-start">
+          <Button asChild size="sm" variant="outline" className="rounded-full">
+            <Link href="/dashboard/settings">Edit profile</Link>
+          </Button>
+        </div>
       </header>
 
       <StaleConsentBanner consents={consents ?? []} versions={versions ?? []} />
-
-      <ProfileCompletionRing completion={completion} />
 
       {/* Pending-domain banner stays — it's a "your school isn't supported yet"
           admin-ops message, not a profile-completion nudge. */}
@@ -233,8 +228,17 @@ export default async function DashboardHome() {
         </section>
       ) : null}
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_20rem]">
+        <div className="min-w-0 space-y-6">
+          {env.FEATURE_EVENTS ? (
+            <UpcomingEventsCard
+              rows={upcomingPlans ?? []}
+              coverUrls={upcomingCoverUrls}
+              waitlistPositions={upcomingWaitlistPositions}
+            />
+          ) : null}
+
+          <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Profile
           </h2>
@@ -285,9 +289,9 @@ export default async function DashboardHome() {
               <Link href="/dashboard/settings">Edit</Link>
             </Button>
           </div>
-        </div>
+          </div>
 
-        <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
+          <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Resume
           </h2>
@@ -315,31 +319,58 @@ export default async function DashboardHome() {
               </Button>
             </>
           )}
-        </div>
-      </section>
-
-      {env.FEATURE_EVENTS ? (
-        <UpcomingEventsCard
-          rows={upcomingPlans ?? []}
-          coverUrls={upcomingCoverUrls}
-          waitlistPositions={upcomingWaitlistPositions}
-        />
-      ) : null}
-
-      <section className="rounded-2xl border border-border/70 bg-card p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold">Recruiter visibility</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              When on, Progsu can include you in CSV exports we share with
-              sponsors. Your name, profile, and current resume go out; your
-              Progsu dashboard stays private.
-            </p>
           </div>
-          <OpenToRecruitersToggle initialOpen={!!profile?.open_to_recruiters} />
         </div>
-      </section>
+
+        <aside className="space-y-6">
+          {!profile?.avatar_url ? <PhotoNudgeCard /> : null}
+
+          <ProfileCompletionRing completion={completion} />
+
+          <section className="rounded-2xl border border-border/70 bg-card p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold">Recruiter visibility</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  When on, Progsu can include you in CSV exports we share with
+                  sponsors. Your name, profile, and current resume go out; your
+                  Progsu dashboard stays private.
+                </p>
+              </div>
+              <OpenToRecruitersToggle initialOpen={!!profile?.open_to_recruiters} />
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
+  );
+}
+
+// LinkedIn-style photo prompt, shown until the member has any avatar set.
+function PhotoNudgeCard() {
+  return (
+    <section className="rounded-2xl border border-primary/30 bg-primary/10 p-5">
+      <div className="flex items-center gap-4">
+        <span
+          aria-hidden
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-primary/50 bg-background/40"
+        >
+          <Camera size={20} strokeWidth={1.75} className="text-primary" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-foreground">
+            Add a profile photo
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            A clear, friendly headshot helps hosts recognize you at events and
+            makes your card stand out to recruiters.
+          </p>
+        </div>
+      </div>
+      <Button asChild size="sm" className="mt-4 w-full rounded-full">
+        <Link href="/dashboard/settings#photo">Upload a photo</Link>
+      </Button>
+    </section>
   );
 }
 

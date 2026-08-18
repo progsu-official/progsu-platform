@@ -4,6 +4,7 @@ import { getOwnVisibilitySettings } from "@/lib/actions/members";
 
 import { AccountEmailSettings } from "./account-email-settings";
 import { ConsentSettings } from "./consent-settings";
+import { PhotoSettings } from "./photo-settings";
 import { ResumeSettings } from "./resume-settings";
 import { ProfileSettings } from "./profile-settings";
 import { VisibilitySettings } from "./visibility-settings";
@@ -22,7 +23,7 @@ export default async function SettingsPage() {
       supabase
         .from("profiles")
         .select(
-          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name"
+          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name, avatar_url"
         )
         .eq("id", user.id)
         .single(),
@@ -92,6 +93,14 @@ export default async function SettingsPage() {
           pendingDomainName={
             (profile?.pending_domain_name as string | null | undefined) ?? null
           }
+        />
+      </section>
+
+      <section id="photo" className="space-y-4 scroll-mt-24">
+        <h2 className="text-xl font-semibold">Profile photo</h2>
+        <PhotoSettings
+          currentAvatarUrl={(profile?.avatar_url as string | null | undefined) ?? null}
+          displayName={profile?.preferred_name || profile?.first_name || "You"}
         />
       </section>
 

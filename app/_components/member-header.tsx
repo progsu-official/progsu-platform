@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { signOut } from "@/lib/actions/session";
 
+import { Avatar } from "./avatar";
 import { SiteNav } from "./site-nav";
 
 // One header for every member surface (dashboard/members/events layouts).
@@ -47,21 +48,11 @@ export function MemberHeader({
             aria-label={`${displayName}'s profile`}
             className="shrink-0"
           >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                className="h-8 w-8 rounded-full border border-border object-cover"
-              />
-            ) : (
-              <span
-                aria-hidden
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold uppercase text-muted-foreground"
-              >
-                {displayName.charAt(0)}
-              </span>
-            )}
+            <Avatar
+              src={avatarUrl}
+              name={displayName}
+              className="h-8 w-8 rounded-full"
+            />
           </Link>
           <form action={signOut}>
             <button

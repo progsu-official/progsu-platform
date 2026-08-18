@@ -8,6 +8,7 @@ import {
   getMemberCardBySlug,
   getSharedEventsForViewer,
 } from "@/lib/actions/members";
+import { Avatar } from "@/app/_components/avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -88,21 +89,12 @@ export default async function MemberProfilePage({
       ) : null}
 
       <header className="flex items-center gap-5">
-        {card.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={card.avatar_url}
-            alt=""
-            className="h-20 w-20 rounded-full border border-border object-cover shadow-lg shadow-black/30"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="flex h-20 w-20 items-center justify-center rounded-full border border-border bg-muted text-xl font-semibold uppercase text-muted-foreground"
-          >
-            {(card.display_name ?? "?").charAt(0)}
-          </div>
-        )}
+        <Avatar
+          src={card.avatar_url}
+          name={card.display_name ?? "?"}
+          className="h-20 w-20 shrink-0 rounded-full shadow-lg shadow-black/30"
+          textClassName="text-xl"
+        />
         <div className="min-w-0">
           <h1 className="truncate text-3xl font-bold tracking-tight">
             {card.display_name ?? "Member"}
