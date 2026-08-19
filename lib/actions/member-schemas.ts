@@ -33,7 +33,11 @@ export const setProfileSlugSchema = z.object({
 export type SetProfileSlugInput = z.input<typeof setProfileSlugSchema>;
 
 export const listMemberCardsSchema = z.object({
-  cursor_ts: z.string().datetime().optional().nullable(),
+  // offset: true — PostgREST serializes timestamptz with a numeric offset
+  // ("+00:00"), not the "Z" Zod's datetime() requires by default. Without
+  // this, every real cursor_ts value from member_cards.visible_since fails
+  // validation, breaking pagination past the first page for everyone.
+  cursor_ts: z.string().datetime({ offset: true }).optional().nullable(),
   cursor_user: z.string().uuid().optional().nullable(),
   limit: z.number().int().min(1).max(100).optional(),
   search: z.string().trim().max(64).optional().nullable(),
