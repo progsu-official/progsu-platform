@@ -33,7 +33,7 @@ export default async function OnboardingProfilePage() {
   }
   if (state.fullyOnboarded) redirect("/dashboard");
 
-  const [{ data: profile }, { data: majors }, { data: domains }] =
+  const [{ data: profile }, { data: majors }, { data: domains }, { data: legacyMatch }] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -52,6 +52,15 @@ export default async function OnboardingProfilePage() {
         .select("school_name")
         .eq("is_active", true)
         .order("school_name"),
+      // If old member data (Luma/Sheets import) matched this account on first
+      // login, let them know something got pre-filled instead of leaving it
+      // silent. This is the guaranteed first page after OAuth — verify-email
+      // is optional and easily skipped, so the banner belongs here, not there.
+      supabase
+        .from("legacy_members")
+        .select("id")
+        .eq("claimed_profile_id", user.id)
+        .maybeSingle(),
     ]);
 
   const majorOptions: MajorRow[] = (majors ?? []).map((m) => ({
@@ -66,6 +75,12 @@ export default async function OnboardingProfilePage() {
 
   return (
     <section className="space-y-6">
+      {legacyMatch && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          Welcome back! We found your info from Progsu&apos;s past events and
+          filled in what we had. Feel free to double-check it below.
+        </div>
+      )}
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Your profile</h1>
         <p className="text-sm text-muted-foreground">

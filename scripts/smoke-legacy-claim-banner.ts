@@ -1,8 +1,10 @@
 // Asserts the actual rendered UI, not just the DB: seeds an unclaimed
 // legacy_members row, creates an auth user with that same email (firing
 // handle_new_user()'s claim-backfill), mints a real session for that user,
-// and checks /onboarding/verify-email actually shows the "Welcome back"
-// banner. smoke-legacy-claim-backfill.ts already covers the DB side of this
+// and checks /onboarding/profile actually shows the "Welcome back" banner.
+// Lives on the profile page, not verify-email, because profile is the
+// guaranteed first page after OAuth — verify-email is optional and easily
+// skipped. smoke-legacy-claim-backfill.ts already covers the DB side of this
 // (phone_number backfilled, claimed_at set) — this covers the part a person
 // actually sees.
 //
@@ -86,10 +88,10 @@ async function main() {
     ]);
 
     const page = await context.newPage();
-    await page.goto(`${env.NEXT_PUBLIC_SITE_URL}/onboarding/verify-email`);
+    await page.goto(`${env.NEXT_PUBLIC_SITE_URL}/onboarding/profile`);
     const banner = page.getByText("Welcome back! We found your info");
     await banner.waitFor({ state: "visible", timeout: 8000 });
-    console.log('  ✓ "Welcome back" banner rendered on /onboarding/verify-email');
+    console.log('  ✓ "Welcome back" banner rendered on /onboarding/profile');
 
     await browser.close();
     browser = null;
