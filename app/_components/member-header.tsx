@@ -1,8 +1,6 @@
 import Link from "next/link";
 
-import { signOut } from "@/lib/actions/session";
-
-import { Avatar } from "./avatar";
+import { ProfileMenu } from "./profile-menu";
 import { SiteNav } from "./site-nav";
 
 // One header for every member surface (dashboard/members/events layouts).
@@ -41,33 +39,11 @@ export function MemberHeader({
         </nav>
 
         <div className="flex items-center gap-2.5">
-          {isAdmin ? (
-            <Link
-              href="/admin"
-              className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-            >
-              Admin
-            </Link>
-          ) : null}
-          <Link
-            href="/dashboard"
-            aria-label={`${displayName}'s profile`}
-            className="shrink-0"
-          >
-            <Avatar
-              src={avatarUrl}
-              name={displayName}
-              className="h-8 w-8 rounded-full"
-            />
-          </Link>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-            >
-              Sign out
-            </button>
-          </form>
+          <ProfileMenu
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            isAdmin={isAdmin}
+          />
         </div>
       </div>
     </header>
