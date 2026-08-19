@@ -81,6 +81,13 @@ export const updateProfileSchema = z
     ).optional(),
     githubUrl: urlOrEmpty(/^https?:\/\/([a-z0-9-]+\.)*github\.com\//i).optional(),
     portfolioUrl: urlOrEmpty(null).optional(),
+    bio: z
+      .string()
+      .trim()
+      .max(220, "Keep it to 220 characters")
+      .refine((v) => !/[\r\n]/.test(v), "One line only")
+      .nullable()
+      .optional(),
     phoneNumber: z
       .string()
       .trim()

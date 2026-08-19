@@ -104,6 +104,9 @@ export default async function MemberProfilePage({
               {card.school}
             </p>
           ) : null}
+          {card.bio ? (
+            <p className="mt-1 truncate text-sm">{card.bio}</p>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
             {card.class_standing ? (
               <span className="rounded-full border border-border/70 px-2 py-0.5 capitalize">
