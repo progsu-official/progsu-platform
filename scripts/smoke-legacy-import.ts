@@ -27,13 +27,26 @@ async function main() {
   try {
     await admin.from("legacy_members").delete().eq("personal_email", "tapproved@gmail.com");
 
+    await admin.from("legacy_members").delete().eq("personal_email", "tinvited@gmail.com");
+
     const run = spawnSync("pnpm", ["tsx", "scripts/import-legacy-members.ts", FIXTURE_PATH], {
       encoding: "utf8",
     });
     if (run.status !== 0) throw new Error(`import failed: ${run.stderr}`);
-    if (!run.stdout.includes("Inserted 1, skipped 0"))
+    // approved + invited both import (2026-08-19 change); declined stays excluded.
+    if (!run.stdout.includes("Inserted 2, skipped 0"))
       throw new Error(`unexpected import summary: ${run.stdout}`);
-    console.log("  ✓ only the approved row was imported (invited + declined skipped)");
+    console.log("  ✓ approved + invited rows imported, declined skipped");
+
+    const { data: invitedRow, error: invitedErr } = await admin
+      .from("legacy_members")
+      .select("sms_interest, campus_email")
+      .eq("personal_email", "tinvited@gmail.com")
+      .single();
+    if (invitedErr || !invitedRow) throw new Error(`invited row missing: ${invitedErr?.message}`);
+    if (invitedRow.sms_interest !== false)
+      throw new Error(`invited row's unanswered SMS field must not be fabricated true: ${invitedRow.sms_interest}`);
+    console.log("  ✓ invited row's SMS consent stays honest (never upgraded to true)");
 
     const { data, error } = await admin
       .from("legacy_members")
@@ -50,14 +63,15 @@ async function main() {
     const rerun = spawnSync("pnpm", ["tsx", "scripts/import-legacy-members.ts", FIXTURE_PATH], {
       encoding: "utf8",
     });
-    if (!rerun.stdout.includes("Inserted 0, skipped 1"))
-      throw new Error(`re-run should skip as duplicate: ${rerun.stdout}`);
-    console.log("  ✓ re-running the import is idempotent (duplicate email skipped)");
+    if (!rerun.stdout.includes("Inserted 0, skipped 2"))
+      throw new Error(`re-run should skip both as duplicates: ${rerun.stdout}`);
+    console.log("  ✓ re-running the import is idempotent (both duplicate emails skipped)");
 
     console.log("✓ legacy-import smoke OK");
   } finally {
     unlinkSync(FIXTURE_PATH);
     await admin.from("legacy_members").delete().eq("personal_email", "tapproved@gmail.com");
+    await admin.from("legacy_members").delete().eq("personal_email", "tinvited@gmail.com");
   }
 }
 
