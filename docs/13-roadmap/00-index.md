@@ -19,6 +19,7 @@ Created: 2026-04-22, after R3 code-complete and migration-pushed to prod.
 | 03 | Admin event analytics | Planned | None | [03-admin-analytics.md](./03-admin-analytics.md) |
 | 04 | Playwright E2E testing | Planned | None | [04-playwright-e2e.md](./04-playwright-e2e.md) |
 | 05 | QR check-in v2: wallet passes + scan modes | Stub | v1 QR check-in (D12) shipped | [05-qr-checkin-v2.md](./05-qr-checkin-v2.md) |
+| 06 | Legacy member data: use what's still sitting unused | Stub | Legacy import (PR #9) shipped | [06-legacy-member-data-utilization.md](./06-legacy-member-data-utilization.md) |
 
 ## Other ideas floated but not planned
 
