@@ -64,6 +64,15 @@ function nz(s: string | undefined): string | null {
   return t.length > 0 ? t : null;
 }
 
+// Google Sheets exports a phone number typed into a plain-text cell as a
+// number if it looks numeric enough, landing here as "14045551234.0". Strips
+// that trailing float artifact; leaves anything already formatted (with a
+// "+", dashes, etc.) untouched.
+function phoneNz(s: string | undefined): string | null {
+  const t = nz(s);
+  return t ? t.replace(/\.0$/, "") : null;
+}
+
 // Fixes known GSU campus-email domain typos seen in the raw source data
 // (missing dot, transposed letters, swapped segments). Only rewrites exact
 // known-bad variants of student.gsu.edu — never guesses on anything else,
@@ -158,7 +167,7 @@ async function main() {
       last_name: last,
       personal_email: emailNz(personalEmail),
       campus_email: emailNz(campusEmail),
-      phone_number: nz(phone),
+      phone_number: phoneNz(phone),
       sms_interest: sms?.trim() === "Yes",
       source_detail: "master_sheet:membership_join_1",
     });
@@ -172,7 +181,7 @@ async function main() {
     const c = parseCells(line);
     const first = nz(c[4]);
     const last = nz(c[5]);
-    const phone = nz(c[6]);
+    const phone = phoneNz(c[6]);
     const personalEmail = emailNz(c[7]);
     // Despite sitting under the "Must end with '.edu'" header, this column
     // holds the real campus email in most rows, verified against source
@@ -205,7 +214,7 @@ async function main() {
       last_name: last,
       personal_email: emailNz(personalEmail),
       campus_email: emailNz(campusEmail),
-      phone_number: nz(phone),
+      phone_number: phoneNz(phone),
       sms_interest: sms?.trim() === "Yes",
       source_detail: "master_sheet:event_attendance_form",
     });
@@ -225,7 +234,7 @@ async function main() {
       last_name: last,
       personal_email: null,
       campus_email: emailNz(campusEmail),
-      phone_number: nz(phone),
+      phone_number: phoneNz(phone),
       sms_interest: nz(sms) !== null,
       source_detail: "master_sheet:attendance_processing_log",
     });
@@ -245,7 +254,7 @@ async function main() {
       last_name: last,
       personal_email: emailNz(campusEmail)?.includes("@gmail") ? emailNz(campusEmail) : null,
       campus_email: emailNz(campusEmail),
-      phone_number: nz(phone),
+      phone_number: phoneNz(phone),
       sms_interest: nz(sms) !== null,
       source_detail: "master_sheet:general_interest_form",
     });
