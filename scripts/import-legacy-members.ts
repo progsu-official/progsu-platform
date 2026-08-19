@@ -71,6 +71,22 @@ function normEmail(v: string | undefined): string | null {
   return t.length > 0 ? t : null;
 }
 
+// Fixes known GSU campus-email domain typos seen in the raw source data
+// (missing dot, transposed letters, swapped segments). Only rewrites exact
+// known-bad variants of student.gsu.edu — never guesses on anything else,
+// a wrong guess here would misroute someone's account claim.
+const CAMPUS_DOMAIN_TYPOS: Record<string, string> = {
+  "student.gsuedu": "student.gsu.edu",
+  "stduent.gsu.edu": "student.gsu.edu",
+  "student.edu.gsu": "student.gsu.edu",
+};
+function fixCampusEmailTypo(email: string | null): string | null {
+  if (!email || !email.includes("@")) return email;
+  const [local, domain] = email.split("@");
+  const fixed = CAMPUS_DOMAIN_TYPOS[domain];
+  return fixed ? `${local}@${fixed}` : email;
+}
+
 function normText(v: string | undefined): string | null {
   const t = (v ?? "").trim();
   return t.length > 0 ? t : null;
@@ -104,7 +120,7 @@ async function main() {
       first_name: normText(f[iFirst]),
       last_name: normText(f[iLast]),
       personal_email: normEmail(f[iEmail]),
-      campus_email: normEmail(f[iGsuEmail]),
+      campus_email: fixCampusEmailTypo(normEmail(f[iGsuEmail])),
       phone_number: normText(f[iPhone]),
       sms_interest: iSms >= 0 ? normText(f[iSms]) === "Yes" : null,
       approval_status: (f[iStatus] ?? "").trim(),
@@ -119,7 +135,13 @@ async function main() {
     else byStatus.other++;
   }
 
-  const candidates = rows.filter((r) => r.approval_status === "approved");
+  // Includes "invited" alongside "approved" per John's explicit call
+  // (2026-08-19) — declined stays excluded, that's an explicit opt-out.
+  // sms_interest is left exactly as answered (often false/null for invited
+  // rows who never responded), never upgraded to true on import.
+  const candidates = rows.filter(
+    (r) => r.approval_status === "approved" || r.approval_status === "invited"
+  );
   const missingEmail = candidates.filter(
     (r) => !r.personal_email && !r.campus_email
   );
@@ -130,10 +152,10 @@ async function main() {
   console.log(`\nImport plan (${DRY_RUN ? "DRY RUN" : "EXECUTE"}) — source: ${csvPath}`);
   console.log(`  Total rows:              ${rows.length}`);
   console.log(`  approved:                ${byStatus.approved}`);
-  console.log(`  invited (skipped):       ${byStatus.invited}`);
+  console.log(`  invited:                 ${byStatus.invited}`);
   console.log(`  declined (skipped):      ${byStatus.declined}`);
   console.log(`  other status (skipped):  ${byStatus.other}`);
-  console.log(`  approved w/ no email (skipped): ${missingEmail.length}`);
+  console.log(`  approved/invited w/ no email (skipped): ${missingEmail.length}`);
   console.log(`  To import:               ${toImport.length}\n`);
 
   if (DRY_RUN) {
