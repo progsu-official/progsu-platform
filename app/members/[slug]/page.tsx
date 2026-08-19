@@ -99,26 +99,23 @@ export default async function MemberProfilePage({
           <h1 className="truncate text-3xl font-bold tracking-tight">
             {card.display_name ?? "Member"}
           </h1>
-          {card.school ? (
+          {card.school || card.class_standing || gradLabel ? (
             <p className="truncate text-sm text-muted-foreground">
-              {card.school}
+              {[
+                card.school,
+                card.class_standing
+                  ? card.class_standing[0].toUpperCase() +
+                    card.class_standing.slice(1)
+                  : null,
+                gradLabel,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           ) : null}
           {card.bio ? (
             <p className="mt-1 truncate text-sm">{card.bio}</p>
           ) : null}
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
-            {card.class_standing ? (
-              <span className="rounded-full border border-border/70 px-2 py-0.5 capitalize">
-                {card.class_standing}
-              </span>
-            ) : null}
-            {gradLabel ? (
-              <span className="rounded-full border border-border/70 px-2 py-0.5">
-                {gradLabel}
-              </span>
-            ) : null}
-          </div>
           {card.linkedin_url || card.github_url || card.portfolio_url ? (
             <div className="mt-2 flex items-center gap-3 text-muted-foreground">
               {card.linkedin_url ? (
