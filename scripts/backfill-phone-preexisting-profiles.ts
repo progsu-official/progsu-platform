@@ -30,25 +30,28 @@ async function main() {
 
   const { data: legacy, error: legacyErr } = await admin
     .from("legacy_members")
-    .select("personal_email, campus_email, phone_number")
+    .select("id, personal_email, campus_email, phone_number")
     .is("claimed_at", null)
     .not("phone_number", "is", null);
   if (legacyErr) throw new Error(`load legacy_members: ${legacyErr.message}`);
 
-  const byEmail = new Map<string, string>();
+  const byEmail = new Map<string, { legacyId: string; phone: string }>();
   for (const lm of legacy ?? []) {
-    if (lm.personal_email) byEmail.set(lm.personal_email, lm.phone_number!);
-    if (lm.campus_email) byEmail.set(lm.campus_email, lm.phone_number!);
+    const entry = { legacyId: lm.id, phone: lm.phone_number! };
+    if (lm.personal_email) byEmail.set(lm.personal_email, entry);
+    if (lm.campus_email) byEmail.set(lm.campus_email, entry);
   }
 
   const matches = (profiles ?? [])
     .map((p) => {
-      const phone =
-        byEmail.get(p.google_email ?? "") ?? byEmail.get(p.student_email ?? "");
+      const hit = byEmail.get(p.google_email ?? "") ?? byEmail.get(p.student_email ?? "");
       const name = [p.first_name, p.last_name].filter(Boolean).join(" ") || null;
-      return phone ? { id: p.id, name, phone } : null;
+      return hit ? { id: p.id, legacyId: hit.legacyId, name, phone: hit.phone } : null;
     })
-    .filter((m): m is { id: string; name: string | null; phone: string } => m !== null);
+    .filter(
+      (m): m is { id: string; legacyId: string; name: string | null; phone: string } =>
+        m !== null
+    );
 
   console.log(`\nBackfill plan (${DRY_RUN ? "DRY RUN" : "EXECUTE"})`);
   console.log(`  Profiles missing phone_number: ${profiles?.length ?? 0}`);
@@ -70,6 +73,17 @@ async function main() {
     if (error) {
       console.warn(`  ! failed ${m.name}: ${error.message}`);
       continue;
+    }
+    // Mirror the trigger: mark the legacy row claimed too, or the welcome
+    // banner (keyed on legacy_members.claimed_profile_id) never shows even
+    // though the phone number did get backfilled.
+    const { error: claimErr } = await admin
+      .from("legacy_members")
+      .update({ claimed_at: new Date().toISOString(), claimed_profile_id: m.id })
+      .eq("id", m.legacyId)
+      .is("claimed_at", null);
+    if (claimErr) {
+      console.warn(`  ! phone backfilled but failed to mark claimed for ${m.name}: ${claimErr.message}`);
     }
     updated++;
   }
