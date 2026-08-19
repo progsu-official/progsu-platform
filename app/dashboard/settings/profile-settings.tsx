@@ -255,6 +255,10 @@ export function ProfileSettings({
         </div>
       </Row>
 
+      <p className="text-xs text-muted-foreground">
+        Optional. Shown as icons on your profile when directory visibility is
+        on (Settings → Visibility).
+      </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Row label="LinkedIn">
           <Input

@@ -140,6 +140,9 @@ export type MemberCardRow = {
   interested_roles: string[] | null;
   discord_username: string | null;
   discord_user_id: string | null;
+  linkedin_url: string | null;
+  github_url: string | null;
+  portfolio_url: string | null;
   share_attended_events: boolean;
   visible_since: string | null;
 };
