@@ -138,6 +138,8 @@ export type MemberCardRow = {
   grad_term: string | null;
   grad_year: number | null;
   interested_roles: string[] | null;
+  discord_username: string | null;
+  discord_user_id: string | null;
   share_attended_events: boolean;
   visible_since: string | null;
 };

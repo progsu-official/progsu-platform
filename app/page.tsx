@@ -279,6 +279,17 @@ export default function Home() {
         <p className="mt-2 text-[13px] text-white/30">
           we&apos;re in beta — expect fresh paint and moving parts.
         </p>
+
+        {process.env.NODE_ENV !== "production" ? (
+          <div className="mt-4 flex gap-3 text-xs text-white/30">
+            <Link href="/api/dev-login?role=member" className="underline">
+              Dev bypass: member
+            </Link>
+            <Link href="/api/dev-login?role=admin" className="underline">
+              Dev bypass: admin
+            </Link>
+          </div>
+        ) : null}
       </div>
     </main>
   );

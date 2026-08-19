@@ -23,7 +23,7 @@ export default async function SettingsPage() {
       supabase
         .from("profiles")
         .select(
-          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name, avatar_url"
+          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name, discord_username, discord_user_id, avatar_url"
         )
         .eq("id", user.id)
         .single(),
@@ -54,15 +54,20 @@ export default async function SettingsPage() {
     share_attended_events: boolean;
     share_shared_event_counts: boolean;
     profile_slug: string | null;
+    discord_username: string | null;
+    discord_user_id: string | null;
   } | null = null;
   if (env.FEATURE_MEMBER_DIRECTORY) {
     const r = await getOwnVisibilitySettings();
     if (r.ok) {
-      visibility = r.data ?? {
-        discoverable: false,
-        share_attended_events: false,
-        share_shared_event_counts: false,
-        profile_slug: null,
+      const v = r.data;
+      visibility = {
+        discoverable: v?.discoverable ?? false,
+        share_attended_events: v?.share_attended_events ?? false,
+        share_shared_event_counts: v?.share_shared_event_counts ?? false,
+        profile_slug: v?.profile_slug ?? null,
+        discord_username: profile?.discord_username ?? null,
+        discord_user_id: profile?.discord_user_id ?? null,
       };
     }
   }

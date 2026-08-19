@@ -41,11 +41,20 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Unauthenticated access to anything non-public → bounce to /login.
+  // Unauthenticated access to anything non-public → bounce to /login. Local
+  // dev convenience: DEV_AUTO_LOGIN=true bounces to the dev-login bypass
+  // instead, so there's never a manual sign-in step at all on this machine.
+  // Hard-gated on NODE_ENV, same as /api/dev-login itself.
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    if (process.env.NODE_ENV !== "production" && process.env.DEV_AUTO_LOGIN === "true") {
+      url.pathname = "/api/dev-login";
+      url.searchParams.set("role", "member");
+      url.searchParams.set("next", pathname);
+    } else {
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
+    }
     return NextResponse.redirect(url);
   }
 
@@ -67,8 +76,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   // Skip Next.js internals + static files + webhook endpoints (which verify their own HMAC)
   // + cron endpoints (which verify CRON_SECRET themselves) + smoketest routes
-  // (only created during integration smoke scripts; they self-auth).
+  // (only created during integration smoke scripts; they self-auth) + dev-login
+  // (local-only Google OAuth bypass; self-gates on NODE_ENV).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|api/dev-login|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
