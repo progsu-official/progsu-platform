@@ -11,12 +11,14 @@ export function MemberHeader({
   isAdmin,
   showMembers,
   showEvents,
+  profileHref,
 }: {
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
   showMembers: boolean;
   showEvents: boolean;
+  profileHref: string;
 }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
@@ -43,6 +45,7 @@ export function MemberHeader({
             displayName={displayName}
             avatarUrl={avatarUrl}
             isAdmin={isAdmin}
+            profileHref={profileHref}
           />
         </div>
       </div>

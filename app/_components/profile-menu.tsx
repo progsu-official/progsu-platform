@@ -22,10 +22,14 @@ export function ProfileMenu({
   displayName,
   avatarUrl,
   isAdmin,
+  profileHref,
 }: {
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  // Own member-card URL, e.g. "/members/jane-doe". Falls back to /dashboard
+  // when the caller has no slug yet (directory off, or never made discoverable).
+  profileHref: string;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -76,7 +80,7 @@ export function ProfileMenu({
           <MenuLink href="/dashboard" icon={LayoutDashboard} onClick={() => setOpen(false)}>
             Dashboard
           </MenuLink>
-          <MenuLink href="/dashboard" icon={User} onClick={() => setOpen(false)}>
+          <MenuLink href={profileHref} icon={User} onClick={() => setOpen(false)}>
             Profile
           </MenuLink>
           <MenuLink href="/dashboard/settings" icon={Settings} onClick={() => setOpen(false)}>

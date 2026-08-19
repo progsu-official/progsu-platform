@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { getOwnVisibilitySettings } from "@/lib/actions/members";
 import { Button } from "@/components/ui/button";
 
 import { MemberHeader } from "@/app/_components/member-header";
@@ -44,6 +45,11 @@ export default async function EventsLayout({
   const pendingDomainName =
     (profile?.pending_domain_name as string | null | undefined) ?? null;
 
+  const visibility = await getOwnVisibilitySettings();
+  const ownSlug = visibility.ok ? (visibility.data?.profile_slug ?? null) : null;
+  const profileHref =
+    env.FEATURE_MEMBER_DIRECTORY && ownSlug ? `/members/${ownSlug}` : "/dashboard";
+
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <MemberHeader
@@ -52,6 +58,7 @@ export default async function EventsLayout({
         isAdmin={state.isAdmin}
         showMembers={env.FEATURE_MEMBER_DIRECTORY}
         showEvents={env.FEATURE_EVENTS}
+        profileHref={profileHref}
       />
       <main className="mx-auto max-w-5xl px-4 py-8">
         {!state.studentEmailVerified ? (

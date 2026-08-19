@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { getOwnVisibilitySettings } from "@/lib/actions/members";
 
 import { MemberHeader } from "@/app/_components/member-header";
 
@@ -36,6 +37,11 @@ export default async function DashboardLayout({
   const displayName =
     profile?.first_name ?? user.user_metadata?.given_name ?? "You";
 
+  const visibility = await getOwnVisibilitySettings();
+  const ownSlug = visibility.ok ? (visibility.data?.profile_slug ?? null) : null;
+  const profileHref =
+    env.FEATURE_MEMBER_DIRECTORY && ownSlug ? `/members/${ownSlug}` : "/dashboard";
+
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <MemberHeader
@@ -44,6 +50,7 @@ export default async function DashboardLayout({
         isAdmin={state.isAdmin}
         showMembers={env.FEATURE_MEMBER_DIRECTORY}
         showEvents={env.FEATURE_EVENTS}
+        profileHref={profileHref}
       />
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
     </div>
