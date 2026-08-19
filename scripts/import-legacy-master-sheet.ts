@@ -64,9 +64,26 @@ function nz(s: string | undefined): string | null {
   return t.length > 0 ? t : null;
 }
 
+// Fixes known GSU campus-email domain typos seen in the raw source data
+// (missing dot, transposed letters, swapped segments). Only rewrites exact
+// known-bad variants of student.gsu.edu — never guesses on anything else,
+// a wrong guess here would misroute someone's account claim.
+const CAMPUS_DOMAIN_TYPOS: Record<string, string> = {
+  "student.gsuedu": "student.gsu.edu",
+  "stduent.gsu.edu": "student.gsu.edu",
+  "student.edu.gsu": "student.gsu.edu",
+};
+function fixCampusEmailTypo(email: string): string {
+  const at = email.indexOf("@");
+  if (at === -1) return email;
+  const domain = email.slice(at + 1);
+  const fixed = CAMPUS_DOMAIN_TYPOS[domain];
+  return fixed ? `${email.slice(0, at)}@${fixed}` : email;
+}
+
 function emailNz(s: string | undefined): string | null {
   const t = nz(s);
-  return t ? t.toLowerCase() : null;
+  return t ? fixCampusEmailTypo(t.toLowerCase()) : null;
 }
 
 // Finds a table by a distinctive substring in its header row, then collects
