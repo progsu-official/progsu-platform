@@ -33,6 +33,7 @@ const FIELD_ERROR_HEADINGS: Record<string, string> = {
   linkedinUrl: "That LinkedIn URL doesn't look right",
   githubUrl: "That GitHub URL doesn't look right",
   portfolioUrl: "That portfolio URL doesn't look right",
+  bio: "Bio must be one line, 220 characters or fewer",
 };
 
 type Initial = {
@@ -49,6 +50,7 @@ type Initial = {
   linkedinUrl: string;
   githubUrl: string;
   portfolioUrl: string;
+  bio: string;
   phoneNumber: string;
 };
 
@@ -97,6 +99,7 @@ export function ProfileSettings({
         linkedinUrl: state.linkedinUrl || null,
         githubUrl: state.githubUrl || null,
         portfolioUrl: state.portfolioUrl || null,
+        bio: state.bio || null,
         phoneNumber: state.phoneNumber,
       });
       if (!result.ok) {
@@ -255,6 +258,10 @@ export function ProfileSettings({
         </div>
       </Row>
 
+      <p className="text-xs text-muted-foreground">
+        Optional. Shown as icons on your profile when directory visibility is
+        on (Settings → Visibility).
+      </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Row label="LinkedIn">
           <Input
@@ -284,6 +291,20 @@ export function ProfileSettings({
           />
         </Row>
       </div>
+
+      <Row label="Bio">
+        <Input
+          value={state.bio}
+          onChange={(e) => setState({ ...state, bio: e.target.value.slice(0, 220) })}
+          placeholder="full-stack dev, into ML and climbing"
+          maxLength={220}
+          disabled={pending}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          One line, shown on your profile when directory visibility is on.{" "}
+          {state.bio.length}/220
+        </p>
+      </Row>
 
       {status.kind === "error" ? (
         <div

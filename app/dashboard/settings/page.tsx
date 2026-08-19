@@ -23,7 +23,7 @@ export default async function SettingsPage() {
       supabase
         .from("profiles")
         .select(
-          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name, discord_username, discord_user_id, avatar_url"
+          "first_name, last_name, preferred_name, school, major, minor, class_standing, grad_year, grad_term, interested_roles, linkedin_url, github_url, portfolio_url, bio, phone_number, google_email, student_email, student_email_verified, student_email_verified_at, pending_domain_name, discord_username, discord_user_id, avatar_url"
         )
         .eq("id", user.id)
         .single(),
@@ -139,6 +139,7 @@ export default async function SettingsPage() {
             linkedinUrl: profile?.linkedin_url ?? "",
             githubUrl: profile?.github_url ?? "",
             portfolioUrl: profile?.portfolio_url ?? "",
+            bio: profile?.bio ?? "",
             phoneNumber: profile?.phone_number ?? "",
           }}
           schoolOptions={schoolOptions}

@@ -50,6 +50,7 @@ export async function updateProfile(
       linkedin_url: data.linkedinUrl ?? null,
       github_url: data.githubUrl ?? null,
       portfolio_url: data.portfolioUrl ?? null,
+      bio: data.bio || null,
       phone_number: data.phoneNumber,
     })
     .eq("id", user.id);
