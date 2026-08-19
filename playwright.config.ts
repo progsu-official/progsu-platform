@@ -10,14 +10,18 @@ loadEnv({ path: ".env.local" });
 // automatically; reuses an already-running dev server locally to avoid boot
 // overhead during iteration.
 
-const PORT = 3000;
+// E2E_PORT escape hatch: reuseExistingServer treats ANY server answering on
+// the port as ours, so when an unrelated dev server holds 3000, point the
+// suite somewhere free (cookie injection is host-scoped, port-agnostic).
+const PORT = Number(process.env.E2E_PORT ?? 3000);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  // 60s default — covers cold-compile paths on dev server; test.slow() takes
-  // individual heavy scenarios to 180s.
-  timeout: 60_000,
+  // 120s default — fixture setup (admin + member page loads) happens before
+  // test.slow() can widen the budget, and cold dev-server compiles have been
+  // observed at 30s+ per route under load. Passing tests don't feel this.
+  timeout: 120_000,
   expect: { timeout: 5_000 },
   // Parallel E2E against a single dev server flakes on hot-reload contention.
   // One worker is enough at our scale (3–7 scenarios). Revisit if the suite
@@ -44,12 +48,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // E2E_BROWSER_CHANNEL=chrome runs against the system Chrome install —
+        // useful when the Playwright-managed browser download is unavailable.
+        ...(process.env.E2E_BROWSER_CHANNEL
+          ? { channel: process.env.E2E_BROWSER_CHANNEL }
+          : {}),
+      },
     },
   ],
 
   webServer: {
-    command: "pnpm dev --hostname 127.0.0.1 --port 3000",
+    command: `pnpm dev --hostname 127.0.0.1 --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

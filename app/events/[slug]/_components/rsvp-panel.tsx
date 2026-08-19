@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -59,7 +60,7 @@ export function RsvpPanel({
 
   if (!rsvpOpen) {
     return (
-      <section className="rounded-md border p-4 text-sm">
+      <section className="rounded-2xl border border-border/70 bg-card/70 p-5 text-sm backdrop-blur">
         <p className="text-muted-foreground">
           RSVPs are closed for this event.
         </p>
@@ -68,7 +69,7 @@ export function RsvpPanel({
   }
 
   return (
-    <section className="space-y-3 rounded-md border p-4">
+    <section className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-lg shadow-black/20 backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
@@ -81,12 +82,32 @@ export function RsvpPanel({
       ) : null}
 
       {error ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-        >
-          {error}
-        </div>
+        // "Not fully onboarded" can only reach this panel for admins — member
+        // layouts route everyone else through the onboarding cascade before
+        // they ever see an RSVP button (D8). Give it a path, not a dead end.
+        error.toLowerCase().includes("not fully onboarded") ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs"
+          >
+            <span className="text-amber-200">
+              Finish setting up your member profile to RSVP.
+            </span>
+            <Link
+              href="/onboarding/consent"
+              className="font-semibold text-amber-300 underline-offset-2 hover:underline"
+            >
+              Finish setup →
+            </Link>
+          </div>
+        ) : (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          >
+            {error}
+          </div>
+        )
       ) : null}
 
       {current.status === null ? (
@@ -209,12 +230,17 @@ function NoRsvpForm({
           maxLength={500}
           rows={2}
           disabled={pending}
-          className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="block w-full rounded-xl border border-input bg-background/60 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Questions for the hosts? Share them here."
         />
       </label>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={onGoing} disabled={pending}>
+        <Button
+          type="button"
+          onClick={onGoing}
+          disabled={pending}
+          className="h-11 flex-1 rounded-full text-[15px]"
+        >
           {pending ? "Saving…" : goingLabel}
         </Button>
         <Button
@@ -222,6 +248,7 @@ function NoRsvpForm({
           variant="outline"
           onClick={onDeclined}
           disabled={pending}
+          className="h-11 rounded-full px-6 text-[15px]"
         >
           {pending ? "Saving…" : "Not going"}
         </Button>
@@ -258,6 +285,7 @@ function ActionButtons({
           variant={b.variant}
           onClick={b.onClick}
           disabled={pending}
+          className="h-11 rounded-full px-6 text-[15px]"
         >
           {pending ? "Saving…" : b.label}
         </Button>

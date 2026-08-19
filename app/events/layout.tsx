@@ -4,9 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
-import { signOut } from "@/lib/actions/session";
 import { Button } from "@/components/ui/button";
-import { SiteNav } from "@/app/_components/site-nav";
+
+import { MemberHeader } from "@/app/_components/member-header";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,7 @@ export default async function EventsLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("first_name, pending_domain_name")
+    .select("first_name, avatar_url, pending_domain_name")
     .eq("id", user.id)
     .single();
   const displayName =
@@ -45,34 +45,14 @@ export default async function EventsLayout({
     (profile?.pending_domain_name as string | null | undefined) ?? null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Link
-            href="/dashboard"
-            className="text-base font-semibold tracking-tight"
-          >
-            Progsu
-          </Link>
-          <nav className="flex items-center gap-4 text-sm">
-            <SiteNav
-              showMembers={env.FEATURE_MEMBER_DIRECTORY}
-              showEvents={env.FEATURE_EVENTS}
-              isAdmin={state.isAdmin}
-            />
-            <span aria-hidden className="h-4 w-px bg-muted-foreground/20" />
-            <span className="text-sm text-muted-foreground">{displayName}</span>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-md border border-input px-3 py-1.5 text-xs font-medium hover:bg-accent/10"
-              >
-                Sign out
-              </button>
-            </form>
-          </nav>
-        </div>
-      </header>
+    <div className="dark min-h-screen bg-background text-foreground">
+      <MemberHeader
+        displayName={displayName}
+        avatarUrl={profile?.avatar_url ?? null}
+        isAdmin={state.isAdmin}
+        showMembers={env.FEATURE_MEMBER_DIRECTORY}
+        showEvents={env.FEATURE_EVENTS}
+      />
       <main className="mx-auto max-w-5xl px-4 py-8">
         {!state.studentEmailVerified ? (
           <StudentEmailNudge pendingDomainName={pendingDomainName} />
@@ -93,7 +73,7 @@ function StudentEmailNudge({
 }) {
   if (pendingDomainName) {
     return (
-      <section className="mb-6 flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+      <section className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
         <div>
           <p className="font-medium text-foreground">
             {pendingDomainName} is coming soon
@@ -111,7 +91,7 @@ function StudentEmailNudge({
     );
   }
   return (
-    <section className="mb-6 flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+    <section className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
       <div>
         <p className="font-medium text-foreground">
           Verify your student email to fully participate in events
@@ -130,7 +110,7 @@ function StudentEmailNudge({
 
 function ResumeNudge() {
   return (
-    <section className="mb-6 flex items-start justify-between gap-4 rounded-md border border-amber-500/40 bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
+    <section className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
       <div>
         <p className="font-medium text-foreground">
           Add your resume so recruiters can find you

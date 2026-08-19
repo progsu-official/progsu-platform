@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -50,70 +53,131 @@ async function loadStats(): Promise<Stats> {
 
 export default async function AdminHomePage() {
   const stats = await loadStats();
+  const verifiedPct =
+    stats.total === 0 ? 0 : Math.round((stats.verified / stats.total) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <header>
         <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Member counts at a glance. Recruiter-eligible uses the export gate (see
-          Export).
+        <p className="mt-1 text-sm text-muted-foreground">
+          Member counts at a glance. Recruiter-eligible uses the export gate
+          (see Export).
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Members" value={stats.total} />
-        <StatCard label="Verified" value={stats.verified} />
-        <StatCard
+      {/* Hero: the one number this view leads with, plus the verified share
+          as a meter (accent fill on a lighter step of the same hue). */}
+      <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-24 h-64 w-96 rounded-full bg-primary/10 blur-3xl"
+        />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Members
+            </p>
+            <p className="mt-1 text-5xl font-semibold tracking-tight text-foreground">
+              {stats.total}
+            </p>
+          </div>
+          <div className="w-full max-w-xs">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="text-muted-foreground">Verified students</span>
+              <span className="font-medium text-foreground">
+                {stats.verified} · {verifiedPct}%
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-primary/15">
+              <div
+                aria-hidden
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${verifiedPct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="With resume" value={stats.withResume} />
+        <StatTile label="Open to recruiters" value={stats.openToRecruiters} />
+        <StatTile
           label="Unverified"
           value={stats.unverified}
           href="/admin/members?verified=no"
-          emphasis={stats.unverified > 0 ? "warn" : undefined}
+          warn={stats.unverified > 0}
         />
-        <StatCard label="With resume" value={stats.withResume} />
-        <StatCard label="Open to recruiters" value={stats.openToRecruiters} />
-        <StatCard
+        <StatTile
           label="Domain requests"
           value={stats.pendingDomains}
           href="/admin/domain-requests"
-          emphasis={stats.pendingDomains > 0 ? "warn" : undefined}
+          warn={stats.pendingDomains > 0}
         />
       </div>
     </div>
   );
 }
 
-function StatCard({
+function StatTile({
   label,
   value,
   href,
-  emphasis,
+  warn,
 }: {
   label: string;
   value: number;
   href?: string;
-  emphasis?: "warn";
+  warn?: boolean;
 }) {
   const body = (
     <div
       className={
-        "rounded-md border p-4 transition-colors " +
-        (emphasis === "warn"
-          ? "border-amber-500/40 bg-amber-50 dark:bg-amber-500/10"
-          : "")
+        "group relative h-full rounded-xl border p-4 transition-all duration-200 " +
+        (warn
+          ? "border-amber-400/40 bg-amber-400/10 hover:border-amber-400/60"
+          : "border-border/70 bg-card " +
+            (href ? "hover:border-primary/40" : "")) +
+        (href ? " hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20" : "")
       }
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
+      <div className="flex items-start justify-between gap-2">
+        <p
+          className={
+            "text-xs font-semibold uppercase tracking-wide " +
+            (warn ? "text-amber-300/80" : "text-muted-foreground")
+          }
+        >
+          {label}
+        </p>
+        {href ? (
+          <ArrowUpRight
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+            className={
+              "shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 " +
+              (warn ? "text-amber-300/70" : "text-muted-foreground/50")
+            }
+          />
+        ) : null}
+      </div>
+      <p
+        className={
+          "mt-1.5 text-3xl font-semibold tracking-tight " +
+          (warn ? "text-amber-200" : "text-foreground")
+        }
+      >
+        {value}
       </p>
-      <p className="mt-1 text-3xl font-semibold">{value}</p>
     </div>
   );
   if (href) {
     return (
-      <a href={href} className="block hover:opacity-90">
+      <Link href={href} className="block">
         {body}
-      </a>
+      </Link>
     );
   }
   return body;

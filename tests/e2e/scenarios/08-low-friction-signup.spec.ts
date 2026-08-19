@@ -56,8 +56,15 @@ test("minimal signup: profile → consent → dashboard shows ring", async ({
 
     await page.getByRole("button", { name: /save and continue/i }).click();
 
-    // --- Step 2: consents ------------------------------------------------
-    // The profile server action + router.push can take > 5s on a cold compile.
+    // --- Step 2: resume (soft step — skip it) ----------------------------
+    // Since 9616bb5 the profile page pushes to /onboarding/resume so the
+    // skippable resume step isn't silently bypassed on the natural first
+    // pass. Skip it the way a minimal-signup user would.
+    await page.waitForURL(/\/onboarding\/resume/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /skip for now/i }).click();
+
+    // --- Step 3: consents ------------------------------------------------
+    // The server action + router.push can take > 5s on a cold compile.
     await page.waitForURL(/\/onboarding\/consent/, { timeout: 30_000 });
 
     // Accept the three required consents. The form uses checkbox inputs —
@@ -71,7 +78,7 @@ test("minimal signup: profile → consent → dashboard shows ring", async ({
       .first()
       .click();
 
-    // --- Step 3: land on dashboard with the ring -------------------------
+    // --- Step 4: land on dashboard with the ring -------------------------
     // Consent posts to /onboarding/done first, which then client-redirects to
     // /dashboard. Cold /dashboard compile can take > 10s, so give it 45s.
     await page.waitForURL(/\/dashboard/, { timeout: 45_000 });

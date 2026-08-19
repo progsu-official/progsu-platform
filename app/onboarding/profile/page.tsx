@@ -27,7 +27,6 @@ export default async function OnboardingProfilePage() {
   if (!user) redirect("/login");
 
   const state = await loadOnboardingState(supabase, user.id);
-  if (state.isAdmin) redirect("/admin");
   if (state.nextStep !== "profile" && state.nextStep !== null) {
     const next = onboardingPathFor(state.nextStep);
     if (next) redirect(next);

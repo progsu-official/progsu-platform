@@ -51,11 +51,16 @@ export default async function LoginPage({
         : null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-sm space-y-8">
-        <header className="space-y-2 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">Progsu</h1>
-          <p className="text-sm text-muted-foreground">
+    <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#151515] px-4 py-12 text-foreground">
+      <div className="relative w-full max-w-sm animate-fade-up space-y-8">
+        <header className="space-y-3 text-center">
+          <p className="text-[15px] font-semibold tracking-tight text-white/40">
+            progsu
+          </p>
+          <h1 className="text-4xl font-medium tracking-[-0.01em] text-white">
+            Welcome back
+          </h1>
+          <p className="text-base text-white/50">
             Sign in to continue to the member platform.
           </p>
         </header>
@@ -63,17 +68,19 @@ export default async function LoginPage({
         {errorMessage ? (
           <div
             role="alert"
-            className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           >
             {errorMessage}
           </div>
         ) : null}
 
-        <GoogleSignInButton next={params.next} />
+        <div className="space-y-5">
+          <GoogleSignInButton next={params.next} />
 
-        <p className="text-center text-xs text-muted-foreground">
-          You&apos;ll verify your student email in the next step.
-        </p>
+          <p className="text-center text-sm text-white/40">
+            You&apos;ll verify your student email in the next step.
+          </p>
+        </div>
       </div>
     </main>
   );

@@ -20,6 +20,14 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    // Playwright fixtures receive a `use` callback whose name collides with
+    // the React hook heuristic; nothing in tests/ is React code.
+    files: ["tests/**"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

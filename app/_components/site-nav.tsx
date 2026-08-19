@@ -2,69 +2,65 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CalendarDays, LayoutDashboard, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-// Shared member-area nav (Dashboard/Members/Events/Settings). Previously each
-// of app/dashboard, app/members, app/events hand-rolled its own header and
+// Shared member-area nav (Events/Members/Profile). Previously each of
+// app/dashboard, app/members, app/events hand-rolled its own header and
 // they'd drifted: dashboard linked to neither Members nor Events at all.
 // One nav, used by all three layouts, so that can't happen again.
 export function SiteNav({
   showMembers,
   showEvents,
-  isAdmin,
 }: {
   showMembers: boolean;
   showEvents: boolean;
-  isAdmin: boolean;
 }) {
   const pathname = usePathname() ?? "";
 
-  const linkClass = (active: boolean) =>
-    active
-      ? "font-medium text-foreground"
-      : "text-muted-foreground transition-colors hover:text-foreground";
+  type Item = { href: string; label: string; icon: LucideIcon; active: boolean };
+  const items: Item[] = [];
+  if (showEvents) {
+    items.push({
+      href: "/events",
+      label: "Events",
+      icon: CalendarDays,
+      active: pathname.startsWith("/events"),
+    });
+  }
+  if (showMembers) {
+    items.push({
+      href: "/members",
+      label: "Members",
+      icon: Users,
+      active: pathname.startsWith("/members"),
+    });
+  }
+  items.push({
+    href: "/dashboard",
+    label: "Profile",
+    icon: LayoutDashboard,
+    active: pathname.startsWith("/dashboard"),
+  });
 
   return (
     <>
-      <Link
-        href="/dashboard"
-        aria-current={pathname === "/dashboard" ? "page" : undefined}
-        className={linkClass(pathname === "/dashboard")}
-      >
-        Dashboard
-      </Link>
-      {showMembers ? (
+      {items.map(({ href, label, icon: Icon, active }) => (
         <Link
-          href="/members"
-          aria-current={pathname.startsWith("/members") ? "page" : undefined}
-          className={linkClass(pathname.startsWith("/members"))}
+          key={href}
+          href={href}
+          aria-current={active ? "page" : undefined}
+          className={
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors " +
+            (active
+              ? "bg-muted font-medium text-foreground"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")
+          }
         >
-          Members
+          <Icon size={15} strokeWidth={1.75} aria-hidden />
+          {label}
         </Link>
-      ) : null}
-      {showEvents ? (
-        <Link
-          href="/events"
-          aria-current={pathname.startsWith("/events") ? "page" : undefined}
-          className={linkClass(pathname.startsWith("/events"))}
-        >
-          Events
-        </Link>
-      ) : null}
-      <Link
-        href="/dashboard/settings"
-        aria-current={pathname === "/dashboard/settings" ? "page" : undefined}
-        className={linkClass(pathname === "/dashboard/settings")}
-      >
-        Settings
-      </Link>
-      {isAdmin ? (
-        <Link
-          href="/admin"
-          className="rounded-md border border-input px-2 py-1 text-xs font-medium transition-colors hover:bg-accent/10"
-        >
-          Admin
-        </Link>
-      ) : null}
+      ))}
     </>
   );
 }
