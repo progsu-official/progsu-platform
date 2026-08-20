@@ -1,23 +1,24 @@
-import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { getOwnVisibilitySettings, listMemberCards } from "@/lib/actions/members";
 
 import { VisibilityNudge } from "./_components/visibility-nudge";
+import { MemberConstellation } from "./_components/member-constellation";
 import {
-  MemberConstellation,
-  type ConstellationMember,
-} from "./_components/member-constellation";
+  cursorAfter,
+  toConstellationMember,
+} from "./_components/constellation-data";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
   q?: string;
-  cursor_ts?: string;
-  cursor_user?: string;
 };
 
-const PAGE_SIZE = 24;
+// The canvas is near-viewport-sized now, so a first page has to cover a lot of
+// lattice before the auto-fill in MemberConstellation starts topping it up.
+// 100 is the hard cap inside list_member_cards.
+const PAGE_SIZE = 60;
 
 export default async function MembersDirectoryPage({
   searchParams,
@@ -30,8 +31,6 @@ export default async function MembersDirectoryPage({
   const [result, ownVisibility] = await Promise.all([
     listMemberCards({
       search: q.length > 0 ? q : null,
-      cursor_ts: params.cursor_ts ?? null,
-      cursor_user: params.cursor_user ?? null,
       limit: PAGE_SIZE,
     }),
     getOwnVisibilitySettings(),
@@ -56,30 +55,7 @@ export default async function MembersDirectoryPage({
   }
 
   const cards = result.data;
-  const last = cards.length === PAGE_SIZE ? cards[cards.length - 1] : null;
-  const nextQs = last
-    ? new URLSearchParams({
-        ...(q ? { q } : {}),
-        cursor_ts: last.visible_since ?? "",
-        cursor_user: last.user_id,
-      }).toString()
-    : null;
-
-  const members: ConstellationMember[] = cards.map((card) => ({
-    userId: card.user_id,
-    name: card.display_name ?? "Member",
-    avatarUrl: card.avatar_url,
-    slug: card.profile_slug,
-    school: card.school,
-    classStanding: card.class_standing,
-    gradLabel:
-      card.grad_term && card.grad_year
-        ? card.grad_term
-        : card.grad_year
-          ? `Class of ${card.grad_year}`
-          : null,
-    roles: (card.interested_roles ?? []).slice(0, 3),
-  }));
+  const members = cards.map(toConstellationMember);
 
   return (
     <div className="space-y-8">
@@ -122,24 +98,15 @@ export default async function MembersDirectoryPage({
           </p>
         </div>
       ) : (
-        // Remount on a new result set so the viewer starts at the origin
-        // instead of parked over lattice that no longer has anyone on it.
+        // Remount on a new search so the viewer starts at the origin instead
+        // of parked over lattice that no longer has anyone on it.
         <MemberConstellation
-          key={`${q}|${params.cursor_user ?? ""}`}
-          members={members}
+          key={q}
+          initialMembers={members}
+          initialCursor={cursorAfter(cards, PAGE_SIZE)}
+          search={q.length > 0 ? q : null}
         />
       )}
-
-      {nextQs ? (
-        <div className="flex justify-center">
-          <Link
-            href={`/members?${nextQs}`}
-            className="rounded-full border border-border px-5 py-2 text-sm transition-colors hover:bg-muted/60"
-          >
-            Next page
-          </Link>
-        </div>
-      ) : null}
     </div>
   );
 }
