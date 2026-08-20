@@ -15,6 +15,13 @@ import type { ActionResult } from "@/lib/actions/result";
 
 type Phase = "email" | "code";
 
+// "Verify later" is deliberately not shown the instant the page loads — we want
+// users to actually attempt the OTP first. But it has to become reachable no
+// matter what, or a failed send (school not on the allowlist, rate limit) leaves
+// them with no way out of onboarding. Revealed at the earliest of these.
+const SEND_REVEAL_MS = 15_000;
+const MOUNT_REVEAL_MS = 30_000;
+
 type FormState = {
   phase: Phase;
   email: string;
@@ -88,11 +95,18 @@ export function VerifyEmailForm({
     errorField: null,
   });
   // Anchor timestamp for the "didn't receive a code?" reveal delay. Set on first
-  // successful requestStudentEmailCode; the button only appears 15s after.
-  const [skipRevealAt, setSkipRevealAt] = useState<number | null>(null);
+  // successful requestStudentEmailCode.
+  const [sendRevealAt, setSendRevealAt] = useState<number | null>(null);
+  const [mountRevealAt] = useState(() => Date.now() + MOUNT_REVEAL_MS);
+  // Some errors tell the user in so many words to click "Verify later" — don't
+  // make them wait out a timer to find the button the message points at.
+  const [errorForcedReveal, setErrorForcedReveal] = useState(false);
   const [pending, startTransition] = useTransition();
   const now = useNow(500);
-  const skipRevealed = skipRevealAt != null && now >= skipRevealAt;
+  const skipRevealed =
+    errorForcedReveal ||
+    now >= mountRevealAt ||
+    (sendRevealAt != null && now >= sendRevealAt);
 
   // Message live-region for aria-live announcements
   const liveRef = useRef<HTMLDivElement>(null);
@@ -107,6 +121,9 @@ export function VerifyEmailForm({
   function setError(result: Extract<ActionResult<unknown>, { ok: false }>) {
     const code = result.error.code;
     const base = ERROR_COPY[code] ?? result.error.message ?? "Something went wrong.";
+    if (code === "DOMAIN_NOT_ALLOWED" || code === "RATE_LIMITED") {
+      setErrorForcedReveal(true);
+    }
     setState((s) => ({
       ...s,
       errorMessage: base,
@@ -155,7 +172,7 @@ export function VerifyEmailForm({
       }));
       // Only start the "didn't receive?" reveal timer on first send, so users
       // can't trick the UI by click-resending immediately.
-      setSkipRevealAt((prev) => prev ?? Date.now() + 15_000);
+      setSendRevealAt((prev) => prev ?? Date.now() + SEND_REVEAL_MS);
     });
   }
 
