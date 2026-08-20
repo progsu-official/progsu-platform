@@ -11,6 +11,14 @@ function parseBool(value: string | undefined): boolean {
   return v === "true" || v === "1" || v === "yes" || v === "on";
 }
 
+// Same as parseBool, but unset means on. Used for kill switches meant to
+// ship enabled and only need a flip when a specific section turns out to
+// need pulling later.
+function parseBoolDefaultTrue(value: string | undefined): boolean {
+  if (value === undefined) return true;
+  return parseBool(value);
+}
+
 export const env = {
   NEXT_PUBLIC_SUPABASE_URL: required(
     "NEXT_PUBLIC_SUPABASE_URL",
@@ -27,6 +35,16 @@ export const env = {
   FEATURE_MEMBER_DIRECTORY: parseBool(process.env.FEATURE_MEMBER_DIRECTORY),
   FEATURE_SHARED_EVENT_HISTORY: parseBool(
     process.env.FEATURE_SHARED_EVENT_HISTORY
+  ),
+
+  // Public member-profile sections (/members/[slug]). Events ships on;
+  // resume stays off for now (per John, 2026-08-20) until there's a per-member
+  // opt-in — flip FEATURE_PUBLIC_PROFILE_RESUME on later, no code change needed.
+  FEATURE_PUBLIC_PROFILE_RESUME: parseBool(
+    process.env.FEATURE_PUBLIC_PROFILE_RESUME
+  ),
+  FEATURE_PUBLIC_PROFILE_EVENTS: parseBoolDefaultTrue(
+    process.env.FEATURE_PUBLIC_PROFILE_EVENTS
   ),
 
   // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,

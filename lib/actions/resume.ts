@@ -4,8 +4,11 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import { z } from "zod";
+
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
 import { type ActionResult, err, ok } from "./result";
 import {
   MAX_RESUME_BYTES,
@@ -197,6 +200,86 @@ export async function createResumePreviewUrl(): Promise<
     .createSignedUrl(row.storage_path, DOWNLOAD_TTL_SECONDS);
   if (signErr || !signed?.signedUrl) {
     return err("STORAGE_OBJECT_MISSING", "Couldn't open that resume. Try re-uploading it.");
+  }
+
+  return ok({
+    url: signed.signedUrl,
+    fileName: row.file_name,
+    expiresInSeconds: DOWNLOAD_TTL_SECONDS,
+  });
+}
+
+// Public profile section: does the target have a current resume at all, and
+// its display metadata — for rendering the "Resume" card without minting a
+// signed URL nobody may ever click (same reasoning as createResumePreviewUrl:
+// sign on click, not on render).
+export async function getCurrentResumeInfoForViewer(
+  targetUserId: string
+): Promise<ActionResult<{ fileName: string; uploadedAt: string } | null>> {
+  if (!env.FEATURE_PUBLIC_PROFILE_RESUME) return ok(null);
+
+  const idParsed = z.string().uuid().safeParse(targetUserId);
+  if (!idParsed.success) return ok(null);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "You must be signed in.");
+
+  const { data: rows, error: rowErr } = await supabase.rpc(
+    "member_current_resume_for_viewer",
+    { p_viewer_id: user.id, p_target_id: targetUserId }
+  );
+  if (rowErr) return err("INTERNAL", rowErr.message);
+
+  const row = (rows ?? [])[0] as
+    | { file_name: string; uploaded_at: string }
+    | undefined;
+  if (!row) return ok(null);
+
+  return ok({ fileName: row.file_name, uploadedAt: row.uploaded_at });
+}
+
+// Public profile section: preview someone else's current resume. The
+// storage RLS policy only allows the owner's own {user_id}/ prefix, so
+// signing has to go through the admin client here instead of the
+// user-context one createResumePreviewUrl uses — access itself is still
+// gated by member_current_resume_for_viewer()'s can_view_member_card()
+// check before we ever touch storage.
+export async function createResumePreviewUrlForMember(
+  targetUserId: string
+): Promise<
+  ActionResult<{ url: string; fileName: string; expiresInSeconds: number } | null>
+> {
+  if (!env.FEATURE_PUBLIC_PROFILE_RESUME) return ok(null);
+
+  const idParsed = z.string().uuid().safeParse(targetUserId);
+  if (!idParsed.success) return ok(null);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "You must be signed in.");
+
+  const { data: rows, error: rowErr } = await supabase.rpc(
+    "member_current_resume_for_viewer",
+    { p_viewer_id: user.id, p_target_id: targetUserId }
+  );
+  if (rowErr) return err("INTERNAL", rowErr.message);
+
+  const row = (rows ?? [])[0] as
+    | { storage_path: string; file_name: string }
+    | undefined;
+  if (!row) return ok(null);
+
+  const admin = createAdminClient();
+  const { data: signed, error: signErr } = await admin.storage
+    .from(BUCKET)
+    .createSignedUrl(row.storage_path, DOWNLOAD_TTL_SECONDS);
+  if (signErr || !signed?.signedUrl) {
+    return err("STORAGE_OBJECT_MISSING", "Couldn't open that resume.");
   }
 
   return ok({
