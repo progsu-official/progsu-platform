@@ -11,6 +11,7 @@ import { Avatar } from "@/app/_components/avatar";
 import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
 import { ProfileCompletionRing } from "./profile-completion-ring";
 import { StaleConsentBanner } from "./stale-consent-banner";
+import { UpcomingEvents, type UpcomingPlan } from "./upcoming-events";
 
 export const dynamic = "force-dynamic";
 
@@ -91,11 +92,29 @@ export default async function DashboardHome() {
   // Both are no-op when FEATURE_EVENTS is off (plans stays null).
   let upcomingCoverUrls: Array<string | null> = [];
   const upcomingWaitlistPositions = new Map<string, number | null>();
+  const upcomingGoingCounts = new Map<string, number>();
   if (upcomingPlans && upcomingPlans.length > 0) {
     const paths = (upcomingPlans as Array<{ cover_image_path: string | null }>).map(
       (r) => r.cover_image_path ?? null
     );
     upcomingCoverUrls = await resolveCoverUrls(supabase, paths);
+
+    // Going counts come from member_visible_events, the same view /events
+    // reads. Cancelled events aren't in it (it filters to published), so those
+    // rows resolve to null and the card shows its cancelled state instead.
+    const { data: counts } = await supabase
+      .from("member_visible_events")
+      .select("id, going_count")
+      .in(
+        "id",
+        (upcomingPlans as Array<{ event_id: string }>).map((r) => r.event_id)
+      );
+    for (const row of (counts ?? []) as Array<Record<string, unknown>>) {
+      upcomingGoingCounts.set(
+        row.id as string,
+        (row.going_count as number | null) ?? 0
+      );
+    }
 
     // Only fetch waitlist positions for the waitlisted rows. The helper is
     // self-scoped so each call is cheap and admin-RLS-safe.
@@ -228,16 +247,19 @@ export default async function DashboardHome() {
         </section>
       ) : null}
 
+      {/* Full-bleed rather than in the left column: the cover-forward cards
+          need the width to stay legible at three across. */}
+      {env.FEATURE_EVENTS ? (
+        <UpcomingEvents
+          plans={toUpcomingPlans(upcomingPlans ?? [])}
+          coverUrls={upcomingCoverUrls}
+          waitlistPositions={upcomingWaitlistPositions}
+          goingCounts={upcomingGoingCounts}
+        />
+      ) : null}
+
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-6">
-          {env.FEATURE_EVENTS ? (
-            <UpcomingEventsCard
-              rows={upcomingPlans ?? []}
-              coverUrls={upcomingCoverUrls}
-              waitlistPositions={upcomingWaitlistPositions}
-            />
-          ) : null}
-
           <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Profile
@@ -391,134 +413,16 @@ function GitHubMark({ className }: { className?: string }) {
   );
 }
 
-type UpcomingPlanRow = {
-  event_id: string;
-  slug: string;
-  title: string;
-  starts_at: string;
-  ends_at: string;
-  status: string;
-  location_text: string | null;
-  rsvp_status: string | null;
-};
-
-function UpcomingEventsCard({
-  rows,
-  coverUrls,
-  waitlistPositions,
-}: {
-  rows: Array<Record<string, unknown>>;
-  coverUrls: Array<string | null>;
-  waitlistPositions: Map<string, number | null>;
-}) {
-  const plans: UpcomingPlanRow[] = rows.map((r) => ({
+// self_event_history comes back loosely typed; narrow it once here so the
+// card component takes a real shape instead of Record<string, unknown>.
+function toUpcomingPlans(rows: Array<Record<string, unknown>>): UpcomingPlan[] {
+  return rows.map((r) => ({
     event_id: r.event_id as string,
     slug: r.slug as string,
     title: r.title as string,
     starts_at: r.starts_at as string,
-    ends_at: r.ends_at as string,
     status: (r.status as string) ?? "published",
     location_text: (r.location_text as string | null) ?? null,
     rsvp_status: (r.rsvp_status as string | null) ?? null,
   }));
-
-  return (
-    <section className="rounded-2xl border border-border/70 bg-card p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-sm font-semibold">Upcoming events</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Your next Progsu plans.
-          </p>
-        </div>
-        <Link
-          href="/events?tab=my-plans"
-          className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-        >
-          See all →
-        </Link>
-      </div>
-
-      {plans.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No upcoming events.{" "}
-          <Link
-            href="/events"
-            className="text-primary underline underline-offset-4"
-          >
-            Browse events
-          </Link>
-          .
-        </p>
-      ) : (
-        <ul className="mt-4 divide-y divide-border/60">
-          {plans.map((p, i) => {
-            const cover = coverUrls[i] ?? null;
-            const cancelled = p.status === "cancelled";
-            const isWaitlisted = p.rsvp_status === "waitlisted";
-            const position = isWaitlisted
-              ? waitlistPositions.get(p.event_id) ?? null
-              : null;
-            return (
-              <li key={p.event_id} className="flex items-center gap-3 py-2.5">
-                <div
-                  className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-gradient-to-br from-muted to-primary/20"
-                  aria-hidden
-                >
-                  {cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={cover}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/events/${p.slug}`}
-                    className="block truncate text-sm font-medium text-foreground hover:text-primary"
-                  >
-                    {p.title}
-                  </Link>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {new Date(p.starts_at).toLocaleString([], {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                    {p.location_text ? ` · ${p.location_text}` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-0.5">
-                  <span
-                    className={
-                      "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
-                      (cancelled
-                        ? "bg-destructive/15 text-destructive"
-                        : p.rsvp_status === "going"
-                          ? "bg-primary/15 text-primary"
-                          : "bg-amber-400/15 text-amber-300")
-                    }
-                  >
-                    {cancelled
-                      ? "Cancelled"
-                      : p.rsvp_status === "going"
-                        ? "Going"
-                        : "Waitlisted"}
-                  </span>
-                  {isWaitlisted && position != null ? (
-                    <span className="text-[10px] text-muted-foreground">
-                      #{position}
-                    </span>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
 }
