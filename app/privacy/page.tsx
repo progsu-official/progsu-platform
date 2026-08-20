@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v3
+          Draft · v4
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -90,12 +90,29 @@ export default function PrivacyPage() {
           <span className="font-mono text-xs">progsu.app/members/&lt;your-slug&gt;</span>{" "}
           and see a sanitized view of your profile.
         </p>
+        <p>
+          Accounts created on or after 20 August 2026 start with directory
+          visibility on, and can turn it off at any time in the same settings
+          page. Accounts created before that date keep whatever they had
+          already chosen; we did not switch anyone on.
+        </p>
         <p className="font-medium">Fields visible to other members:</p>
         <ul className="list-disc pl-6">
           <li>Your name (preferred name, or first name if none).</li>
-          <li>Your Google avatar.</li>
+          <li>Your avatar, whether from Google or uploaded by you.</li>
+          <li>
+            New in v4: your profile banner image, and your note — the short
+            status line shown above your avatar. Both are optional, both are
+            written by you, and neither is reviewed before other members see
+            it, so treat them as public writing.
+          </li>
+          <li>Your one-line bio.</li>
           <li>School, class standing, and graduation term.</li>
           <li>Up to six interested roles.</li>
+          <li>
+            Your LinkedIn, GitHub, and portfolio links, and your Discord
+            username, when you have added them.
+          </li>
           <li>
             Optional: events you attended — only public, non-sensitive events
             with at least a handful of attendees. Private-invite events are
@@ -109,7 +126,7 @@ export default function PrivacyPage() {
           <li>Resume content or file path.</li>
           <li>Consent history or verification status.</li>
           <li>Admin status.</li>
-          <li>Major, minor, LinkedIn/GitHub/portfolio links.</li>
+          <li>Major and minor.</li>
         </ul>
         <p>
           Progsu admins can still see full profile data regardless of your
