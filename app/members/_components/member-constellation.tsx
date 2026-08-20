@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Globe, X } from "lucide-react";
 
 import { Avatar } from "@/app/_components/avatar";
 import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
+import { StaticNote } from "@/app/profile/note-bubble";
 import { listMemberCards } from "@/lib/actions/members";
 
 import {
@@ -147,12 +148,9 @@ export function MemberConstellation({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const edgeLayerRef = useRef<HTMLDivElement>(null);
-  const lensRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Array<HTMLLIElement | null>>([]);
 
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
-  const [focusIndex, setFocusIndex] = useState(0);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const count = members.length;
@@ -197,7 +195,6 @@ export function MemberConstellation({
   const velocity = useRef({ x: 0, y: 0 });
   const dragging = useRef(false);
   const frame = useRef<number | null>(null);
-  const nearest = useRef(0);
 
   // Radial, not per-axis: the old per-axis clamp let a diagonal drag park the
   // whole lattice in a corner of the frame, leaving the lens ring hovering
@@ -220,19 +217,12 @@ export function MemberConstellation({
     // must not fade as hard as one a screen-height away.
     const rx = Math.max(1, ((viewport.w || 960) / 2) * 0.92);
     const ry = Math.max(1, ((viewport.h || 480) / 2) * 0.92);
-    let bestIndex = 0;
-    let bestDistance = Infinity;
 
     for (let i = 0; i < positions.length; i += 1) {
       const node = nodeRefs.current[i];
       if (!node) continue;
       const px = positions[i].x + pan.current.x;
       const py = positions[i].y + pan.current.y;
-      const distance = Math.hypot(px, py);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = i;
-      }
       const t = Math.min(1, Math.hypot(px / rx, py / ry));
       const shape = (1 - t) ** 2.2;
       const scale = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * shape;
@@ -247,17 +237,6 @@ export function MemberConstellation({
 
     if (edgeLayerRef.current) {
       edgeLayerRef.current.style.transform = `translate3d(${pan.current.x}px, ${pan.current.y}px, 0)`;
-    }
-
-    // The lens ring only means something when a face is actually under it.
-    // Panned into open lattice, an empty ring reads as a broken highlight.
-    if (lensRef.current) {
-      lensRef.current.style.opacity = bestDistance < cell * 1.1 ? "1" : "0";
-    }
-
-    if (bestIndex !== nearest.current) {
-      nearest.current = bestIndex;
-      setFocusIndex(bestIndex);
     }
 
     // Directional prefetch: probe one look-ahead length past the viewport in
@@ -365,7 +344,6 @@ export function MemberConstellation({
     moved.current = false;
     velocity.current = { x: 0, y: 0 };
     lastPoint.current = { x: e.clientX, y: e.clientY, t: e.timeStamp };
-    e.currentTarget.setPointerCapture(e.pointerId);
     requestFrame();
   };
 
@@ -373,7 +351,18 @@ export function MemberConstellation({
     if (!dragging.current) return;
     const dx = e.clientX - lastPoint.current.x;
     const dy = e.clientY - lastPoint.current.y;
-    if (Math.hypot(dx, dy) > 2) moved.current = true;
+    if (!moved.current && Math.hypot(dx, dy) > 2) {
+      moved.current = true;
+      // Capturing on pointerdown (rather than only once a drag actually
+      // starts) retargets the browser's synthetic click event to this
+      // container too -- per the Pointer Events spec, an active capture
+      // redirects click, not just pointermove/up -- which silently ate
+      // every plain click on a face button before it ever reached the
+      // button's onClick. Deferring capture to here means a click with no
+      // real movement never captures at all, so its click event still
+      // targets (and bubbles through) the button normally.
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
     const dt = Math.max(1, e.timeStamp - lastPoint.current.t);
     velocity.current = { x: (dx / dt) * 14, y: (dy / dt) * 14 };
     lastPoint.current = { x: e.clientX, y: e.clientY, t: e.timeStamp };
@@ -438,16 +427,12 @@ export function MemberConstellation({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedId]);
 
-  const selectedIndex = useMemo(() => {
+  // Card only ever shows the clicked-and-pinned member — nothing renders
+  // until a click happens, and nothing else swaps it out from under you.
+  const shown = useMemo(() => {
     if (selectedId === null) return null;
-    const i = members.findIndex((m) => m.userId === selectedId);
-    return i >= 0 ? i : null;
+    return members.find((m) => m.userId === selectedId) ?? null;
   }, [members, selectedId]);
-  const shown =
-    (selectedIndex !== null ? members[selectedIndex] : null) ??
-    members[hoverIndex ?? focusIndex] ??
-    members[0];
-  const shownPinned = selectedIndex !== null && shown?.userId === selectedId;
 
   return (
     // Full-bleed: the canvas breaks out of the layout's max-w-5xl column
@@ -503,16 +488,6 @@ export function MemberConstellation({
           </svg>
         </div>
 
-        {/* The lens: marks the slot the card below is describing. paint()
-            fades it out when no face is near the centre — an empty ring over
-            bare lattice reads as a broken highlight. */}
-        <div
-          ref={lensRef}
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/40 transition-opacity duration-300"
-          style={{ width: diameter + 24, height: diameter + 24 }}
-        />
-
         <ul className="absolute inset-0">
           {members.map((member, i) => {
             const delay = entryDelay.current.get(member.userId) ?? 0;
@@ -529,16 +504,10 @@ export function MemberConstellation({
                   marginLeft: -diameter / 2,
                   marginTop: -diameter / 2,
                 }}
-                onMouseEnter={() => setHoverIndex(i)}
-                onMouseLeave={() =>
-                  setHoverIndex((cur) => (cur === i ? null : cur))
-                }
               >
-                {/* Every face opens the profile card. The old markup only
-                    linked members who had claimed a profile slug, which left
-                    most of the directory dead to clicks — the backfilled
-                    members have no slug yet. Navigation moved into the card,
-                    where it can explain itself. */}
+                {/* Click opens the card and pins it there — no preview on
+                    hover, so panning across the lattice never pops or swaps
+                    a card you didn't ask for. */}
                 <button
                   type="button"
                   aria-label={`View ${member.name}`}
@@ -549,14 +518,10 @@ export function MemberConstellation({
                     setSelectedId(member.userId);
                   }}
                   onFocus={(e) => {
-                    setHoverIndex(i);
                     if (e.currentTarget.matches(":focus-visible")) {
                       centerOn(i);
                     }
                   }}
-                  onBlur={() =>
-                    setHoverIndex((cur) => (cur === i ? null : cur))
-                  }
                   className="bubble-in block h-full w-full cursor-pointer rounded-full ring-primary/70 ring-offset-2 ring-offset-background transition-transform duration-200 hover:scale-[1.08] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100"
                   style={{ animationDelay: `${delay}ms` }}
                 >
@@ -575,9 +540,10 @@ export function MemberConstellation({
 
         <div aria-hidden className="constellation-vignette" />
 
-        {/* Profile card: describes the focused face, pins on click. Overlaid
-            rather than stacked under the canvas — below it, it pushed the
-            lattice up and left a dead band the full width of the page. */}
+        {/* Profile card: only appears once you click a face, and stays put
+            until you close it or click another. Overlaid rather than stacked
+            under the canvas — below it, it pushed the lattice up and left a
+            dead band the full width of the page. */}
         {shown ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[300] flex justify-center px-4 pb-5">
             <div
@@ -588,38 +554,38 @@ export function MemberConstellation({
               className="constellation-card-in pointer-events-auto w-full max-w-md rounded-2xl border border-border/70 bg-popover/95 p-4 shadow-lg shadow-black/10 backdrop-blur-sm dark:shadow-black/40"
             >
               <div className="flex items-start gap-3">
-                <Avatar
-                  src={shown.avatarUrl}
-                  name={shown.name}
-                  className="h-12 w-12 shrink-0 rounded-full"
-                  textClassName="text-base"
-                />
+                <div className="relative shrink-0">
+                  {shown.note ? (
+                    <div className="absolute bottom-full left-1 mb-2">
+                      <StaticNote note={shown.note} />
+                    </div>
+                  ) : null}
+                  <Avatar
+                    src={shown.avatarUrl}
+                    name={shown.name}
+                    className="h-12 w-12 rounded-full"
+                    textClassName="text-base"
+                  />
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="truncate text-base font-semibold tracking-tight">
                       {shown.name}
                     </p>
-                    {shownPinned ? (
-                      <button
-                        type="button"
-                        aria-label="Close profile card"
-                        onClick={() => setSelectedId(null)}
-                        className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <X size={15} strokeWidth={1.75} aria-hidden />
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      aria-label="Close profile card"
+                      onClick={() => setSelectedId(null)}
+                      className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <X size={15} strokeWidth={1.75} aria-hidden />
+                    </button>
                   </div>
                   {shown.school || shown.gradLabel ? (
                     <p className="truncate text-sm text-muted-foreground">
                       {[shown.school, shown.gradLabel]
                         .filter(Boolean)
                         .join(" · ")}
-                    </p>
-                  ) : null}
-                  {shown.note ? (
-                    <p className="mt-1 truncate text-sm italic text-foreground/90">
-                      &ldquo;{shown.note}&rdquo;
                     </p>
                   ) : null}
                 </div>
@@ -666,6 +632,17 @@ export function MemberConstellation({
                     className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <GitHubMark className="h-[15px] w-[15px]" />
+                  </a>
+                ) : null}
+                {shown.portfolioUrl ? (
+                  <a
+                    href={shown.portfolioUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Portfolio"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <Globe size={15} strokeWidth={1.75} aria-hidden />
                   </a>
                 ) : null}
                 {shown.slug ? (
