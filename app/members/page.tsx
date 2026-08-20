@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 
-import { listMemberCards } from "@/lib/actions/members";
+import { getOwnVisibilitySettings, listMemberCards } from "@/lib/actions/members";
 import { Avatar } from "@/app/_components/avatar";
+
+import { VisibilityNudge } from "./_components/visibility-nudge";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +24,19 @@ export default async function MembersDirectoryPage({
   const params = await searchParams;
   const q = (params.q ?? "").trim();
 
-  const result = await listMemberCards({
-    search: q.length > 0 ? q : null,
-    cursor_ts: params.cursor_ts ?? null,
-    cursor_user: params.cursor_user ?? null,
-    limit: PAGE_SIZE,
-  });
+  const [result, ownVisibility] = await Promise.all([
+    listMemberCards({
+      search: q.length > 0 ? q : null,
+      cursor_ts: params.cursor_ts ?? null,
+      cursor_user: params.cursor_user ?? null,
+      limit: PAGE_SIZE,
+    }),
+    getOwnVisibilitySettings(),
+  ]);
+  // A null row means the viewer has no visibility settings yet, which is the
+  // same story as discoverable=false: they aren't in the directory.
+  const hiddenFromDirectory =
+    ownVisibility.ok && !ownVisibility.data?.discoverable;
 
   if (!result.ok) {
     return (
@@ -57,18 +66,9 @@ export default async function MembersDirectoryPage({
     <div className="space-y-8">
       <header className="space-y-1.5">
         <h1 className="text-4xl font-bold tracking-tight">Members</h1>
-        <p className="text-sm text-muted-foreground">
-          Progsu members who&apos;ve opted into the directory. Turn on your own
-          visibility in{" "}
-          <Link
-            href="/dashboard/settings#visibility"
-            className="text-foreground underline underline-offset-4"
-          >
-            settings
-          </Link>
-          .
-        </p>
       </header>
+
+      {hiddenFromDirectory ? <VisibilityNudge /> : null}
 
       <form method="get" className="relative max-w-sm">
         <Search

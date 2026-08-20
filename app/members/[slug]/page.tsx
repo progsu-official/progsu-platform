@@ -78,7 +78,7 @@ export default async function MemberProfilePage({
             Other members see what&apos;s shown here when your directory
             visibility is on.{" "}
             <Link
-              href="/dashboard/settings#visibility"
+              href="/profile/settings/visibility"
               className="underline underline-offset-4"
             >
               Manage visibility
