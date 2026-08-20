@@ -7,7 +7,6 @@ import {
 } from "@/lib/auth/request-cache";
 import { env } from "@/lib/env";
 import { readTheme } from "@/lib/theme";
-import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { MemberHeader } from "@/app/_components/member-header";
 import { ThemeShell } from "@/app/_components/theme-shell";
@@ -29,13 +28,19 @@ export default async function MembersLayout({
   if (!user) redirect("/login");
   const supabase = await createClient();
 
+  // The directory is open to anyone signed in. It used to bounce members who
+  // were mid-onboarding to /onboarding/<step>, with an exemption for admins --
+  // which is how a stale privacy_policy version could empty the directory for
+  // admins while every other member was redirected away from it entirely.
+  //
+  // The detail page never had this gate: can_view_member_card has only ever
+  // asked whether the *target* is discoverable, not whether the viewer finished
+  // onboarding. The list was the outlier, so this drops the gate rather than
+  // extending it. list_member_cards was relaxed to match in 20260820160000 --
+  // both layers have to agree or the page renders over an empty result set.
+  //
+  // Still enforced above: the feature flag, and being signed in at all.
   const state = await getRequestOnboardingState(user.id);
-  // Admins bypass onboarding (same contract as /profile). They can still
-  // browse /members for support/moderation — no bounce.
-  if (!state.isAdmin && !state.fullyOnboarded) {
-    const next = onboardingPathFor(state.nextStep) ?? "/onboarding/verify-email";
-    redirect(next);
-  }
 
   const { data: profile } = await supabase
     .from("profiles")
