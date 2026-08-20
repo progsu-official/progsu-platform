@@ -5,6 +5,9 @@ import { UserMenu } from "./user-menu";
 
 // One header for every member surface (dashboard/members/events layouts).
 // Sticky + frosted so the timeline scrolls underneath it Luma-style.
+// displayName null = signed-out visitor (only reachable today on the public
+// event detail page, per the 2026-08-20 RSVP-first decision) — shows a
+// sign-in link instead of the account menu.
 export function MemberHeader({
   displayName,
   email,
@@ -13,7 +16,7 @@ export function MemberHeader({
   showMembers,
   showEvents,
 }: {
-  displayName: string;
+  displayName: string | null;
   email?: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
@@ -24,7 +27,7 @@ export function MemberHeader({
     <header className="glass-nav sticky top-0 z-40">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
         <Link
-          href="/profile"
+          href={displayName ? "/profile" : "/"}
           className="flex items-baseline gap-1.5 text-[15px] font-bold tracking-tight text-foreground"
         >
           progsu
@@ -49,11 +52,20 @@ export function MemberHeader({
               Admin
             </Link>
           ) : null}
-          <UserMenu
-            displayName={displayName}
-            email={email ?? null}
-            avatarUrl={avatarUrl}
-          />
+          {displayName ? (
+            <UserMenu
+              displayName={displayName}
+              email={email ?? null}
+              avatarUrl={avatarUrl}
+            />
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>

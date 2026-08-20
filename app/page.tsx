@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 // Logged-out welcome screen. Mirrors the reference collage system measured
 // off luma.com's logged-out page: flat #151515 ground, 80px/0.92 medium
@@ -270,6 +271,18 @@ export default function Home() {
         >
           <GoogleLogo className="h-5 w-5" />
           continue with google
+        </Link>
+
+        <Link
+          href="/events"
+          className="group mt-4 inline-flex items-center gap-1.5 text-[15px] font-medium text-white/50 transition-colors duration-150 hover:text-white/80"
+        >
+          discover events
+          <ArrowRight
+            size={16}
+            strokeWidth={1.75}
+            className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+          />
         </Link>
 
         <p className="mt-6 text-base font-medium text-white/50">

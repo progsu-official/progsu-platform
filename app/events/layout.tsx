@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -8,7 +8,6 @@ import {
 } from "@/lib/auth/request-cache";
 import { env } from "@/lib/env";
 import { readTheme } from "@/lib/theme";
-import { onboardingPathFor } from "@/lib/auth/onboarding";
 import { Button } from "@/components/ui/button";
 
 import { MemberHeader } from "@/app/_components/member-header";
@@ -28,26 +27,30 @@ export default async function EventsLayout({
   // Deduped for this request: the page under this layout asks for the same
   // two things, and without the shared cache each navigation paid for both
   // twice before any page data was fetched.
+  //
+  // No auth/onboarding gate here — per the 2026-08-20 RSVP-first decision the
+  // event detail page under this layout is public. The /events list page
+  // (app/events/page.tsx) still requires a signed-in, fully-onboarded member
+  // and enforces that itself. This layout only renders what it can for
+  // whoever shows up: full member chrome for a fully-onboarded user, a
+  // sign-in link in the header for anyone else.
   const user = await getRequestUser();
-  if (!user) redirect("/login");
   const supabase = await createClient();
 
-  const state = await getRequestOnboardingState(user.id);
-  // Admins can view the member events surface (e.g., to preview how it looks
-  // or walk through an RSVP themselves). They also have /admin/events.
-  // Non-admins must finish onboarding before reaching /events.
-  if (!state.isAdmin && !state.fullyOnboarded) {
-    const next = onboardingPathFor(state.nextStep) ?? "/onboarding/verify-email";
-    redirect(next);
-  }
+  const state = user ? await getRequestOnboardingState(user.id) : null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("first_name, avatar_url, pending_domain_name")
-    .eq("id", user.id)
-    .single();
-  const displayName =
-    profile?.first_name ?? user.user_metadata?.given_name ?? "You";
+  const profile = user
+    ? (
+        await supabase
+          .from("profiles")
+          .select("first_name, avatar_url, pending_domain_name")
+          .eq("id", user.id)
+          .single()
+      ).data
+    : null;
+  const displayName = user
+    ? profile?.first_name ?? user.user_metadata?.given_name ?? "You"
+    : null;
   const pendingDomainName =
     (profile?.pending_domain_name as string | null | undefined) ?? null;
 
@@ -57,17 +60,19 @@ export default async function EventsLayout({
     <ThemeShell initialTheme={theme}>
       <MemberHeader
         displayName={displayName}
-        email={user.email ?? null}
+        email={user?.email ?? null}
         avatarUrl={profile?.avatar_url ?? null}
-        isAdmin={state.isAdmin}
+        isAdmin={state?.isAdmin ?? false}
         showMembers={env.FEATURE_MEMBER_DIRECTORY}
         showEvents={env.FEATURE_EVENTS}
       />
       <main className="mx-auto max-w-5xl px-4 py-8">
-        {!state.studentEmailVerified ? (
+        {state && !state.studentEmailVerified ? (
           <StudentEmailNudge pendingDomainName={pendingDomainName} />
         ) : null}
-        {!state.isAdmin && !state.hasCurrentResume ? <ResumeNudge /> : null}
+        {state && !state.isAdmin && !state.hasCurrentResume ? (
+          <ResumeNudge />
+        ) : null}
         {children}
       </main>
     </ThemeShell>
