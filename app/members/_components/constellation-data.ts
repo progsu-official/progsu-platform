@@ -24,6 +24,7 @@ export type ConstellationMember = {
   // so the in-canvas card can render bio/note/socials without a second fetch.
   note: string | null;
   bio: string | null;
+  bannerUrl: string | null;
   discordUsername: string | null;
   linkedinUrl: string | null;
   githubUrl: string | null;
@@ -51,6 +52,7 @@ export function toConstellationMember(
     visibleSince: card.visible_since,
     note: card.note,
     bio: card.bio,
+    bannerUrl: card.banner_url,
     discordUsername: card.discord_username,
     linkedinUrl: card.linkedin_url,
     githubUrl: card.github_url,

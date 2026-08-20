@@ -28,15 +28,22 @@ const AXIAL_DIRS = [
 ] as const;
 
 const SQRT3_2 = Math.sqrt(3) / 2;
-const GAP = 14;
+const GAP = 18;
 
-// Fisheye shape. The face under the lens renders well past natural size and
-// the curve drops steeply, which is what makes the centre read as magnified
-// rather than merely "not shrunk" — the old curve peaked at 1.0 and all the
-// depth came from shrinking the rim, so the middle never looked magnified.
-const MAX_SCALE = 1.55;
-const MIN_SCALE = 0.35;
-const MIN_OPACITY = 0.12;
+// Fisheye shape. The dome is wide and low: FALLOFF_EXP near 1 spreads the
+// magnification across most of the frame instead of collapsing within a cell
+// of the lens, and the peak is sized so a centre face and its neighbour just
+// kiss (peak+neighbour diameters ≈ two cells) rather than pile up. GAP grew
+// with the peak — spacing is what buys the overlap headroom.
+//
+// MIN_OPACITY is a *visibility* floor, not a fade-out: the vignette already
+// veils the rim, and a 0.12 floor made far faces vanish against the light
+// background while their lattice lines stayed visible — which read as the
+// grid rendering with nobody on it whenever a new page landed.
+const MAX_SCALE = 1.26;
+const MIN_SCALE = 0.42;
+const MIN_OPACITY = 0.3;
+const FALLOFF_EXP = 1.3;
 
 // Pages after the first are deliberately small and their faces trickle in
 // one by one (ENTRY_STAGGER_MS apart). The prefetch below fires well before
@@ -68,8 +75,8 @@ function hexSpiral(count: number) {
 
 function cellSizeFor(width: number) {
   if (width < 420) return 66;
-  if (width < 720) return 82;
-  return 96;
+  if (width < 720) return 84;
+  return 104;
 }
 
 export function MemberConstellation({
@@ -197,18 +204,23 @@ export function MemberConstellation({
   const frame = useRef<number | null>(null);
 
   // Radial, not per-axis: the old per-axis clamp let a diagonal drag park the
-  // whole lattice in a corner of the frame, leaving the lens ring hovering
-  // over empty space — the "weird" half-empty state. A radial bound means the
+  // whole lattice in a corner of the frame, leaving empty space on the
+  // opposite side — the "weird" half-empty state. A radial bound means the
   // origin-most face can reach the frame edge, but the lattice can never
-  // leave the lens entirely.
+  // leave the frame entirely.
+  // Stops 1.5 cells short of the hull: parked exactly at the frontier, the
+  // centre sits on the last loaded ring with half the frame empty — which is
+  // what a mid-load page looked like when the viewer outran the fetch.
+  const panLimit = Math.max(0, hullRadius - cell * 1.5);
+
   const clampPan = useCallback(
     (p: { x: number; y: number }) => {
       const r = Math.hypot(p.x, p.y);
-      if (r <= hullRadius || r === 0) return p;
-      const k = hullRadius / r;
+      if (r <= panLimit || r === 0) return p;
+      const k = panLimit / r;
       return { x: p.x * k, y: p.y * k };
     },
-    [hullRadius],
+    [panLimit],
   );
 
   const paint = useCallback(() => {
@@ -224,9 +236,9 @@ export function MemberConstellation({
       const px = positions[i].x + pan.current.x;
       const py = positions[i].y + pan.current.y;
       const t = Math.min(1, Math.hypot(px / rx, py / ry));
-      const shape = (1 - t) ** 2.2;
+      const shape = (1 - t) ** FALLOFF_EXP;
       const scale = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * shape;
-      const opacity = Math.max(MIN_OPACITY, 1 - 0.9 * t ** 2);
+      const opacity = Math.max(MIN_OPACITY, 1 - 0.7 * t ** 1.6);
       node.style.transform = `translate3d(${px}px, ${py}px, 0) scale(${scale})`;
       node.style.opacity = String(opacity);
       node.style.zIndex = String(Math.round((1 - t) * 100));
@@ -546,117 +558,154 @@ export function MemberConstellation({
             dead band the full width of the page. */}
         {shown ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[300] flex justify-center px-4 pb-5">
+            {/* No key: re-keying per member replayed the entrance fade on
+                every hover crossing, so the card spent most of a pan half
+                transparent with the lattice ghosting through it. It mounts
+                once, animates once, and the content swaps in place. Solid
+                popover fill for the same reason. */}
             <div
-              key={shown.userId}
               role="group"
               aria-label={`Profile: ${shown.name}`}
               onPointerDown={(e) => e.stopPropagation()}
-              className="constellation-card-in pointer-events-auto w-full max-w-md rounded-2xl border border-border/70 bg-popover/95 p-4 shadow-lg shadow-black/10 backdrop-blur-sm dark:shadow-black/40"
+              className="constellation-card-in pointer-events-auto w-full max-w-md overflow-hidden rounded-2xl border border-border/70 bg-popover shadow-lg shadow-black/10 dark:shadow-black/40"
             >
-              <div className="flex items-start gap-3">
-                <div className="relative shrink-0">
+              {/* Miniature of the profile header: banner across the top,
+                  avatar breaking its bottom edge. Same gradient fallback as
+                  StaticBanner so bannerless members still get a header. */}
+              <div className="relative h-16 bg-muted">
+                {shown.bannerUrl ? (
+                  // Keyed so switching members drops the old banner instantly
+                  // instead of showing the previous member's photo while the
+                  // next one loads.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={shown.userId}
+                    src={shown.bannerUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    className="h-full w-full"
+                    style={{
+                      backgroundImage:
+                        "radial-gradient(60% 80% at 12% 0%, hsl(var(--primary) / 0.35), transparent 62%), radial-gradient(55% 75% at 88% 10%, hsl(var(--primary) / 0.22), transparent 58%)",
+                    }}
+                  />
+                )}
+                {/* Card only ever shows the pinned member, so this is never
+                    conditional the way a hover-preview version would need. */}
+                <button
+                  type="button"
+                  aria-label="Close profile card"
+                  onClick={() => setSelectedId(null)}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  <X size={14} strokeWidth={2} aria-hidden />
+                </button>
+              </div>
+
+              <div className="relative px-4 pb-4">
+                <div className="relative -mt-7 w-fit">
                   {shown.note ? (
-                    <div className="absolute bottom-full left-1 mb-2">
+                    <div className="absolute bottom-full left-1 z-10 mb-2">
                       <StaticNote note={shown.note} />
                     </div>
                   ) : null}
-                  <Avatar
-                    src={shown.avatarUrl}
-                    name={shown.name}
-                    className="h-12 w-12 rounded-full"
-                    textClassName="text-base"
-                  />
+                  <div className="w-fit rounded-full ring-4 ring-popover">
+                    <Avatar
+                      src={shown.avatarUrl}
+                      name={shown.name}
+                      className="h-14 w-14 rounded-full"
+                      textClassName="text-lg"
+                    />
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
+
+                <div className="mt-2 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="truncate text-base font-semibold tracking-tight">
                       {shown.name}
                     </p>
-                    <button
-                      type="button"
-                      aria-label="Close profile card"
-                      onClick={() => setSelectedId(null)}
-                      className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <X size={15} strokeWidth={1.75} aria-hidden />
-                    </button>
+                    {shown.school || shown.gradLabel ? (
+                      <p className="truncate text-sm text-muted-foreground">
+                        {[shown.school, shown.gradLabel]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
                   </div>
-                  {shown.school || shown.gradLabel ? (
-                    <p className="truncate text-sm text-muted-foreground">
-                      {[shown.school, shown.gradLabel]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  ) : null}
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    {shown.linkedinUrl ? (
+                      <a
+                        href={shown.linkedinUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="LinkedIn"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <LinkedInMark className="h-[15px] w-[15px]" />
+                      </a>
+                    ) : null}
+                    {shown.githubUrl ? (
+                      <a
+                        href={shown.githubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="GitHub"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <GitHubMark className="h-[15px] w-[15px]" />
+                      </a>
+                    ) : null}
+                    {shown.portfolioUrl ? (
+                      <a
+                        href={shown.portfolioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Portfolio"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <Globe size={15} strokeWidth={1.75} aria-hidden />
+                      </a>
+                    ) : null}
+                    {shown.slug ? (
+                      <Link
+                        href={`/members/${shown.slug}`}
+                        className="ml-1 rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        View profile
+                      </Link>
+                    ) : shown.discordUsername ? (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        @{shown.discordUsername}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
 
-              {shown.bio ? (
-                <p className="mt-2.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                  {shown.bio}
-                </p>
-              ) : null}
+                {shown.bio ? (
+                  <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                    {shown.bio}
+                  </p>
+                ) : null}
 
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                {shown.classStanding ? (
-                  <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
-                    {shown.classStanding}
-                  </span>
-                ) : null}
-                {shown.roles.map((r) => (
-                  <span
-                    key={r}
-                    className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground"
-                  >
-                    {r.replace(/_/g, " ")}
-                  </span>
-                ))}
-                <span className="flex-1" />
-                {shown.linkedinUrl ? (
-                  <a
-                    href={shown.linkedinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="LinkedIn"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <LinkedInMark className="h-[15px] w-[15px]" />
-                  </a>
-                ) : null}
-                {shown.githubUrl ? (
-                  <a
-                    href={shown.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="GitHub"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <GitHubMark className="h-[15px] w-[15px]" />
-                  </a>
-                ) : null}
-                {shown.portfolioUrl ? (
-                  <a
-                    href={shown.portfolioUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Portfolio"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <Globe size={15} strokeWidth={1.75} aria-hidden />
-                  </a>
-                ) : null}
-                {shown.slug ? (
-                  <Link
-                    href={`/members/${shown.slug}`}
-                    className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    View profile
-                  </Link>
-                ) : shown.discordUsername ? (
-                  <span className="text-xs text-muted-foreground">
-                    @{shown.discordUsername}
-                  </span>
-                ) : null}
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 empty:hidden">
+                  {shown.classStanding ? (
+                    <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
+                      {shown.classStanding}
+                    </span>
+                  ) : null}
+                  {shown.roles.map((r) => (
+                    <span
+                      key={r}
+                      className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground"
+                    >
+                      {r.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
