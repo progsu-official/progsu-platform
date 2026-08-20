@@ -11,11 +11,13 @@ Progsu member platform. Internal CRM + events operations tool for a student buil
 Read these **in this order** when you need context:
 
 1. `README.md` — stack, setup, how to run
-2. `docs/07-implementation-plan.md` — the authoritative source when design docs disagree. Always check this.
-3. `docs/09-events-platform-plan.md` — the program plan for R1/R2/R3 events layer. Sections §14 (rollout phases), §15 (risks), §16 (open decisions).
-4. `docs/10-r2-member-card-spec.md` and `docs/11-r3-shared-events-spec.md` — detailed specs for the peer-visibility features
-5. `docs/12-events-pilot-runbook.md` — step-by-step Phase A/B/C rollout
-6. `docs/13-roadmap/` — post-R3 planned work
+2. `DESIGN.md` — the visual system: tokens, ladders, surface families, motion,
+   and the anti-pattern table. Read before building or reshaping any UI.
+3. `docs/07-implementation-plan.md` — the authoritative source when design docs disagree. Always check this.
+4. `docs/09-events-platform-plan.md` — the program plan for R1/R2/R3 events layer. Sections §14 (rollout phases), §15 (risks), §16 (open decisions).
+5. `docs/10-r2-member-card-spec.md` and `docs/11-r3-shared-events-spec.md` — detailed specs for the peer-visibility features
+6. `docs/12-events-pilot-runbook.md` — step-by-step Phase A/B/C rollout
+7. `docs/13-roadmap/` — post-R3 planned work
 
 ## Hard rules
 
