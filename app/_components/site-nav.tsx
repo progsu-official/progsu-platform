@@ -87,7 +87,12 @@ export function SiteNav({
         <span
           aria-hidden
           className={cn(
-            "absolute inset-y-0 left-0 rounded-full bg-muted",
+            // .glass, not .glass-blur: the header is already the blurred
+            // layer, and stacking a second backdrop-filter inside it is both
+            // the classic liquid-glass mistake and a per-frame repaint of the
+            // same backdrop. This is the lens on top of that blur — a
+            // translucent fill with a specular top edge and a hairline.
+            "absolute inset-y-0 left-0 rounded-full glass",
             animated && "transition-[transform,width] duration-300",
             "motion-reduce:transition-none"
           )}

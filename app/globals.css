@@ -138,6 +138,49 @@
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
 
+  /* Navigation glass.
+     ---------------------------------------------------------------------
+     The header used .glass-blur plus a border-b, which stacked three edges
+     on one element: the border, the inset hairline the glass recipe already
+     draws, and the drop shadow under it. That reads as a hard rule with a
+     smudge beneath it, not as a floating control layer.
+
+     Here the edge is a dissolve instead of a line. The bar keeps the blur
+     and the specular top highlight, drops the border and the drop shadow
+     entirely, and fades into the content below through a short gradient
+     rendered *outside* its own box — masking the bar itself would fade the
+     wordmark and nav pills along with it. */
+  .glass-nav {
+    position: relative;
+    background-color: hsl(var(--glass-fill) / calc(var(--glass-fill-opacity) * 0.92));
+    box-shadow: inset 0 1px 0 0 hsl(var(--glass-specular));
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+  .glass-nav::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: 1.25rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      hsl(var(--background) / 0.6),
+      hsl(var(--background) / 0)
+    );
+  }
+
+  /* The blur is the whole point of .glass-nav; without it the bar is
+     transparent over scrolling content and unreadable. */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-nav {
+      background-color: hsl(var(--background));
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
   /* Hover lift for clickable glass. Re-points the tokens the box-shadow
      already reads, so the edge brightens without a second shadow stack. */
   .glass-interactive {

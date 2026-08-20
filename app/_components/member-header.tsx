@@ -21,7 +21,7 @@ export function MemberHeader({
   showEvents: boolean;
 }) {
   return (
-    <header className="glass-blur sticky top-0 z-40 border-b border-border/60">
+    <header className="glass-nav sticky top-0 z-40">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
         <Link
           href="/profile"
