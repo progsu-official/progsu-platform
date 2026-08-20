@@ -47,8 +47,11 @@ export function ConsentForm({ hasPhone }: { hasPhone: boolean }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold">Required</legend>
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Required
+        </legend>
+        <div className="space-y-4 rounded-2xl glass p-5">
 
         <CheckboxRow
           id="c-privacy"
@@ -90,10 +93,14 @@ export function ConsentForm({ hasPhone }: { hasPhone: boolean }) {
           errorKey="age_confirmation"
           label={CONSENT_LABELS.age_confirmation}
         />
+        </div>
       </fieldset>
 
-      <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold">Optional</legend>
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Optional
+        </legend>
+        <div className="space-y-4 rounded-2xl glass p-5">
 
         <CheckboxRow
           id="c-recruiter"
@@ -122,6 +129,7 @@ export function ConsentForm({ hasPhone }: { hasPhone: boolean }) {
           errorField={error?.field}
           errorKey="sms_marketing"
         />
+        </div>
       </fieldset>
 
       {error && !error.field ? (
@@ -133,10 +141,13 @@ export function ConsentForm({ hasPhone }: { hasPhone: boolean }) {
         </div>
       ) : null}
 
-      <div className="flex items-center justify-end">
-        <Button type="submit" size="lg" disabled={pending}>
+      <div className="space-y-2 pt-1">
+        <Button type="submit" size="lg" disabled={pending} className="w-full">
           {pending ? "Saving…" : "Save and finish"}
         </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          You can change any of this later from your settings.
+        </p>
       </div>
     </form>
   );
@@ -167,7 +178,7 @@ function CheckboxRow({
       <input
         id={id}
         type="checkbox"
-        className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
+        className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer rounded border-input accent-[hsl(var(--primary))]"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}

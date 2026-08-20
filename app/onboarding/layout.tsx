@@ -1,11 +1,21 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Instrument_Serif } from "next/font/google";
 
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState } from "@/lib/auth/onboarding";
 import { StepIndicator } from "./_components/step-indicator";
 
 export const dynamic = "force-dynamic";
+
+// The display voice, loaded on this route only. tailwind.config maps
+// font-serif to --font-display with a Georgia fallback, so a route that uses
+// font-serif has to load the face itself.
+const display = Instrument_Serif({
+  variable: "--font-display",
+  weight: "400",
+  subsets: ["latin"],
+});
 
 type Props = {
   children: React.ReactNode;
@@ -27,18 +37,36 @@ export default async function OnboardingLayout({ children }: Props) {
   const state = await loadOnboardingState(supabase, user.id);
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/" className="text-[15px] font-bold tracking-tight">
-            progsu
-          </Link>
-        </div>
-      </header>
-      <main className="mx-auto max-w-xl px-4 py-10">
-        <StepIndicator nextStep={state.nextStep} />
-        <div className="mt-8">{children}</div>
-      </main>
+    <div
+      className={`${display.variable} dark relative min-h-screen bg-background text-foreground`}
+    >
+      {/* Same ambient field the member surfaces float on. Onboarding used to
+          render a flat background, which is why its cards read as grey slabs
+          while every other surface in the app reads as glass. */}
+      <div aria-hidden className="ambient-field" />
+
+      <div className="relative z-10 flex min-h-screen flex-col">
+        {/* Same bound and padding as <main> so the wordmark sits flush with
+            the step title below it. */}
+        <header className="py-5">
+          <div className="mx-auto flex w-full max-w-[38rem] items-center justify-between px-5">
+            <Link
+              href="/"
+              className="rounded-md text-[15px] font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              progsu
+            </Link>
+            <StepIndicator nextStep={state.nextStep} />
+          </div>
+        </header>
+
+        {/* One column for every step, matching the header above it, so the
+            title lands in the same place on each screen instead of each page
+            picking its own width. */}
+        <main className="mx-auto w-full max-w-[38rem] flex-1 px-5 pb-24 pt-4 sm:pb-16 sm:pt-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

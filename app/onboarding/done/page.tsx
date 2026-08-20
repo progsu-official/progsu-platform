@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
+import { StepHeader } from "../_components/step-header";
 import { DoneRedirect } from "./done-redirect";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +24,11 @@ export default async function OnboardingDonePage() {
   }
 
   return (
-    <section className="space-y-4 py-6 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">You&apos;re all set</h1>
-      <p className="text-sm text-muted-foreground">
-        Redirecting you to your dashboard…
-      </p>
+    <section className="py-10">
+      <StepHeader
+        title="You're in"
+        description="Taking you to your profile…"
+      />
       <DoneRedirect />
     </section>
   );

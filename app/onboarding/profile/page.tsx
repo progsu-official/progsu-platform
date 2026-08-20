@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
+import { StepHeader } from "../_components/step-header";
 import { ProfileForm } from "./profile-form";
 
 export const dynamic = "force-dynamic";
@@ -74,20 +75,17 @@ export default async function OnboardingProfilePage() {
     !!profile?.student_email_verified && !!profile?.school;
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-7">
+      <StepHeader
+        title="Let's set you up"
+        description="Five basics so officers know who you are and how to reach you. This takes about a minute."
+      />
       {legacyMatch && (
-        <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-          Welcome back! We found your info from Progsu&apos;s past events and
-          filled in what we had. Feel free to double-check it below.
+        <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+          We found you from a past Progsu event and filled in what we had.
+          Worth a quick check below.
         </div>
       )}
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Your profile</h1>
-        <p className="text-sm text-muted-foreground">
-          A few quick basics to get you on the platform. You can finish the rest
-          (graduation info, roles, resume, links) from your dashboard.
-        </p>
-      </header>
       <ProfileForm
         initial={{
           firstName: profile?.first_name ?? "",

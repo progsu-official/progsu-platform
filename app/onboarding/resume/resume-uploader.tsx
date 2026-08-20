@@ -232,7 +232,7 @@ export function ResumeUploader({
       <p className="text-xs text-muted-foreground">
         Heads up: recruiters browsing the member list only see profiles with a
         resume on file. You can come back and upload any time from your
-        dashboard.
+        profile.
       </p>
     </div>
   );

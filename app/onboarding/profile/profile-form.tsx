@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/app/_components/select";
 import { updateMinimalProfile } from "@/lib/actions/profile";
 
 // Field-specific headlines so users know WHICH field blocked the save, not just
@@ -87,8 +88,8 @@ export function ProfileForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className="space-y-5">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl glass p-5 sm:grid-cols-2">
         <Field
           label="First name"
           required
@@ -116,31 +117,23 @@ export function ProfileForm({
           />
         </Field>
         <Field
-          label={
-            schoolAutoFilled
-              ? "School (set from your verified student email)"
-              : "School"
-          }
+          label="School"
           required
+          htmlFor="onboarding-school"
           error={error?.field === "school" ? error.message : null}
         >
-          <select
-            className={selectClass}
+          <Select
+            id="onboarding-school"
             value={state.school}
-            onChange={(e) => setField("school", e.target.value)}
-            required
+            onChange={(v) => setField("school", v)}
+            options={[
+              ...schoolOptions.map((s) => ({ value: s, label: s })),
+              { value: SCHOOL_OTHER, label: "Other (not listed)" },
+            ]}
+            placeholder="Select your school"
+            invalid={error?.field === "school"}
             disabled={pending}
-          >
-            <option value="" disabled>
-              Select your school
-            </option>
-            {schoolOptions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-            <option value={SCHOOL_OTHER}>Other (not listed)</option>
-          </select>
+          />
         </Field>
         <Field
           label="Phone"
@@ -160,24 +153,21 @@ export function ProfileForm({
         <Field
           label="Major"
           required
+          htmlFor="onboarding-major"
           error={error?.field === "major" ? error.message : null}
         >
-          <select
-            className={selectClass}
+          <Select
+            id="onboarding-major"
             value={state.major}
-            onChange={(e) => setField("major", e.target.value)}
-            required
+            onChange={(v) => setField("major", v)}
+            options={majorOptions.map((m) => ({
+              value: m.slug,
+              label: m.label,
+            }))}
+            placeholder="Select your major"
+            invalid={error?.field === "major"}
             disabled={pending}
-          >
-            <option value="" disabled>
-              Select your major
-            </option>
-            {majorOptions.map((m) => (
-              <option key={m.slug} value={m.slug}>
-                {m.label}
-              </option>
-            ))}
-          </select>
+          />
         </Field>
       </div>
 
@@ -218,7 +208,7 @@ export function ProfileForm({
       {error ? (
         <div
           role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           <p className="font-medium">
             {FIELD_ERROR_HEADINGS[error.field ?? ""] ?? "We couldn't save your profile"}
@@ -227,36 +217,39 @@ export function ProfileForm({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between pt-2">
-        <p className="text-xs text-muted-foreground">
-          You&apos;ll add graduation info, roles, and a resume on your dashboard
-          after signing in.
-        </p>
-        <Button type="submit" size="lg" disabled={pending}>
+      <div className="space-y-3 pt-2">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={pending}
+          className="w-full rounded-full"
+        >
           {pending ? "Saving…" : "Save and continue"}
         </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Graduation info, roles, and links come later, from your profile.
+        </p>
       </div>
     </form>
   );
 }
-
-const selectClass =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 function Field({
   label,
   required,
   error,
   children,
+  htmlFor,
 }: {
   label: string;
   required?: boolean;
   error?: string | null;
   children: React.ReactNode;
+  htmlFor?: string;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label>
+      <Label htmlFor={htmlFor}>
         {label}
         {required ? <span className="text-destructive"> *</span> : null}
       </Label>
