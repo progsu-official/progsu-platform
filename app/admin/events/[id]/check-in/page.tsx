@@ -19,6 +19,7 @@ type RosterRow = {
   rsvp_status: string | null;
   attended: boolean;
   checked_in_at: string | null;
+  fully_onboarded: boolean;
 };
 
 export default async function AdminEventCheckInPage({
@@ -63,6 +64,7 @@ export default async function AdminEventCheckInPage({
       rsvp_status: (r.rsvp_status as string | null) ?? null,
       attended: !!r.attended,
       checked_in_at: (r.checked_in_at as string | null) ?? null,
+      fully_onboarded: !!r.fully_onboarded,
     }));
 
   const attendedCount = rows.filter((r) => r.attended).length;

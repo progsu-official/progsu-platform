@@ -17,6 +17,7 @@ type Row = {
   rsvp_status: string | null;
   attended: boolean;
   checked_in_at: string | null;
+  fully_onboarded: boolean;
 };
 
 export function DayOfRoster({
@@ -98,9 +99,27 @@ export function DayOfRoster({
                 r.user_id.slice(0, 8);
               const email = r.student_email ?? r.google_email ?? "—";
               const rowBusy = busyId === r.user_id;
+              const onboardingLabel = r.fully_onboarded
+                ? "Profile onboarding complete"
+                : "Profile onboarding incomplete — nudge to finish for recruiter visibility";
               return (
                 <tr key={r.user_id} className="hover:bg-muted/10">
-                  <td className="px-3 py-2">{name}</td>
+                  <td className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1.5">
+                      {name}
+                      <span
+                        title={onboardingLabel}
+                        className={
+                          "inline-block size-1.5 shrink-0 rounded-full " +
+                          (r.fully_onboarded
+                            ? "bg-emerald-500"
+                            : "bg-amber-500")
+                        }
+                      >
+                        <span className="sr-only">{onboardingLabel}</span>
+                      </span>
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {email}
                   </td>
