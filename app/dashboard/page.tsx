@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
 import { loadProfileCompletion } from "@/lib/auth/profile-completion";
+import { CLASS_STANDING_LABELS } from "@/lib/enums/roles";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/app/_components/avatar";
 
@@ -12,6 +13,7 @@ import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
 import { ProfileCompletionRing } from "./profile-completion-ring";
 import { StaleConsentBanner } from "./stale-consent-banner";
 import { UpcomingEvents, type UpcomingPlan } from "./upcoming-events";
+import { EducationCard, type VerificationState } from "./education-card";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,7 @@ export default async function DashboardHome() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "first_name, last_name, preferred_name, school, major, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles, avatar_url, linkedin_url, github_url, created_at"
+      "first_name, last_name, preferred_name, school, major, major_other_text, minor, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles, avatar_url, linkedin_url, github_url, created_at"
     )
     .eq("id", user.id)
     .single();
@@ -137,13 +139,51 @@ export default async function DashboardHome() {
     );
   }
 
+  // profiles.major holds a slug from the majors table; resolve it to its label
+  // so the card doesn't render "computer_information_systems". Legacy rows
+  // predate the table and hold free text, which falls through unchanged.
+  let majorLabel = profile?.major ?? null;
+  if (profile?.major === "other") {
+    majorLabel = profile.major_other_text ?? null;
+  } else if (profile?.major) {
+    const { data: majorRow } = await supabase
+      .from("majors")
+      .select("label")
+      .eq("slug", profile.major)
+      .maybeSingle();
+    if (majorRow?.label) majorLabel = majorRow.label;
+  }
+
+  const degreeLine =
+    [majorLabel, profile?.minor ? `Minor in ${profile.minor}` : null]
+      .filter(Boolean)
+      .join(" · ") || null;
+  const standingLine =
+    [
+      profile?.class_standing
+        ? CLASS_STANDING_LABELS[
+            profile.class_standing as keyof typeof CLASS_STANDING_LABELS
+          ] ?? profile.class_standing
+        : null,
+      profile?.grad_term ? `Graduates ${profile.grad_term}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
+  const verification: VerificationState = profile?.student_email_verified
+    ? "verified"
+    : !profile?.student_email
+      ? "none"
+      : profile?.pending_domain_name
+        ? "pending_domain"
+        : "unverified";
+
   const displayName = [
     profile?.preferred_name || profile?.first_name,
     profile?.last_name,
   ]
     .filter(Boolean)
     .join(" ");
-  const subline = [profile?.school, profile?.major].filter(Boolean).join(" · ");
+  const subline = [profile?.school, majorLabel].filter(Boolean).join(" · ");
   const joined = profile?.created_at
     ? joinedFormatter.format(new Date(profile.created_at))
     : null;
@@ -260,58 +300,14 @@ export default async function DashboardHome() {
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-6">
-          <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Profile
-          </h2>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-            <dt className="text-muted-foreground">Name</dt>
-            <dd>
-              {profile?.first_name} {profile?.last_name}
-            </dd>
-            <dt className="text-muted-foreground">School</dt>
-            <dd>{profile?.school}</dd>
-            <dt className="text-muted-foreground">Major</dt>
-            <dd>{profile?.major}</dd>
-            <dt className="text-muted-foreground">Class</dt>
-            <dd>{profile?.class_standing}</dd>
-            <dt className="text-muted-foreground">Graduates</dt>
-            <dd>{profile?.grad_term}</dd>
-            <dt className="text-muted-foreground">Student email</dt>
-            <dd className="flex items-center gap-1 truncate">
-              <span className="truncate">
-                {profile?.student_email ?? (
-                  <span className="text-muted-foreground">not set</span>
-                )}
-              </span>
-              {profile?.student_email_verified ? (
-                <span
-                  title="Verified via OTP"
-                  aria-label="Verified"
-                  className="ml-1 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-                >
-                  ✓ Verified
-                </span>
-              ) : profile?.student_email ? (
-                <span
-                  title={
-                    profile.pending_domain_name
-                      ? `${profile.pending_domain_name} isn't on our verification list yet — we'll enable it soon.`
-                      : "Waiting for you to verify via OTP. Recruiters won't see your profile until then."
-                  }
-                  className="ml-1 inline-flex shrink-0 cursor-help items-center rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
-                >
-                  {profile.pending_domain_name ? "School coming soon" : "Unverified"}
-                </span>
-              ) : null}
-            </dd>
-          </dl>
-          <div className="pt-2">
-            <Button variant="outline" size="sm" asChild className="rounded-full">
-              <Link href="/dashboard/settings">Edit</Link>
-            </Button>
-          </div>
-          </div>
+          <EducationCard
+            school={profile?.school ?? null}
+            degreeLine={degreeLine}
+            standingLine={standingLine}
+            studentEmail={profile?.student_email ?? null}
+            verification={verification}
+            pendingDomainName={profile?.pending_domain_name ?? null}
+          />
 
           <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
