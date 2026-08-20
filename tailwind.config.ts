@@ -59,6 +59,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        // Loaded per-route (see the event composer), so the fallback matters.
+        serif: ["var(--font-display)", "Georgia", "serif"],
       },
       keyframes: {
         "accordion-down": {
