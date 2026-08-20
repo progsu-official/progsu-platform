@@ -2,9 +2,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  getRequestOnboardingState,
+  getRequestUser,
+} from "@/lib/auth/request-cache";
 import { env } from "@/lib/env";
 import { readTheme } from "@/lib/theme";
-import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { onboardingPathFor } from "@/lib/auth/onboarding";
 import { Button } from "@/components/ui/button";
 
 import { MemberHeader } from "@/app/_components/member-header";
@@ -21,13 +25,14 @@ export default async function EventsLayout({
   // work runs, so the route doesn't leak through timing.
   if (!env.FEATURE_EVENTS) notFound();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Deduped for this request: the page under this layout asks for the same
+  // two things, and without the shared cache each navigation paid for both
+  // twice before any page data was fetched.
+  const user = await getRequestUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
-  const state = await loadOnboardingState(supabase, user.id);
+  const state = await getRequestOnboardingState(user.id);
   // Admins can view the member events surface (e.g., to preview how it looks
   // or walk through an RSVP themselves). They also have /admin/events.
   // Non-admins must finish onboarding before reaching /events.

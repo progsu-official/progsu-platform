@@ -1,9 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  getRequestOnboardingState,
+  getRequestUser,
+} from "@/lib/auth/request-cache";
 import { env } from "@/lib/env";
 import { readTheme } from "@/lib/theme";
-import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { MemberHeader } from "@/app/_components/member-header";
 import { ThemeShell } from "@/app/_components/theme-shell";
@@ -18,13 +22,14 @@ export default async function MembersLayout({
   // Kill switch: flag off = 404 for everyone before any auth work runs.
   if (!env.FEATURE_MEMBER_DIRECTORY) notFound();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Deduped for this request: the page under this layout asks for the same
+  // two things, and without the shared cache each navigation paid for both
+  // twice before any page data was fetched.
+  const user = await getRequestUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
-  const state = await loadOnboardingState(supabase, user.id);
+  const state = await getRequestOnboardingState(user.id);
   // Admins bypass onboarding (same contract as /profile). They can still
   // browse /members for support/moderation — no bounce.
   if (!state.isAdmin && !state.fullyOnboarded) {
