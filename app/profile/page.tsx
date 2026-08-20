@@ -213,8 +213,11 @@ export default async function DashboardHome() {
         <ProfileBanner bannerUrl={bannerUrl} />
 
       {/* Pulled up over the banner so the avatar reads as anchored to it
-          rather than stacked under it. */}
-      <header className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-7">
+          rather than stacked under it. relative+z-10 is required, not
+          cosmetic: the banner is positioned, this header is not, so without a
+          stacking context of its own the banner paints on top and swallows
+          clicks meant for the controls in the overlap. */}
+      <header className="relative z-10 -mt-16 flex flex-col gap-5 sm:-mt-20 sm:flex-row sm:items-end sm:gap-7">
         <div className="group/avatar relative shrink-0">
           <div className="absolute bottom-full left-1 mb-3">
             <NoteBubble note={note} />
@@ -227,13 +230,28 @@ export default async function DashboardHome() {
           </div>
         </div>
         <div className="min-w-0 flex-1 space-y-2 sm:pb-1">
-          <div>
-            <h1 className="truncate text-3xl font-bold tracking-tight">
-              {displayName || "Member"}
-            </h1>
-            {subline ? (
-              <p className="truncate text-sm text-muted-foreground">{subline}</p>
-            ) : null}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="truncate text-3xl font-bold tracking-tight">
+                {displayName || "Member"}
+              </h1>
+              {subline ? (
+                <p className="truncate text-sm text-muted-foreground">
+                  {subline}
+                </p>
+              ) : null}
+            </div>
+            {/* Lives beside the name rather than up in the banner: anything
+                sitting in the overlap competes with the banner's own
+                hover controls for the same pixels. */}
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="shrink-0 rounded-full"
+            >
+              <Link href="/profile/settings">Edit profile</Link>
+            </Button>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {joined ? (
@@ -285,11 +303,6 @@ export default async function DashboardHome() {
               ) : null}
             </div>
           ) : null}
-        </div>
-        <div className="shrink-0 sm:self-start">
-          <Button asChild size="sm" variant="outline" className="rounded-full">
-            <Link href="/profile/settings">Edit profile</Link>
-          </Button>
         </div>
         </header>
       </div>

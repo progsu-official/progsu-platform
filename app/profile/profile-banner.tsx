@@ -113,9 +113,12 @@ export function ProfileBanner({ bannerUrl }: { bannerUrl: string | null }) {
         <div
           className={cn(
             "absolute inset-0 flex items-center justify-center gap-2 bg-black/45 transition-opacity duration-200",
-            "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+            // opacity-0 still hit-tests. Left interactive, this scrim covers
+            // the whole banner and swallows clicks on anything overlapping it.
+            "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100",
+            "focus-within:pointer-events-auto focus-within:opacity-100",
             "motion-reduce:transition-none",
-            pending && "opacity-100"
+            pending && "pointer-events-auto opacity-100"
           )}
         >
           <button
