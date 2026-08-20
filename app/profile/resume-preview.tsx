@@ -4,7 +4,10 @@ import { ExternalLink, FileText, X } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { createResumePreviewUrl } from "@/lib/actions/resume";
+import {
+  createResumePreviewUrl,
+  createResumePreviewUrlForMember,
+} from "@/lib/actions/resume";
 
 // "Preview" opens the member's current resume in a modal.
 //
@@ -25,9 +28,13 @@ type State =
 export function ResumePreview({
   fileName,
   variant = "outline",
+  // Viewing someone else's card: routes through the member-scoped action
+  // (admin-signed, gated by can_view_member_card) instead of the self one.
+  targetUserId,
 }: {
   fileName: string;
   variant?: "outline" | "ghost";
+  targetUserId?: string;
 }) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [pending, startTransition] = useTransition();
@@ -40,9 +47,15 @@ export function ResumePreview({
   function open() {
     setState({ kind: "loading" });
     startTransition(async () => {
-      const result = await createResumePreviewUrl();
+      const result = targetUserId
+        ? await createResumePreviewUrlForMember(targetUserId)
+        : await createResumePreviewUrl();
       if (!result.ok) {
         setState({ kind: "error", message: result.error.message });
+        return;
+      }
+      if (!result.data) {
+        setState({ kind: "error", message: "Couldn't open that resume." });
         return;
       }
       setState({

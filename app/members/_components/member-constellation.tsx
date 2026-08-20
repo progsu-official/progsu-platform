@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Globe, X } from "lucide-react";
 
 import { Avatar } from "@/app/_components/avatar";
 import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
+import { StaticNote } from "@/app/profile/note-bubble";
 import { listMemberCards } from "@/lib/actions/members";
 
 import {
@@ -154,12 +155,9 @@ export function MemberConstellation({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const edgeLayerRef = useRef<HTMLDivElement>(null);
-  const lensRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Array<HTMLLIElement | null>>([]);
 
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
-  const [focusIndex, setFocusIndex] = useState(0);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const count = members.length;
@@ -204,24 +202,16 @@ export function MemberConstellation({
   const velocity = useRef({ x: 0, y: 0 });
   const dragging = useRef(false);
   const frame = useRef<number | null>(null);
-  const nearest = useRef(0);
 
   // Radial, not per-axis: the old per-axis clamp let a diagonal drag park the
-  // whole lattice in a corner of the frame, leaving the lens ring hovering
-  // over empty space — the "weird" half-empty state. A radial bound means the
+  // whole lattice in a corner of the frame, leaving empty space on the
+  // opposite side — the "weird" half-empty state. A radial bound means the
   // origin-most face can reach the frame edge, but the lattice can never
-  // leave the lens entirely.
+  // leave the frame entirely.
   // Stops 1.5 cells short of the hull: parked exactly at the frontier, the
-  // lens sits on the last loaded ring with half the frame empty — which is
+  // centre sits on the last loaded ring with half the frame empty — which is
   // what a mid-load page looked like when the viewer outran the fetch.
   const panLimit = Math.max(0, hullRadius - cell * 1.5);
-
-  // On a short canvas (phones, split screens) the profile card overlaps the
-  // geometric centre — the lens would sit under the card describing a face
-  // nobody can see. Lift the focal point clear of it. Only when the lattice
-  // can actually pan: a tiny result set is clamped to the origin, and an
-  // offset lens over an unmovable lattice is a ring parked on empty space.
-  const lensOffsetY = (viewport.h || 480) < 620 && panLimit > 0 ? 84 : 0;
 
   const clampPan = useCallback(
     (p: { x: number; y: number }) => {
@@ -239,25 +229,13 @@ export function MemberConstellation({
     // must not fade as hard as one a screen-height away.
     const rx = Math.max(1, ((viewport.w || 960) / 2) * 0.92);
     const ry = Math.max(1, ((viewport.h || 480) / 2) * 0.92);
-    let bestIndex = 0;
-    let bestDistance = Infinity;
 
     for (let i = 0; i < positions.length; i += 1) {
       const node = nodeRefs.current[i];
       if (!node) continue;
       const px = positions[i].x + pan.current.x;
       const py = positions[i].y + pan.current.y;
-      // Faces render at (px, py); focus/scale/fade measure from the lens
-      // point, which sits lensOffsetY above the geometric centre. Only the
-      // measurement shifts — offsetting the transform too would translate
-      // the whole lattice instead of moving the focal point.
-      const dy = py + lensOffsetY;
-      const distance = Math.hypot(px, dy);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = i;
-      }
-      const t = Math.min(1, Math.hypot(px / rx, dy / ry));
+      const t = Math.min(1, Math.hypot(px / rx, py / ry));
       const shape = (1 - t) ** FALLOFF_EXP;
       const scale = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * shape;
       const opacity = Math.max(MIN_OPACITY, 1 - 0.7 * t ** 1.6);
@@ -271,17 +249,6 @@ export function MemberConstellation({
 
     if (edgeLayerRef.current) {
       edgeLayerRef.current.style.transform = `translate3d(${pan.current.x}px, ${pan.current.y}px, 0)`;
-    }
-
-    // The lens ring only means something when a face is actually under it.
-    // Panned into open lattice, an empty ring reads as a broken highlight.
-    if (lensRef.current) {
-      lensRef.current.style.opacity = bestDistance < cell * 1.1 ? "1" : "0";
-    }
-
-    if (bestIndex !== nearest.current) {
-      nearest.current = bestIndex;
-      setFocusIndex(bestIndex);
     }
 
     // Directional prefetch: probe one look-ahead length past the viewport in
@@ -304,7 +271,7 @@ export function MemberConstellation({
       Math.hypot(probeX, probeY) > hullRadius - cell * 2 ||
       Math.hypot(cx, cy) > hullRadius - cell * 3;
     if (nearRim) void loadMoreRef.current();
-  }, [positions, viewport.w, viewport.h, cell, hullRadius, lensOffsetY]);
+  }, [positions, viewport.w, viewport.h, cell, hullRadius]);
 
   const requestFrame = useCallback(() => {
     if (frame.current !== null) return;
@@ -389,7 +356,6 @@ export function MemberConstellation({
     moved.current = false;
     velocity.current = { x: 0, y: 0 };
     lastPoint.current = { x: e.clientX, y: e.clientY, t: e.timeStamp };
-    e.currentTarget.setPointerCapture(e.pointerId);
     requestFrame();
   };
 
@@ -397,7 +363,18 @@ export function MemberConstellation({
     if (!dragging.current) return;
     const dx = e.clientX - lastPoint.current.x;
     const dy = e.clientY - lastPoint.current.y;
-    if (Math.hypot(dx, dy) > 2) moved.current = true;
+    if (!moved.current && Math.hypot(dx, dy) > 2) {
+      moved.current = true;
+      // Capturing on pointerdown (rather than only once a drag actually
+      // starts) retargets the browser's synthetic click event to this
+      // container too -- per the Pointer Events spec, an active capture
+      // redirects click, not just pointermove/up -- which silently ate
+      // every plain click on a face button before it ever reached the
+      // button's onClick. Deferring capture to here means a click with no
+      // real movement never captures at all, so its click event still
+      // targets (and bubbles through) the button normally.
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
     const dt = Math.max(1, e.timeStamp - lastPoint.current.t);
     velocity.current = { x: (dx / dt) * 14, y: (dy / dt) * 14 };
     lastPoint.current = { x: e.clientX, y: e.clientY, t: e.timeStamp };
@@ -445,11 +422,11 @@ export function MemberConstellation({
       velocity.current = { x: 0, y: 0 };
       panTarget.current = clampPan({
         x: -positions[index].x,
-        y: -positions[index].y - lensOffsetY,
+        y: -positions[index].y,
       });
       requestFrame();
     },
-    [clampPan, positions, requestFrame, lensOffsetY],
+    [clampPan, positions, requestFrame],
   );
 
   // Escape releases a pinned card from anywhere on the page.
@@ -462,16 +439,12 @@ export function MemberConstellation({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedId]);
 
-  const selectedIndex = useMemo(() => {
+  // Card only ever shows the clicked-and-pinned member — nothing renders
+  // until a click happens, and nothing else swaps it out from under you.
+  const shown = useMemo(() => {
     if (selectedId === null) return null;
-    const i = members.findIndex((m) => m.userId === selectedId);
-    return i >= 0 ? i : null;
+    return members.find((m) => m.userId === selectedId) ?? null;
   }, [members, selectedId]);
-  const shown =
-    (selectedIndex !== null ? members[selectedIndex] : null) ??
-    members[hoverIndex ?? focusIndex] ??
-    members[0];
-  const shownPinned = selectedIndex !== null && shown?.userId === selectedId;
 
   return (
     // Full-bleed: the canvas breaks out of the layout's max-w-5xl column
@@ -527,20 +500,6 @@ export function MemberConstellation({
           </svg>
         </div>
 
-        {/* The lens: marks the slot the card below is describing. paint()
-            fades it out when no face is near the centre — an empty ring over
-            bare lattice reads as a broken highlight. */}
-        <div
-          ref={lensRef}
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/40 transition-opacity duration-300"
-          style={{
-            width: diameter + 24,
-            height: diameter + 24,
-            top: `calc(50% - ${lensOffsetY}px)`,
-          }}
-        />
-
         <ul className="absolute inset-0">
           {members.map((member, i) => {
             const delay = entryDelay.current.get(member.userId) ?? 0;
@@ -557,16 +516,10 @@ export function MemberConstellation({
                   marginLeft: -diameter / 2,
                   marginTop: -diameter / 2,
                 }}
-                onMouseEnter={() => setHoverIndex(i)}
-                onMouseLeave={() =>
-                  setHoverIndex((cur) => (cur === i ? null : cur))
-                }
               >
-                {/* Every face opens the profile card. The old markup only
-                    linked members who had claimed a profile slug, which left
-                    most of the directory dead to clicks — the backfilled
-                    members have no slug yet. Navigation moved into the card,
-                    where it can explain itself. */}
+                {/* Click opens the card and pins it there — no preview on
+                    hover, so panning across the lattice never pops or swaps
+                    a card you didn't ask for. */}
                 <button
                   type="button"
                   aria-label={`View ${member.name}`}
@@ -577,14 +530,10 @@ export function MemberConstellation({
                     setSelectedId(member.userId);
                   }}
                   onFocus={(e) => {
-                    setHoverIndex(i);
                     if (e.currentTarget.matches(":focus-visible")) {
                       centerOn(i);
                     }
                   }}
-                  onBlur={() =>
-                    setHoverIndex((cur) => (cur === i ? null : cur))
-                  }
                   className="bubble-in block h-full w-full cursor-pointer rounded-full ring-primary/70 ring-offset-2 ring-offset-background transition-transform duration-200 hover:scale-[1.08] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none motion-reduce:hover:scale-100"
                   style={{ animationDelay: `${delay}ms` }}
                 >
@@ -603,9 +552,10 @@ export function MemberConstellation({
 
         <div aria-hidden className="constellation-vignette" />
 
-        {/* Profile card: describes the focused face, pins on click. Overlaid
-            rather than stacked under the canvas — below it, it pushed the
-            lattice up and left a dead band the full width of the page. */}
+        {/* Profile card: only appears once you click a face, and stays put
+            until you close it or click another. Overlaid rather than stacked
+            under the canvas — below it, it pushed the lattice up and left a
+            dead band the full width of the page. */}
         {shown ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[300] flex justify-center px-4 pb-5">
             {/* No key: re-keying per member replayed the entrance fade on
@@ -644,26 +594,33 @@ export function MemberConstellation({
                     }}
                   />
                 )}
-                {shownPinned ? (
-                  <button
-                    type="button"
-                    aria-label="Close profile card"
-                    onClick={() => setSelectedId(null)}
-                    className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                  >
-                    <X size={14} strokeWidth={2} aria-hidden />
-                  </button>
-                ) : null}
+                {/* Card only ever shows the pinned member, so this is never
+                    conditional the way a hover-preview version would need. */}
+                <button
+                  type="button"
+                  aria-label="Close profile card"
+                  onClick={() => setSelectedId(null)}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  <X size={14} strokeWidth={2} aria-hidden />
+                </button>
               </div>
 
               <div className="relative px-4 pb-4">
-                <div className="-mt-7 w-fit rounded-full ring-4 ring-popover">
-                  <Avatar
-                    src={shown.avatarUrl}
-                    name={shown.name}
-                    className="h-14 w-14 rounded-full"
-                    textClassName="text-lg"
-                  />
+                <div className="relative -mt-7 w-fit">
+                  {shown.note ? (
+                    <div className="absolute bottom-full left-1 z-10 mb-2">
+                      <StaticNote note={shown.note} />
+                    </div>
+                  ) : null}
+                  <div className="w-fit rounded-full ring-4 ring-popover">
+                    <Avatar
+                      src={shown.avatarUrl}
+                      name={shown.name}
+                      className="h-14 w-14 rounded-full"
+                      textClassName="text-lg"
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-2 flex items-start justify-between gap-3">
@@ -702,6 +659,17 @@ export function MemberConstellation({
                         <GitHubMark className="h-[15px] w-[15px]" />
                       </a>
                     ) : null}
+                    {shown.portfolioUrl ? (
+                      <a
+                        href={shown.portfolioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Portfolio"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <Globe size={15} strokeWidth={1.75} aria-hidden />
+                      </a>
+                    ) : null}
                     {shown.slug ? (
                       <Link
                         href={`/members/${shown.slug}`}
@@ -716,11 +684,6 @@ export function MemberConstellation({
                     ) : null}
                   </div>
                 </div>
-                {shown.note ? (
-                  <p className="mt-1 truncate text-sm italic text-foreground/90">
-                    &ldquo;{shown.note}&rdquo;
-                  </p>
-                ) : null}
 
                 {shown.bio ? (
                   <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
@@ -729,19 +692,19 @@ export function MemberConstellation({
                 ) : null}
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 empty:hidden">
-                {shown.classStanding ? (
-                  <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
-                    {shown.classStanding}
-                  </span>
-                ) : null}
-                {shown.roles.map((r) => (
-                  <span
-                    key={r}
-                    className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground"
-                  >
-                    {r.replace(/_/g, " ")}
-                  </span>
-                ))}
+                  {shown.classStanding ? (
+                    <span className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
+                      {shown.classStanding}
+                    </span>
+                  ) : null}
+                  {shown.roles.map((r) => (
+                    <span
+                      key={r}
+                      className="rounded-full border border-border/70 px-2 py-0.5 text-[11px] capitalize text-muted-foreground"
+                    >
+                      {r.replace(/_/g, " ")}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>

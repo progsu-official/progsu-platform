@@ -148,6 +148,24 @@ export type MemberCardRow = {
   banner_url: string | null;
   share_attended_events: boolean;
   visible_since: string | null;
+  major: string | null;
+  major_other_text: string | null;
+  minor: string | null;
+  has_student_email: boolean;
+  student_email_verified: boolean;
+  pending_domain_name: string | null;
+};
+
+export type MemberUpcomingEventRow = {
+  event_id: string;
+  slug: string;
+  title: string;
+  starts_at: string;
+  status: string;
+  location_text: string | null;
+  cover_image_path: string | null;
+  rsvp_status: string | null;
+  going_count: number;
 };
 
 export type MemberCardAttendedEventRow = {
@@ -252,6 +270,32 @@ export async function getMemberCardBySlug(
   }
 
   return ok({ card, attendedEvents });
+}
+
+// Public profile section: target's future going/waitlisted RSVPs, gated by
+// FEATURE_PUBLIC_PROFILE_EVENTS (route-level kill switch) and the same
+// can_view_member_card() check every other card RPC uses. Flag off returns
+// empty rather than an error, matching getSharedEventsForViewer's pattern.
+export async function getUpcomingEventsForViewer(
+  targetUserId: string
+): Promise<ActionResult<MemberUpcomingEventRow[]>> {
+  if (!env.FEATURE_EVENTS || !env.FEATURE_PUBLIC_PROFILE_EVENTS) return ok([]);
+
+  const idParsed = z.string().uuid().safeParse(targetUserId);
+  if (!idParsed.success) return ok([]);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+
+  const { data, error } = await supabase.rpc(
+    "member_upcoming_events_for_viewer",
+    { p_viewer_id: user.id, p_target_id: targetUserId }
+  );
+  if (error) return mapPgError(error);
+  return ok((data ?? []) as MemberUpcomingEventRow[]);
 }
 
 // R3: shared events with a target member. Both the viewer and target must
