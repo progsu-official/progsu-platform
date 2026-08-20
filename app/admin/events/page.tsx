@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { BarChart3, CalendarDays, Plus } from "lucide-react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveCoverUrls } from "@/lib/events/cover-url";
+import { EventCard, joinHosts } from "@/app/events/_components/event-card";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +50,7 @@ export default async function AdminEventsPage({
   let query = admin
     .from("events")
     .select(
-      "id, slug, title, status, visibility, starts_at, ends_at, capacity, waitlist_enabled, published_at, cancelled_at, archived_at",
+      "id, slug, title, status, visibility, starts_at, ends_at, location_text, cover_image_path, capacity, waitlist_enabled",
       { count: "exact" }
     )
     .order("starts_at", { ascending: false });
@@ -69,16 +72,24 @@ export default async function AdminEventsPage({
   const to = from + PAGE_SIZE - 1;
   const { data: rows, count, error } = await query.range(from, to);
 
-  // RSVP counts — load for visible ids in one query, then group in JS. Avoids a
-  // per-row join that would blow up the plan.
   const ids = (rows ?? []).map((r) => r.id as string);
+
+  // RSVP counts and hosts — load for visible ids in one query each, then
+  // group in JS. Avoids a per-row join that would blow up the plan.
   const rsvpCountByEvent = new Map<string, { going: number; waitlisted: number }>();
+  const hostsByEvent = new Map<string, Array<{ display_name: string; sort_order: number }>>();
   if (ids.length > 0) {
-    const { data: rsvps } = await admin
-      .from("event_rsvps")
-      .select("event_id, status")
-      .in("event_id", ids)
-      .in("status", ["going", "waitlisted"]);
+    const [{ data: rsvps }, { data: hosts }] = await Promise.all([
+      admin
+        .from("event_rsvps")
+        .select("event_id, status")
+        .in("event_id", ids)
+        .in("status", ["going", "waitlisted"]),
+      admin
+        .from("event_hosts")
+        .select("event_id, display_name, sort_order")
+        .in("event_id", ids),
+    ]);
     for (const r of rsvps ?? []) {
       const id = r.event_id as string;
       const entry = rsvpCountByEvent.get(id) ?? { going: 0, waitlisted: 0 };
@@ -86,7 +97,21 @@ export default async function AdminEventsPage({
       else if (r.status === "waitlisted") entry.waitlisted += 1;
       rsvpCountByEvent.set(id, entry);
     }
+    for (const h of hosts ?? []) {
+      const id = h.event_id as string;
+      const list = hostsByEvent.get(id) ?? [];
+      list.push({
+        display_name: h.display_name as string,
+        sort_order: (h.sort_order as number | null) ?? 0,
+      });
+      hostsByEvent.set(id, list);
+    }
   }
+
+  const coverUrls = await resolveCoverUrls(
+    admin,
+    (rows ?? []).map((r) => (r.cover_image_path as string | null) ?? null)
+  );
 
   const totalPages = Math.min(
     Math.ceil((count ?? 0) / PAGE_SIZE) || 1,
@@ -94,116 +119,109 @@ export default async function AdminEventsPage({
   );
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
-          <p className="text-xs text-muted-foreground">
-            {count ?? 0} {tab} event{count === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/admin/events/analytics"
-            className="rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-accent/10"
-          >
-            Analytics →
-          </Link>
-          <Link
-            href="/admin/events/new"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Create event
-          </Link>
-        </div>
-      </header>
-
-      <nav className="flex flex-wrap gap-1 border-b text-sm">
-        {TABS.map((t) => {
-          const active = t.key === tab;
-          return (
+    <div className="space-y-6">
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
+            <p className="text-xs text-muted-foreground">
+              {count ?? 0} {tab} event{count === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
             <Link
-              key={t.key}
-              href={`/admin/events?tab=${t.key}`}
-              className={
-                "-mb-px border-b-2 px-3 py-2 " +
-                (active
-                  ? "border-primary font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground")
-              }
+              href="/admin/events/analytics"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              {t.label}
+              <BarChart3 size={15} strokeWidth={1.75} aria-hidden />
+              Analytics
             </Link>
-          );
-        })}
-      </nav>
+            <Link
+              href="/admin/events/new"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Plus size={15} strokeWidth={2} aria-hidden />
+              Create event
+            </Link>
+          </div>
+        </div>
+
+        <nav
+          aria-label="Event status"
+          className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-muted/40 p-1 text-sm"
+        >
+          {TABS.map((t) => {
+            const active = t.key === tab;
+            return (
+              <Link
+                key={t.key}
+                href={`/admin/events?tab=${t.key}`}
+                aria-current={active ? "page" : undefined}
+                className={
+                  "rounded-full px-4 py-1.5 transition-colors " +
+                  (active
+                    ? "bg-card font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </header>
 
       {error ? (
         <p className="text-sm text-destructive">Query error: {error.message}</p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 font-medium">Title</th>
-              <th className="px-3 py-2 font-medium">Slug</th>
-              <th className="px-3 py-2 font-medium">Starts</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Visibility</th>
-              <th className="px-3 py-2 font-medium">Going / Waitlist</th>
-              <th className="px-3 py-2 font-medium">Capacity</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {(rows ?? []).map((r) => {
-              const id = r.id as string;
-              const counts = rsvpCountByEvent.get(id) ?? {
-                going: 0,
-                waitlisted: 0,
-              };
-              return (
-                <tr key={id} className="hover:bg-muted/20">
-                  <td className="px-3 py-2">
-                    <Link
-                      href={`/admin/events/${id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {r.title}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                    {r.slug}
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    {new Date(r.starts_at as string).toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2">
+      {(rows ?? []).length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/80 px-8 py-14 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
+            <CalendarDays size={20} className="text-muted-foreground" strokeWidth={1.5} />
+          </div>
+          <p className="text-sm font-medium text-foreground">No events in this tab yet.</p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {(rows ?? []).map((r, i) => {
+            const id = r.id as string;
+            const counts = rsvpCountByEvent.get(id) ?? { going: 0, waitlisted: 0 };
+            const capacity = r.capacity as number | null;
+            const waitlistEnabled = !!r.waitlist_enabled;
+            return (
+              <EventCard
+                key={id}
+                variant="admin"
+                href={`/admin/events/${id}`}
+                title={r.title as string}
+                hosts={joinHosts(hostsByEvent.get(id))}
+                startsAt={r.starts_at as string}
+                endsAt={r.ends_at as string}
+                location={(r.location_text as string | null) ?? null}
+                cancelled={r.status === "cancelled"}
+                coverUrl={coverUrls[i] ?? null}
+                showDate
+                footer={
+                  <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={r.status as string} />
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {(r.visibility as string)?.replace("_", " ")}
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    {counts.going}
-                    {r.waitlist_enabled ? ` / ${counts.waitlisted}` : ""}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {r.capacity ?? "—"}
-                  </td>
-                </tr>
-              );
-            })}
-            {(rows ?? []).length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                  No events in this tab yet.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                    <span className="text-muted-foreground">
+                      {counts.going} going
+                      {capacity !== null ? ` / ${capacity} cap` : ""}
+                      {waitlistEnabled && counts.waitlisted > 0
+                        ? ` · ${counts.waitlisted} waitlisted`
+                        : ""}
+                    </span>
+                    {r.visibility === "private_invite" ? (
+                      <span className="text-muted-foreground">· Invite-only</span>
+                    ) : null}
+                  </div>
+                }
+              />
+            );
+          })}
+        </ul>
+      )}
 
       <Pagination page={page} totalPages={totalPages} tab={tab} />
     </div>
@@ -221,7 +239,7 @@ function StatusBadge({ status }: { status: string }) {
           : "bg-muted text-muted-foreground";
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${tone}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}
     >
       {status}
     </span>

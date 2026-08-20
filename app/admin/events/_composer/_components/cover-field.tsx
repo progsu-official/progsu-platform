@@ -17,17 +17,26 @@ const MAX_MB = Math.round(MAX_EVENT_COVER_BYTES / (1024 * 1024));
 export function CoverField({
   file,
   onFileChange,
+  existingUrl = null,
+  onRemoveExisting,
   theme,
   disabled,
 }: {
   file: File | null;
   onFileChange: (next: File | null) => void;
+  /** Already-persisted cover to fall back to when no new file is staged
+   * (edit mode). Ignored in create mode, where there's nothing to persist yet. */
+  existingUrl?: string | null;
+  /** Called when the admin removes the persisted cover (as opposed to just
+   * clearing a staged replacement, which needs no server call). */
+  onRemoveExisting?: () => void;
   theme: ThemeSpec;
   disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const displayUrl = preview ?? existingUrl;
 
   useEffect(() => {
     if (!file) {
@@ -57,15 +66,16 @@ export function CoverField({
     <div className="space-y-3">
       <div
         className="relative overflow-hidden rounded-2xl ring-1 ring-white/10"
-        style={preview ? undefined : themeStyle(theme)}
+        style={displayUrl ? undefined : themeStyle(theme)}
       >
-        {preview ? (
-          // Raw img: the file stays in the browser until the event row exists,
-          // so there's no URL for next/image to optimise.
+        {displayUrl ? (
+          // Raw img: a staged file stays in the browser until the event row
+          // exists (no URL for next/image to optimise); a persisted cover
+          // comes in as a signed URL that expires, same reasoning.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={preview}
-            alt="Selected event cover"
+            src={displayUrl}
+            alt="Event cover"
             className="aspect-square w-full object-cover"
           />
         ) : (
@@ -94,12 +104,16 @@ export function CoverField({
           </button>
         )}
 
-        {preview ? (
+        {displayUrl ? (
           <div className="absolute bottom-3 right-3 flex gap-2">
             <button
               type="button"
               disabled={disabled}
               onClick={() => {
+                // No staged file showing means the persisted cover is what's
+                // on screen, so removing it needs the parent to know it should
+                // clear the cover on save, not just drop a local pick.
+                if (!file) onRemoveExisting?.();
                 onFileChange(null);
                 if (inputRef.current) inputRef.current.value = "";
               }}

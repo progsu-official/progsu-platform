@@ -17,18 +17,21 @@ import { createClient as createBrowserClient } from "@/lib/supabase/browser";
 import {
   createEvent,
   createEventCoverUploadUrl,
+  deleteEventCover,
   updateEvent,
 } from "@/lib/actions/events";
 import {
   EVENT_COVER_MIME_TYPES,
   type EventVisibility,
 } from "@/lib/actions/event-schemas";
+import type { EventRecord } from "../[id]/types";
 
 import { DEFAULT_THEME, type ThemeSpec, themeStyle } from "./event-theme";
 import {
   addMinutesToTime,
   browserTimeZone,
   nextHalfHour,
+  utcInstantToWallTime,
   wallTimeToUtcIso,
 } from "./datetime";
 import { CoverField } from "./_components/cover-field";
@@ -58,26 +61,51 @@ function slugify(title: string): string {
 
 type Props = {
   recentLocations: string[];
+  /** Present in edit mode: prefills every field and switches submit from
+   * createEvent to updateEvent. Omitted on the /new composer. */
+  event?: EventRecord;
+  /** Signed URL for the event's already-persisted cover, if any. Edit mode only. */
+  coverUrl?: string | null;
 };
 
-export function NewEventForm({ recentLocations }: Props) {
+export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const isEdit = event != null;
 
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [visibility, setVisibility] = useState<EventVisibility>("members");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState<LocationValue>({ text: "", url: "" });
-  const [hosts, setHosts] = useState<HostRow[]>([]);
-  const [capacity, setCapacity] = useState("");
-  const [waitlist, setWaitlist] = useState(false);
-  const [sensitive, setSensitive] = useState(false);
-  const [rsvpEmail, setRsvpEmail] = useState(true);
-  const [reminderEmail, setReminderEmail] = useState(true);
+  const [title, setTitle] = useState(event?.title ?? "");
+  const [slug, setSlug] = useState(event?.slug ?? "");
+  // An existing event's slug was already chosen deliberately, so title edits
+  // shouldn't silently re-slugify it the way they do while first typing a name.
+  const [slugTouched, setSlugTouched] = useState(isEdit);
+  const [visibility, setVisibility] = useState<EventVisibility>(
+    event?.visibility ?? "members"
+  );
+  const [description, setDescription] = useState(event?.description_md ?? "");
+  const [location, setLocation] = useState<LocationValue>({
+    text: event?.location_text ?? "",
+    url: event?.location_url ?? "",
+  });
+  const [hosts, setHosts] = useState<HostRow[]>(
+    event?.hosts.map((h) => ({
+      display_name: h.display_name,
+      profile_id: h.profile_id ?? "",
+    })) ?? []
+  );
+  const [capacity, setCapacity] = useState(
+    event?.capacity == null ? "" : String(event.capacity)
+  );
+  const [waitlist, setWaitlist] = useState(event?.waitlist_enabled ?? false);
+  const [sensitive, setSensitive] = useState(event?.is_sensitive ?? false);
+  const [rsvpEmail, setRsvpEmail] = useState(event?.send_rsvp_email ?? true);
+  const [reminderEmail, setReminderEmail] = useState(
+    event?.send_reminder_email ?? true
+  );
   const [theme, setTheme] = useState<ThemeSpec>(DEFAULT_THEME);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  // Only meaningful in edit mode: admin removed the persisted cover and
+  // hasn't staged a replacement, so save should clear it server-side.
+  const [coverRemoved, setCoverRemoved] = useState(false);
 
   // "Now" only exists in the browser. Resolving it during render would emit
   // the server's clock and zone into the HTML and mismatch on hydration.
@@ -93,15 +121,30 @@ export function NewEventForm({ recentLocations }: Props) {
   const [created, setCreated] = useState<{ id: string; note: string } | null>(
     null
   );
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    const start = nextHalfHour(new Date());
-    const end = addMinutesToTime(start.date, start.time, 60);
-    setStartDate(start.date);
-    setStartTime(start.time);
-    setEndDate(end.date);
-    setEndTime(end.time);
-    setTimeZone(browserTimeZone());
+    const zone = browserTimeZone();
+    setTimeZone(zone);
+    if (event) {
+      // The DB only stores the UTC instant, not the zone it was scheduled in,
+      // so re-derive wall time in the browser's current zone — the same
+      // implicit assumption the old plain `datetime-local` form made.
+      const start = utcInstantToWallTime(Date.parse(event.starts_at), zone);
+      const end = utcInstantToWallTime(Date.parse(event.ends_at), zone);
+      setStartDate(start.date);
+      setStartTime(start.time);
+      setEndDate(end.date);
+      setEndTime(end.time);
+    } else {
+      const start = nextHalfHour(new Date());
+      const end = addMinutesToTime(start.date, start.time, 60);
+      setStartDate(start.date);
+      setStartTime(start.time);
+      setEndDate(end.date);
+      setEndTime(end.time);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const effectiveSlug = slugTouched ? slug : slugify(title);
@@ -151,29 +194,62 @@ export function NewEventForm({ recentLocations }: Props) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSavedNotice(null);
+    const hostsPayload = hosts
+      .map((h) => ({
+        display_name: h.display_name.trim(),
+        profile_id: h.profile_id.trim() || null,
+      }))
+      .filter((h) => h.display_name.length > 0);
+    const sharedFields = {
+      slug: effectiveSlug,
+      title,
+      description_md: description || null,
+      visibility,
+      starts_at: wallTimeToUtcIso(startDate, startTime, timeZone),
+      ends_at: wallTimeToUtcIso(endDate, endTime, timeZone),
+      location_text: location.text || null,
+      location_url: location.url || null,
+      capacity: capacity || null,
+      waitlist_enabled: waitlist,
+      is_sensitive: sensitive,
+      send_rsvp_email: rsvpEmail,
+      send_reminder_email: reminderEmail,
+      hosts: hostsPayload,
+    };
+
     startTransition(async () => {
-      const result = await createEvent({
-        slug: effectiveSlug,
-        title,
-        description_md: description || null,
-        visibility,
-        starts_at: wallTimeToUtcIso(startDate, startTime, timeZone),
-        ends_at: wallTimeToUtcIso(endDate, endTime, timeZone),
-        location_text: location.text || null,
-        location_url: location.url || null,
-        capacity: capacity || null,
-        waitlist_enabled: waitlist,
-        is_sensitive: sensitive,
-        send_rsvp_email: rsvpEmail,
-        send_reminder_email: reminderEmail,
-        cover_image_path: null,
-        hosts: hosts
-          .map((h) => ({
-            display_name: h.display_name.trim(),
-            profile_id: h.profile_id.trim() || null,
-          }))
-          .filter((h) => h.display_name.length > 0),
-      });
+      if (isEdit) {
+        const result = await updateEvent(event.id, sharedFields);
+        if (!result.ok) {
+          setError({ message: result.error.message, field: result.error.field });
+          return;
+        }
+
+        if (coverFile) {
+          const coverError = await uploadCover(event.id);
+          if (coverError) {
+            setError({
+              message: `Saved, but the cover didn't upload: ${coverError}`,
+            });
+            return;
+          }
+          setCoverFile(null);
+        } else if (coverRemoved) {
+          const coverResult = await deleteEventCover(event.id);
+          if (!coverResult.ok) {
+            setError({ message: coverResult.error.message });
+            return;
+          }
+          setCoverRemoved(false);
+        }
+
+        setSavedNotice("Saved.");
+        router.refresh();
+        return;
+      }
+
+      const result = await createEvent({ ...sharedFields, cover_image_path: null });
 
       if (!result.ok) {
         setError({ message: result.error.message, field: result.error.field });
@@ -214,6 +290,8 @@ export function NewEventForm({ recentLocations }: Props) {
         <CoverField
           file={coverFile}
           onFileChange={setCoverFile}
+          existingUrl={coverRemoved ? null : coverUrl}
+          onRemoveExisting={() => setCoverRemoved(true)}
           theme={theme}
           disabled={pending}
         />
@@ -233,7 +311,7 @@ export function NewEventForm({ recentLocations }: Props) {
               Progsu events
             </span>
             <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/80">
-              Draft
+              {event?.status ?? "Draft"}
             </span>
           </span>
           <VisibilityPicker
@@ -426,6 +504,15 @@ export function NewEventForm({ recentLocations }: Props) {
           </div>
         ) : null}
 
+        {savedNotice ? (
+          <p
+            role="status"
+            className="rounded-xl border border-emerald-300/30 bg-emerald-400/15 px-4 py-3 text-sm text-emerald-100"
+          >
+            {savedNotice}
+          </p>
+        ) : null}
+
         <button
           type="submit"
           disabled={pending || !ready}
@@ -435,7 +522,13 @@ export function NewEventForm({ recentLocations }: Props) {
             "disabled:cursor-not-allowed disabled:opacity-60"
           )}
         >
-          {pending ? "Creating…" : "Create event"}
+          {pending
+            ? isEdit
+              ? "Saving…"
+              : "Creating…"
+            : isEdit
+              ? "Save changes"
+              : "Create event"}
         </button>
       </div>
     </form>
