@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-import { NewEventForm } from "./new-event-form";
+import { EventForm } from "../_composer/event-form";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ export default async function AdminNewEventPage() {
           <ArrowLeft size={15} strokeWidth={1.75} aria-hidden />
           All events
         </Link>
-        <NewEventForm recentLocations={locations} />
+        <EventForm recentLocations={locations} />
       </div>
     </div>
   );
