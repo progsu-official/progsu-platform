@@ -2,9 +2,12 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { getOwnVisibilitySettings, listMemberCards } from "@/lib/actions/members";
-import { Avatar } from "@/app/_components/avatar";
 
 import { VisibilityNudge } from "./_components/visibility-nudge";
+import {
+  MemberConstellation,
+  type ConstellationMember,
+} from "./_components/member-constellation";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +65,22 @@ export default async function MembersDirectoryPage({
       }).toString()
     : null;
 
+  const members: ConstellationMember[] = cards.map((card) => ({
+    userId: card.user_id,
+    name: card.display_name ?? "Member",
+    avatarUrl: card.avatar_url,
+    slug: card.profile_slug,
+    school: card.school,
+    classStanding: card.class_standing,
+    gradLabel:
+      card.grad_term && card.grad_year
+        ? card.grad_term
+        : card.grad_year
+          ? `Class of ${card.grad_year}`
+          : null,
+    roles: (card.interested_roles ?? []).slice(0, 3),
+  }));
+
   return (
     <div className="space-y-8">
       <header className="space-y-1.5">
@@ -70,24 +89,31 @@ export default async function MembersDirectoryPage({
 
       {hiddenFromDirectory ? <VisibilityNudge /> : null}
 
-      <form method="get" className="relative max-w-sm">
-        <Search
-          size={15}
-          strokeWidth={1.75}
-          aria-hidden
-          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name"
-          className="w-full rounded-full border border-border/70 bg-card py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          maxLength={64}
-        />
-      </form>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <form method="get" className="relative w-full max-w-sm">
+          <Search
+            size={15}
+            strokeWidth={1.75}
+            aria-hidden
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Search by name"
+            className="w-full rounded-full border border-border/70 bg-card py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            maxLength={64}
+          />
+        </form>
+        {members.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Drag to explore. Click a face to open their profile.
+          </p>
+        ) : null}
+      </div>
 
-      {cards.length === 0 ? (
+      {members.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/80 px-8 py-14 text-center">
           <p className="text-sm text-muted-foreground">
             {q
@@ -96,24 +122,12 @@ export default async function MembersDirectoryPage({
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {cards.map((card) => (
-            <li key={card.user_id}>
-              {card.profile_slug ? (
-                <Link
-                  href={`/members/${card.profile_slug}`}
-                  className="block h-full rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg hover:shadow-black/20"
-                >
-                  <MemberCardPreview card={card} />
-                </Link>
-              ) : (
-                <div className="block h-full rounded-2xl border border-border/70 bg-card p-5 opacity-70">
-                  <MemberCardPreview card={card} />
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+        // Remount on a new result set so the viewer starts at the origin
+        // instead of parked over lattice that no longer has anyone on it.
+        <MemberConstellation
+          key={`${q}|${params.cursor_user ?? ""}`}
+          members={members}
+        />
       )}
 
       {nextQs ? (
@@ -125,62 +139,6 @@ export default async function MembersDirectoryPage({
             Next page
           </Link>
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-function MemberCardPreview({
-  card,
-}: {
-  card: Awaited<ReturnType<typeof listMemberCards>> extends infer R
-    ? R extends { ok: true; data: infer Rows }
-      ? Rows extends Array<infer T>
-        ? T
-        : never
-      : never
-    : never;
-}) {
-  const gradLabel =
-    card.grad_term && card.grad_year
-      ? `${card.grad_term}`
-      : card.grad_year
-        ? `Class of ${card.grad_year}`
-        : null;
-  const topRoles = (card.interested_roles ?? []).slice(0, 3);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <Avatar
-          src={card.avatar_url}
-          name={card.display_name ?? "?"}
-          className="h-12 w-12 shrink-0 rounded-full"
-          textClassName="text-sm"
-        />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
-            {card.display_name ?? "Member"}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {card.school ?? ""}
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
-        {card.class_standing ? (
-          <span className="rounded-full border border-border/70 px-2 py-0.5 capitalize">
-            {card.class_standing}
-          </span>
-        ) : null}
-        {gradLabel ? (
-          <span className="rounded-full border border-border/70 px-2 py-0.5">
-            {gradLabel}
-          </span>
-        ) : null}
-      </div>
-      {topRoles.length > 0 ? (
-        <p className="text-xs text-muted-foreground">{topRoles.join(" · ")}</p>
       ) : null}
     </div>
   );

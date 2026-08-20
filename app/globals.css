@@ -219,4 +219,40 @@
       radial-gradient(60rem 40rem at 12% -10%, hsl(var(--primary) / 0.16), transparent 60%),
       radial-gradient(45rem 35rem at 105% 5%, hsl(258 90% 60% / 0.1), transparent 55%);
   }
+
+  /* Fades the lattice into the page at the rim. Sits above the nodes, which
+     take z-index up to 100 to fake depth, so it can actually veil them. */
+  .constellation-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle at center,
+      transparent 38%,
+      hsl(var(--background)) 92%
+    );
+  }
+
+  /* Directory faces settle into the lattice on first paint. Fill mode is
+     backwards, not forwards, so the hover transform takes over afterward. */
+  @keyframes bubble-in {
+    from {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .bubble-in {
+    animation: bubble-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bubble-in {
+      animation: none;
+    }
+  }
 }
