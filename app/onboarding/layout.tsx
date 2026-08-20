@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Instrument_Serif } from "next/font/google";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import { loadOnboardingState } from "@/lib/auth/onboarding";
 import { StepIndicator } from "./_components/step-indicator";
 
@@ -59,6 +60,16 @@ export default async function OnboardingLayout({ children }: Props) {
             <StepIndicator nextStep={state.nextStep} />
           </div>
         </header>
+
+        {env.ONBOARDING_TEST_MODE ? (
+          <div className="mx-auto w-full max-w-[38rem] px-5 pt-1">
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+              Test mode is on — forms are pre-filled with dummy values, no
+              emails are sent, and the verification code is always{" "}
+              <span className="font-mono font-semibold">000000</span>.
+            </div>
+          </div>
+        ) : null}
 
         {/* One column for every step, matching the header above it, so the
             title lands in the same place on each screen instead of each page

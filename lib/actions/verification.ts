@@ -7,6 +7,7 @@ import postgres from "postgres";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
 import OtpEmail, { otpPlainText } from "@/emails/OtpEmail";
 import { sendEmail } from "@/lib/email/resend";
 import { log } from "@/lib/log";
@@ -52,6 +53,10 @@ function getSql(): postgres.Sql {
   _sql = postgres(url, { prepare: false, max: 5 });
   return _sql;
 }
+
+// Fixed code stored (still bcrypt-hashed) when ONBOARDING_TEST_MODE is on, so
+// the verify path runs unchanged without anyone reading a real inbox.
+const TEST_MODE_OTP = "000000";
 
 function generateCode(): string {
   // Cryptographically secure 6-digit code, left-padded.
@@ -113,48 +118,52 @@ export async function requestStudentEmailCode(
     );
   }
 
-  // 3. Per-(user,email) cooldown — 60s between sends.
-  const { data: cooldownRow } = await admin
-    .rpc("consume_rate_limit", {
-      p_bucket: `${SEND_BUCKET}_cooldown`,
-      p_key: `${user.id}:${studentEmail}`,
-      p_max_hits: 1,
-      p_window_seconds: SEND_COOLDOWN_SEC,
-    })
-    .single();
-  const cooldown = cooldownRow as
-    | { allowed: boolean; retry_after_ms: number }
-    | null;
-  if (cooldown && !cooldown.allowed) {
-    return err(
-      "RATE_LIMITED",
-      "Please wait before requesting another code.",
-      { retryAfterMs: cooldown.retry_after_ms }
-    );
-  }
+  // 3+4. Rate limits. Skipped in test mode so repeated walkthroughs aren't
+  // locked out by the 60s cooldown / 3-per-15-min ceiling.
+  if (!env.ONBOARDING_TEST_MODE) {
+    // 3. Per-(user,email) cooldown — 60s between sends.
+    const { data: cooldownRow } = await admin
+      .rpc("consume_rate_limit", {
+        p_bucket: `${SEND_BUCKET}_cooldown`,
+        p_key: `${user.id}:${studentEmail}`,
+        p_max_hits: 1,
+        p_window_seconds: SEND_COOLDOWN_SEC,
+      })
+      .single();
+    const cooldown = cooldownRow as
+      | { allowed: boolean; retry_after_ms: number }
+      | null;
+    if (cooldown && !cooldown.allowed) {
+      return err(
+        "RATE_LIMITED",
+        "Please wait before requesting another code.",
+        { retryAfterMs: cooldown.retry_after_ms }
+      );
+    }
 
-  // 4. Per-user send ceiling — 3 per 15 min.
-  const { data: sendRow } = await admin
-    .rpc("consume_rate_limit", {
-      p_bucket: SEND_BUCKET,
-      p_key: user.id,
-      p_max_hits: SEND_MAX,
-      p_window_seconds: SEND_WINDOW_SEC,
-    })
-    .single();
-  const send = sendRow as
-    | { allowed: boolean; retry_after_ms: number }
-    | null;
-  if (send && !send.allowed) {
-    return err(
-      "RATE_LIMITED",
-      "Too many codes requested. Please try again later.",
-      { retryAfterMs: send.retry_after_ms }
-    );
+    // 4. Per-user send ceiling — 3 per 15 min.
+    const { data: sendRow } = await admin
+      .rpc("consume_rate_limit", {
+        p_bucket: SEND_BUCKET,
+        p_key: user.id,
+        p_max_hits: SEND_MAX,
+        p_window_seconds: SEND_WINDOW_SEC,
+      })
+      .single();
+    const send = sendRow as
+      | { allowed: boolean; retry_after_ms: number }
+      | null;
+    if (send && !send.allowed) {
+      return err(
+        "RATE_LIMITED",
+        "Too many codes requested. Please try again later.",
+        { retryAfterMs: send.retry_after_ms }
+      );
+    }
   }
 
   // 5. Generate + hash + insert + send. Resend invalidates prior active codes.
-  const rawCode = generateCode();
+  const rawCode = env.ONBOARDING_TEST_MODE ? TEST_MODE_OTP : generateCode();
   const codeHash = await bcrypt.hash(rawCode, OTP_BCRYPT_COST);
   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
@@ -186,6 +195,20 @@ export async function requestStudentEmailCode(
 
   // 6. Send. Idempotency key scoped to the minute so genuine retries dedupe
   //    but a legit resend after cooldown is a new send.
+  if (env.ONBOARDING_TEST_MODE) {
+    console.log(
+      "[onboarding-test-mode] skipped OTP email to %s — code is %s",
+      studentEmail,
+      TEST_MODE_OTP
+    );
+    log.info("otp send skipped (test mode)", {
+      action: "requestStudentEmailCode",
+      user_id: user.id,
+      ok: true,
+    });
+    return ok({ expiresAt: expiresAt.toISOString() });
+  }
+
   const firstName = user.user_metadata?.given_name ?? user.user_metadata?.full_name?.split(" ")[0] ?? null;
   const minuteBucket = Math.floor(Date.now() / 60_000);
   const sendResult = await sendEmail({
@@ -254,24 +277,26 @@ export async function verifyStudentEmailCode(
 
   const admin = createAdminClient();
 
-  // Verify bucket: 5 attempts per 15 min per user.
-  const { data: vRow } = await admin
-    .rpc("consume_rate_limit", {
-      p_bucket: VERIFY_BUCKET,
-      p_key: user.id,
-      p_max_hits: VERIFY_MAX,
-      p_window_seconds: VERIFY_WINDOW_SEC,
-    })
-    .single();
-  const v = vRow as
-    | { allowed: boolean; retry_after_ms: number }
-    | null;
-  if (v && !v.allowed) {
-    return err(
-      "OTP_LOCKED",
-      "Too many attempts. Request a new code later.",
-      { retryAfterMs: v.retry_after_ms }
-    );
+  // Verify bucket: 5 attempts per 15 min per user. Skipped in test mode.
+  if (!env.ONBOARDING_TEST_MODE) {
+    const { data: vRow } = await admin
+      .rpc("consume_rate_limit", {
+        p_bucket: VERIFY_BUCKET,
+        p_key: user.id,
+        p_max_hits: VERIFY_MAX,
+        p_window_seconds: VERIFY_WINDOW_SEC,
+      })
+      .single();
+    const v = vRow as
+      | { allowed: boolean; retry_after_ms: number }
+      | null;
+    if (v && !v.allowed) {
+      return err(
+        "OTP_LOCKED",
+        "Too many attempts. Request a new code later.",
+        { retryAfterMs: v.retry_after_ms }
+      );
+    }
   }
 
   const sql = getSql();

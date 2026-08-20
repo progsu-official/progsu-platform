@@ -28,6 +28,14 @@ export const env = {
   FEATURE_SHARED_EVENT_HISTORY: parseBool(
     process.env.FEATURE_SHARED_EVENT_HISTORY
   ),
+
+  // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,
+  // no OTP email is sent, the code is always 000000, and OTP rate limits are
+  // skipped. Hard-gated on NODE_ENV like DEV_AUTO_LOGIN so it can never be
+  // active on a real deployment regardless of the env var.
+  ONBOARDING_TEST_MODE:
+    parseBool(process.env.ONBOARDING_TEST_MODE) &&
+    process.env.NODE_ENV !== "production",
 };
 
 export function requireServerEnv() {

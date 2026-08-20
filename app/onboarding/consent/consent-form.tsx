@@ -11,13 +11,21 @@ import { CONSENT_LABELS, type ConsentType } from "@/lib/actions/consent-schemas"
 
 type Acceptances = Record<ConsentType, boolean>;
 
-export function ConsentForm({ hasPhone }: { hasPhone: boolean }) {
+// prefillRequired pre-checks the three required boxes — only ever true in
+// ONBOARDING_TEST_MODE so a walkthrough finishes on a single click.
+export function ConsentForm({
+  hasPhone,
+  prefillRequired = false,
+}: {
+  hasPhone: boolean;
+  prefillRequired?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<Acceptances>({
-    privacy_policy: false,
-    terms_of_service: false,
-    age_confirmation: false,
+    privacy_policy: prefillRequired,
+    terms_of_service: prefillRequired,
+    age_confirmation: prefillRequired,
     recruiter_resume_sharing: false,
     email_marketing: false,
     sms_marketing: false,

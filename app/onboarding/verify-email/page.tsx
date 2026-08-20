@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import { loadOnboardingState } from "@/lib/auth/onboarding";
 
 import { StepHeader } from "../_components/step-header";
@@ -24,9 +25,24 @@ export default async function VerifyEmailPage() {
     .select("student_email, student_email_verified")
     .eq("id", user.id)
     .single();
-  const initialEmail =
+  let initialEmail =
     profile && !profile.student_email_verified ? profile.student_email ?? "" : "";
   const alreadyVerified = Boolean(profile?.student_email_verified);
+
+  // Test mode: pre-fill a dummy address on an allowlisted domain, unique per
+  // user so parallel test accounts don't trip the duplicate-email guard.
+  if (env.ONBOARDING_TEST_MODE && !initialEmail && !alreadyVerified) {
+    const { data: domainRow } = await supabase
+      .from("school_domains")
+      .select("domain")
+      .eq("is_active", true)
+      .order("domain")
+      .limit(1)
+      .maybeSingle();
+    if (domainRow?.domain) {
+      initialEmail = `test-${user.id.slice(0, 8)}@${domainRow.domain}`;
+    }
+  }
 
   return (
     <section className="space-y-6">

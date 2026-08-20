@@ -13,6 +13,10 @@ const DEV_PASSWORD = "dev-login-password-12345";
 const ROLES = {
   member: { email: "dev-member@example.com", isAdmin: false, firstName: "Dev-Member", lastName: "Account" },
   admin: { email: "dev-admin@example.com", isAdmin: true, firstName: "Dev-Admin", lastName: "Account" },
+  // Deleted and recreated blank on every visit, so each hit of
+  // /api/dev-login?role=onboarding restarts the funnel from the top. Pair
+  // with ONBOARDING_TEST_MODE=true to click through with dummy values.
+  onboarding: { email: "dev-onboarding@example.com", isAdmin: false, firstName: "Dev-Onboarding", lastName: "Account" },
 } as const;
 
 export async function GET(request: NextRequest) {
@@ -21,7 +25,12 @@ export async function GET(request: NextRequest) {
   }
 
   const roleParam = request.nextUrl.searchParams.get("role");
-  const role = roleParam === "admin" ? "admin" : "member";
+  const role =
+    roleParam === "admin"
+      ? "admin"
+      : roleParam === "onboarding"
+        ? "onboarding"
+        : "member";
   const { email: DEV_EMAIL, isAdmin, firstName, lastName } = ROLES[role];
 
   const admin = createAdminClient();
@@ -38,7 +47,31 @@ export async function GET(request: NextRequest) {
     });
 
   let signinRes = await signIn();
-  if (!signinRes.ok) {
+
+  if (role === "onboarding") {
+    // Reset: drop any existing account (cascades wipe its profile, consents,
+    // codes) and recreate it blank so the funnel starts fresh.
+    if (signinRes.ok) {
+      const existing = (await signinRes.json()) as { user: { id: string } };
+      await admin.auth.admin.deleteUser(existing.user.id).catch(() => {});
+    }
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: DEV_EMAIL,
+      password: DEV_PASSWORD,
+      email_confirm: true,
+      user_metadata: { given_name: firstName, family_name: lastName },
+    });
+    if (createErr || !created.user) {
+      return NextResponse.json(
+        { error: `createUser failed: ${createErr?.message}` },
+        { status: 500 }
+      );
+    }
+    signinRes = await signIn();
+    if (!signinRes.ok) {
+      return NextResponse.json({ error: "sign-in failed after create" }, { status: 500 });
+    }
+  } else if (!signinRes.ok) {
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email: DEV_EMAIL,
       password: DEV_PASSWORD,
@@ -118,7 +151,10 @@ export async function GET(request: NextRequest) {
       .replace(/=+$/, "");
 
   const requestedNext = request.nextUrl.searchParams.get("next");
-  const targetPath = requestedNext && requestedNext.startsWith("/") ? requestedNext : "/profile";
+  const defaultPath =
+    role === "onboarding" ? "/onboarding/verify-email" : "/profile";
+  const targetPath =
+    requestedNext && requestedNext.startsWith("/") ? requestedNext : defaultPath;
   const response = NextResponse.redirect(new URL(targetPath, request.url));
   response.cookies.set(`sb-${ref}-auth-token`, cookieValue, {
     path: "/",

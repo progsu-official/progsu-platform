@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { StepHeader } from "../_components/step-header";
@@ -88,12 +89,24 @@ export default async function OnboardingProfilePage() {
       )}
       <ProfileForm
         initial={{
-          firstName: profile?.first_name ?? "",
-          lastName: profile?.last_name ?? "",
-          school: profile?.school ?? "",
+          // Test mode fills any still-empty field with a dummy value so the
+          // form submits on a single click.
+          firstName:
+            profile?.first_name || (env.ONBOARDING_TEST_MODE ? "Test" : ""),
+          lastName:
+            profile?.last_name || (env.ONBOARDING_TEST_MODE ? "Student" : ""),
+          school:
+            profile?.school ||
+            (env.ONBOARDING_TEST_MODE ? schoolOptions[0] ?? "" : ""),
           schoolOtherText: "",
-          phoneNumber: profile?.phone_number ?? "",
-          major: profile?.major ?? "",
+          phoneNumber:
+            profile?.phone_number ||
+            (env.ONBOARDING_TEST_MODE ? "(404) 555-0123" : ""),
+          major:
+            profile?.major ||
+            (env.ONBOARDING_TEST_MODE
+              ? majorOptions.find((m) => m.slug !== "other")?.slug ?? ""
+              : ""),
           majorOtherText: profile?.major_other_text ?? "",
         }}
         majorOptions={majorOptions}
