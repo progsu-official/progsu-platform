@@ -16,6 +16,7 @@ import { ResumePreview } from "./resume-preview";
 import { AvatarButton } from "./avatar-button";
 import { ProfileBanner } from "./profile-banner";
 import { NoteBubble } from "./note-bubble";
+import { SchoolLogo } from "./school-logo";
 import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
 
 export const dynamic = "force-dynamic";
@@ -202,7 +203,9 @@ export default async function DashboardHome() {
   ]
     .filter(Boolean)
     .join(" ");
-  const subline = [profile?.school, majorLabel].filter(Boolean).join(" · ");
+  // School moved to the header's right rail, so the subline under the name
+  // is the degree alone rather than repeating the institution.
+  const subline = majorLabel;
   const joined = profile?.created_at
     ? joinedFormatter.format(new Date(profile.created_at))
     : null;
@@ -212,14 +215,20 @@ export default async function DashboardHome() {
       <div>
         <ProfileBanner bannerUrl={bannerUrl} />
 
-      {/* Pulled up over the banner so the avatar reads as anchored to it
-          rather than stacked under it. relative+z-10 is required, not
-          cosmetic: the banner is positioned, this header is not, so without a
-          stacking context of its own the banner paints on top and swallows
-          clicks meant for the controls in the overlap. */}
-      <header className="relative z-10 -mt-16 flex flex-col gap-5 sm:-mt-20 sm:flex-row sm:items-end sm:gap-7">
-        <div className="group/avatar relative shrink-0">
-          <div className="absolute bottom-full left-1 mb-3">
+      {/* Only the avatar column is pulled up over the banner. Pulling the
+          whole header up and bottom-aligning it dragged the name, subline and
+          stats into the banner's bottom edge — the identity text belongs on
+          the page's own background, where it reads against a known surface
+          instead of whatever image the member uploaded. relative+z-10 is
+          required, not cosmetic: the banner is positioned, this header is
+          not, so without a stacking context of its own the banner paints on
+          top and swallows clicks meant for the controls in the overlap. */}
+      <header className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
+        <div className="group/avatar relative -mt-16 shrink-0 sm:-mt-20">
+          {/* z-20 beats the avatar button's own `relative`: both are in this
+              stacking context, the button comes later in the DOM, so without
+              an explicit z the bubble's tail painted underneath the avatar. */}
+          <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
             <NoteBubble note={note} />
           </div>
           <div className="rounded-full ring-4 ring-background">
@@ -229,30 +238,47 @@ export default async function DashboardHome() {
             />
           </div>
         </div>
-        <div className="min-w-0 flex-1 space-y-2 sm:pb-1">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="truncate text-3xl font-bold tracking-tight">
-                {displayName || "Member"}
-              </h1>
-              {subline ? (
-                <p className="truncate text-sm text-muted-foreground">
-                  {subline}
-                </p>
-              ) : null}
-            </div>
-            {/* Lives beside the name rather than up in the banner: anything
-                sitting in the overlap competes with the banner's own
-                hover controls for the same pixels. */}
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className="shrink-0 rounded-full"
-            >
-              <Link href="/profile/settings">Edit profile</Link>
-            </Button>
+        <div className="min-w-0 flex-1 space-y-2 sm:pt-2">
+          {/* Marks sit on the name line rather than in a row of their own:
+              two 17px glyphs did not earn a fourth band in the header, and
+              beside the name they read as part of the identity. Each gets a
+              44px parent per the hit-target rule, pulled back in with a
+              negative margin so the padding buys reach without airing out
+              the line. */}
+          <div className="flex min-w-0 items-center gap-1">
+            <h1 className="truncate text-3xl font-bold tracking-tight">
+              {displayName || "Member"}
+            </h1>
+            {profile?.linkedin_url || profile?.github_url ? (
+              <div className="flex shrink-0 items-center">
+                {profile.linkedin_url ? (
+                  <a
+                    href={profile.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="LinkedIn"
+                    className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <LinkedInMark className="h-[17px] w-[17px]" />
+                  </a>
+                ) : null}
+                {profile.github_url ? (
+                  <a
+                    href={profile.github_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="GitHub"
+                    className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <GitHubMark className="h-[17px] w-[17px]" />
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
           </div>
+          {subline ? (
+            <p className="truncate text-sm text-muted-foreground">{subline}</p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {joined ? (
               <span className="inline-flex items-center gap-1.5">
@@ -277,30 +303,26 @@ export default async function DashboardHome() {
               </span>
             ) : null}
           </div>
-          {profile?.linkedin_url || profile?.github_url ? (
-            <div className="flex items-center gap-2">
-              {profile.linkedin_url ? (
-                <a
-                  href={profile.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="LinkedIn"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <LinkedInMark className="h-[17px] w-[17px]" />
-                </a>
-              ) : null}
-              {profile.github_url ? (
-                <a
-                  href={profile.github_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="GitHub"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <GitHubMark className="h-[17px] w-[17px]" />
-                </a>
-              ) : null}
+        </div>
+
+        {/* Right rail. The school moves out of the subline and into its own
+            block so the identity column carries the person and this carries
+            the institution -- the same split LinkedIn uses for the current
+            company. Edit profile rides above it rather than beside the name:
+            with the school on the right, a button there made two competing
+            right-hand anchors on one line. It stays out of the banner overlap
+            either way, where it would fight the banner's own hover controls
+            for the same pixels. */}
+        <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end sm:pt-2">
+          <Button asChild size="sm" variant="outline" className="rounded-full">
+            <Link href="/profile/settings">Edit profile</Link>
+          </Button>
+          {profile?.school ? (
+            <div className="flex max-w-56 items-center gap-2.5">
+              <SchoolLogo name={profile.school} />
+              <p className="min-w-0 text-sm font-semibold leading-snug">
+                {profile.school}
+              </p>
             </div>
           ) : null}
         </div>

@@ -8,9 +8,9 @@ import { Avatar } from "@/app/_components/avatar";
 import { AvatarDialog } from "./avatar-dialog";
 
 // Opens the upload dialog in place. The corner badge is gone: the note bubble
-// now occupies that corner of the avatar, and two overlapping affordances on
-// one 96px target read as clutter. The hover/focus scrim carries it, and the
-// button keeps its aria-label for anyone who never sees a hover state.
+// sits directly above the avatar, and two overlapping affordances on one
+// target read as clutter. The hover/focus scrim carries it, and the button
+// keeps its aria-label for anyone who never sees a hover state.
 export function AvatarButton({
   avatarUrl,
   displayName,

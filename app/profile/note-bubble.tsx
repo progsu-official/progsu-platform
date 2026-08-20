@@ -90,9 +90,8 @@ export function NoteBubble({ note }: { note: string | null }) {
       aria-label={note ? `Edit your note: ${note}` : "Add a note"}
       className={cn(
         BUBBLE_BASE,
-        "max-w-44 px-3 py-1.5 text-left transition-colors hover:bg-secondary",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        !note && "opacity-0 group-hover/avatar:opacity-100 focus:opacity-100"
+        "max-w-44 px-3 py-1.5 text-left transition-colors hover:bg-muted",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
     >
       <span
@@ -119,8 +118,12 @@ export function StaticNote({ note }: { note: string | null }) {
   );
 }
 
+// Opaque, not `bg-muted`: this floats over the banner, which is whatever
+// image the member uploaded. A translucent or near-background fill vanished
+// against a pale banner. Popover fill + a real shadow is the same recipe every
+// other floating surface here uses, and it reads on any backdrop.
 const BUBBLE_BASE =
-  "relative inline-block rounded-2xl bg-muted shadow-sm ring-1 ring-inset ring-border/60";
+  "relative inline-block rounded-2xl bg-popover text-popover-foreground shadow-md shadow-black/10 ring-1 ring-inset ring-border dark:shadow-black/40";
 
 // Drawn rather than a rotated square: a rotated element inherits the parent
 // ring and shows its own edges through the bubble.
@@ -129,7 +132,7 @@ function BubbleTail() {
     <svg
       aria-hidden
       viewBox="0 0 16 10"
-      className="absolute -bottom-[9px] left-5 h-2.5 w-4 text-muted"
+      className="absolute -bottom-[9px] left-1/2 h-2.5 w-4 -translate-x-1/2 text-popover"
     >
       <path d="M0 0 H16 L7 9 Q5.5 10 4.5 8.6 Z" fill="currentColor" />
     </svg>
