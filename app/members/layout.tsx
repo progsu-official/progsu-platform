@@ -42,6 +42,7 @@ export default async function MembersLayout({
     <div className="dark min-h-screen bg-background text-foreground">
       <MemberHeader
         displayName={displayName}
+        email={user.email ?? null}
         avatarUrl={profile?.avatar_url ?? null}
         isAdmin={state.isAdmin}
         showMembers={env.FEATURE_MEMBER_DIRECTORY}

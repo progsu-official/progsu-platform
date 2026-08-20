@@ -1,20 +1,20 @@
 import Link from "next/link";
 
-import { signOut } from "@/lib/actions/session";
-
-import { Avatar } from "./avatar";
 import { SiteNav } from "./site-nav";
+import { UserMenu } from "./user-menu";
 
 // One header for every member surface (dashboard/members/events layouts).
 // Sticky + frosted so the timeline scrolls underneath it Luma-style.
 export function MemberHeader({
   displayName,
+  email,
   avatarUrl,
   isAdmin,
   showMembers,
   showEvents,
 }: {
   displayName: string;
+  email?: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
   showMembers: boolean;
@@ -49,25 +49,11 @@ export function MemberHeader({
               Admin
             </Link>
           ) : null}
-          <Link
-            href="/dashboard"
-            aria-label={`${displayName}'s profile`}
-            className="shrink-0"
-          >
-            <Avatar
-              src={avatarUrl}
-              name={displayName}
-              className="h-8 w-8 rounded-full"
-            />
-          </Link>
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-            >
-              Sign out
-            </button>
-          </form>
+          <UserMenu
+            displayName={displayName}
+            email={email ?? null}
+            avatarUrl={avatarUrl}
+          />
         </div>
       </div>
     </header>
