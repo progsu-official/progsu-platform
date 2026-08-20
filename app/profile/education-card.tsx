@@ -106,6 +106,58 @@ export function EducationCard({
   );
 }
 
+// Read-only counterpart for viewing someone else's card: no edit pencil, no
+// "verify"/"add education" prompts (nothing for a viewer to act on), and no
+// email address — just the verification badge, matching the "don't show the
+// email, just verified or not" call for the public profile.
+export function StaticEducationCard({
+  school,
+  degreeLine,
+  standingLine,
+  verification,
+  pendingDomainName,
+}: {
+  school: string | null;
+  degreeLine: string | null;
+  standingLine: string | null;
+  verification: VerificationState;
+  pendingDomainName: string | null;
+}) {
+  return (
+    <section
+      aria-labelledby="education-heading"
+      className="rounded-2xl glass p-5"
+    >
+      <h2 id="education-heading" className="text-base font-semibold">
+        Education
+      </h2>
+
+      {school ? (
+        <div className="mt-3 flex gap-3.5">
+          <SchoolLogo name={school} />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="flex flex-wrap items-center gap-2 font-semibold leading-snug text-foreground">
+              {school}
+              <VerificationChip
+                state={verification}
+                pendingDomainName={pendingDomainName}
+              />
+            </p>
+            {degreeLine ? (
+              <p className="text-sm leading-snug text-foreground/90">{degreeLine}</p>
+            ) : null}
+            {standingLine ? (
+              <p className="text-sm text-muted-foreground">{standingLine}</p>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">No school on file.</p>
+      )}
+    </section>
+  );
+}
+
 function VerificationChip({
   state,
   pendingDomainName,

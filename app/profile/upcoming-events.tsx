@@ -37,11 +37,17 @@ export function UpcomingEvents({
   coverUrls,
   waitlistPositions,
   goingCounts,
+  // "/events?tab=my-plans" only makes sense when these are the viewer's own
+  // plans. Viewing someone else's card, there's nowhere equivalent to send
+  // a "see all" click to, so omit it rather than link to the viewer's own
+  // (unrelated) plans.
+  seeAllHref = "/events?tab=my-plans",
 }: {
   plans: UpcomingPlan[];
   coverUrls: Array<string | null>;
   waitlistPositions: Map<string, number | null>;
   goingCounts: Map<string, number>;
+  seeAllHref?: string | null;
 }) {
   return (
     <section aria-labelledby="upcoming-events-heading" className="space-y-4">
@@ -52,12 +58,14 @@ export function UpcomingEvents({
         >
           Upcoming events
         </h2>
-        <Link
-          href="/events?tab=my-plans"
-          className="rounded-md text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          See all
-        </Link>
+        {seeAllHref ? (
+          <Link
+            href={seeAllHref}
+            className="rounded-md text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            See all
+          </Link>
+        ) : null}
       </div>
 
       {plans.length === 0 ? (

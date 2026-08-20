@@ -4,13 +4,21 @@ import { ArrowLeft, Globe } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { resolveCoverUrls } from "@/lib/events/cover-url";
+import { CLASS_STANDING_LABELS } from "@/lib/enums/roles";
 import {
   getMemberCardBySlug,
   getSharedEventsForViewer,
+  getUpcomingEventsForViewer,
 } from "@/lib/actions/members";
+import { getCurrentResumeInfoForViewer } from "@/lib/actions/resume";
 import { Avatar } from "@/app/_components/avatar";
 import { StaticBanner } from "@/app/profile/profile-banner";
 import { StaticNote } from "@/app/profile/note-bubble";
+import { StaticEducationCard, type VerificationState } from "@/app/profile/education-card";
+import { SchoolLogo } from "@/app/profile/school-logo";
+import { ResumePreview } from "@/app/profile/resume-preview";
+import { UpcomingEvents, type UpcomingPlan } from "@/app/profile/upcoming-events";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +62,68 @@ export default async function MemberProfilePage({
         )
       : null;
 
+  const [upcomingResult, resumeInfoResult] = await Promise.all([
+    getUpcomingEventsForViewer(card.user_id),
+    getCurrentResumeInfoForViewer(card.user_id),
+  ]);
+  const upcomingRows = upcomingResult.ok ? upcomingResult.data : [];
+  const resumeInfo = resumeInfoResult.ok ? resumeInfoResult.data : null;
+
+  const upcomingPlans: UpcomingPlan[] = upcomingRows.map((r) => ({
+    event_id: r.event_id,
+    slug: r.slug,
+    title: r.title,
+    starts_at: r.starts_at,
+    status: r.status,
+    location_text: r.location_text,
+    rsvp_status: r.rsvp_status,
+  }));
+  const upcomingCoverUrls =
+    upcomingRows.length > 0
+      ? await resolveCoverUrls(
+          supabase,
+          upcomingRows.map((r) => r.cover_image_path)
+        )
+      : [];
+  const upcomingGoingCounts = new Map(
+    upcomingRows.map((r) => [r.event_id, r.going_count])
+  );
+
+  // profiles.major holds a slug from the majors table; resolve it to its
+  // label so the card doesn't render "computer_information_systems". Legacy
+  // rows predate the table and hold free text, which falls through unchanged.
+  let majorLabel = card.major;
+  if (card.major) {
+    const { data: majorRow } = await supabase
+      .from("majors")
+      .select("label")
+      .eq("slug", card.major)
+      .maybeSingle();
+    if (majorRow?.label) majorLabel = majorRow.label;
+  }
+  const degreeLine =
+    [majorLabel, card.minor ? `Minor in ${card.minor}` : null]
+      .filter(Boolean)
+      .join(" · ") || null;
+  const standingLine =
+    [
+      card.class_standing
+        ? CLASS_STANDING_LABELS[
+            card.class_standing as keyof typeof CLASS_STANDING_LABELS
+          ] ?? card.class_standing
+        : null,
+      card.grad_term ? `Graduates ${card.grad_term}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || null;
+  const verification: VerificationState = card.student_email_verified
+    ? "verified"
+    : !card.has_student_email
+      ? "none"
+      : card.pending_domain_name
+        ? "pending_domain"
+        : "unverified";
+
   const gradLabel =
     card.grad_term && card.grad_year
       ? `${card.grad_term}`
@@ -62,7 +132,7 @@ export default async function MemberProfilePage({
         : null;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="space-y-8">
       <nav>
         <Link
           href="/members"
@@ -93,85 +163,140 @@ export default async function MemberProfilePage({
       <div>
         <StaticBanner bannerUrl={card.banner_url} />
 
-        {/* Same overlap as the owner's own profile, so a member recognises
-            their card here. */}
-        <header className="-mt-12 flex items-end gap-5">
-          <div className="relative shrink-0">
+        {/* Mirrors the owner's own header (app/profile/page.tsx) — same
+            avatar overlap/size, centered note bubble, socials on the name
+            line, school in a right rail — minus the owner-only controls
+            (no AvatarButton, no Edit profile button). */}
+        <header className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
+          <div className="relative -mt-16 shrink-0 sm:-mt-20">
             {card.note ? (
-              <div className="absolute bottom-full left-1 mb-3">
+              <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
                 <StaticNote note={card.note} />
               </div>
             ) : null}
-            <Avatar
-              src={card.avatar_url}
-              name={card.display_name ?? "?"}
-              className="h-20 w-20 rounded-full shadow-lg shadow-black/30 ring-4 ring-background"
-              textClassName="text-xl"
-            />
+            <div className="rounded-full ring-4 ring-background">
+              <Avatar
+                src={card.avatar_url}
+                name={card.display_name ?? "?"}
+                className="h-32 w-32 rounded-full shadow-lg shadow-black/10 dark:shadow-black/30 sm:h-40 sm:w-40"
+                textClassName="text-3xl"
+              />
+            </div>
           </div>
-          <div className="min-w-0 pb-1">
-          <h1 className="truncate text-3xl font-bold tracking-tight">
-            {card.display_name ?? "Member"}
-          </h1>
-          {card.school || card.class_standing || gradLabel ? (
-            <p className="truncate text-sm text-muted-foreground">
-              {[
-                card.school,
-                card.class_standing
-                  ? card.class_standing[0].toUpperCase() +
-                    card.class_standing.slice(1)
-                  : null,
-                gradLabel,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          ) : null}
-          {card.bio ? (
-            <p className="mt-1 truncate text-sm">{card.bio}</p>
-          ) : null}
-          {card.linkedin_url || card.github_url || card.portfolio_url ? (
-            <div className="mt-2 flex items-center gap-3 text-muted-foreground">
-              {card.linkedin_url ? (
-                <a
-                  href={card.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="LinkedIn"
-                  title={linkPreview(card.linkedin_url)}
-                  className="transition-colors hover:text-primary"
-                >
-                  <LinkedInIcon className="h-[18px] w-[18px]" />
-                </a>
-              ) : null}
-              {card.github_url ? (
-                <a
-                  href={card.github_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="GitHub"
-                  title={linkPreview(card.github_url)}
-                  className="transition-colors hover:text-primary"
-                >
-                  <GitHubIcon className="h-[18px] w-[18px]" />
-                </a>
-              ) : null}
-              {card.portfolio_url ? (
-                <a
-                  href={card.portfolio_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Portfolio"
-                  title={linkPreview(card.portfolio_url)}
-                  className="transition-colors hover:text-primary"
-                >
-                  <Globe size={18} />
-                </a>
+          <div className="min-w-0 flex-1 space-y-2 sm:pt-2">
+            <div className="flex min-w-0 items-center gap-1">
+              <h1 className="truncate text-3xl font-bold tracking-tight">
+                {card.display_name ?? "Member"}
+              </h1>
+              {card.linkedin_url || card.github_url ? (
+                <div className="flex shrink-0 items-center">
+                  {card.linkedin_url ? (
+                    <a
+                      href={card.linkedin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="LinkedIn"
+                      title={linkPreview(card.linkedin_url)}
+                      className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <LinkedInIcon className="h-[17px] w-[17px]" />
+                    </a>
+                  ) : null}
+                  {card.github_url ? (
+                    <a
+                      href={card.github_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="GitHub"
+                      title={linkPreview(card.github_url)}
+                      className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <GitHubIcon className="h-[17px] w-[17px]" />
+                    </a>
+                  ) : null}
+                </div>
               ) : null}
             </div>
-          ) : null}
+            {card.school || card.class_standing || gradLabel ? (
+              <p className="truncate text-sm text-muted-foreground">
+                {[
+                  card.school,
+                  card.class_standing
+                    ? card.class_standing[0].toUpperCase() +
+                      card.class_standing.slice(1)
+                    : null,
+                  gradLabel,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ) : null}
+            {card.bio ? <p className="text-sm">{card.bio}</p> : null}
+            {card.portfolio_url ? (
+              <a
+                href={card.portfolio_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Portfolio"
+                title={linkPreview(card.portfolio_url)}
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+              >
+                <Globe size={15} strokeWidth={1.75} aria-hidden />
+                {linkPreview(card.portfolio_url)}
+              </a>
+            ) : null}
           </div>
+
+          {card.school ? (
+            <div className="flex shrink-0 items-center gap-2.5 sm:pt-2">
+              <SchoolLogo name={card.school} />
+              <p className="min-w-0 max-w-56 text-sm font-semibold leading-snug">
+                {card.school}
+              </p>
+            </div>
+          ) : null}
         </header>
+      </div>
+
+      {env.FEATURE_PUBLIC_PROFILE_EVENTS && upcomingPlans.length > 0 ? (
+        <UpcomingEvents
+          plans={upcomingPlans}
+          coverUrls={upcomingCoverUrls}
+          waitlistPositions={new Map()}
+          goingCounts={upcomingGoingCounts}
+          seeAllHref={null}
+        />
+      ) : null}
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <StaticEducationCard
+          school={card.school}
+          degreeLine={degreeLine}
+          standingLine={standingLine}
+          verification={verification}
+          pendingDomainName={card.pending_domain_name}
+        />
+
+        {env.FEATURE_PUBLIC_PROFILE_RESUME ? (
+          <div className="space-y-2 rounded-2xl glass p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Resume
+            </h2>
+            {resumeInfo ? (
+              <>
+                <p className="min-w-0 truncate text-sm font-medium">
+                  {resumeInfo.fileName}
+                </p>
+                <ResumePreview
+                  fileName={resumeInfo.fileName}
+                  targetUserId={card.user_id}
+                />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No resume shared.</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <section className="rounded-2xl border border-border/70 bg-card p-5">
