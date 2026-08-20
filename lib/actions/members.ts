@@ -144,6 +144,8 @@ export type MemberCardRow = {
   github_url: string | null;
   portfolio_url: string | null;
   bio: string | null;
+  note: string | null;
+  banner_url: string | null;
   share_attended_events: boolean;
   visible_since: string | null;
 };

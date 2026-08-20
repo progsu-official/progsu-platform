@@ -9,6 +9,8 @@ import {
   getSharedEventsForViewer,
 } from "@/lib/actions/members";
 import { Avatar } from "@/app/_components/avatar";
+import { StaticBanner } from "@/app/profile/profile-banner";
+import { StaticNote } from "@/app/profile/note-bubble";
 
 export const dynamic = "force-dynamic";
 
@@ -88,14 +90,26 @@ export default async function MemberProfilePage({
         </div>
       ) : null}
 
-      <header className="flex items-center gap-5">
-        <Avatar
-          src={card.avatar_url}
-          name={card.display_name ?? "?"}
-          className="h-20 w-20 shrink-0 rounded-full shadow-lg shadow-black/30"
-          textClassName="text-xl"
-        />
-        <div className="min-w-0">
+      <div>
+        <StaticBanner bannerUrl={card.banner_url} />
+
+        {/* Same overlap as the owner's own profile, so a member recognises
+            their card here. */}
+        <header className="-mt-12 flex items-end gap-5">
+          <div className="relative shrink-0">
+            {card.note ? (
+              <div className="absolute bottom-full left-1 mb-3">
+                <StaticNote note={card.note} />
+              </div>
+            ) : null}
+            <Avatar
+              src={card.avatar_url}
+              name={card.display_name ?? "?"}
+              className="h-20 w-20 rounded-full shadow-lg shadow-black/30 ring-4 ring-background"
+              textClassName="text-xl"
+            />
+          </div>
+          <div className="min-w-0 pb-1">
           <h1 className="truncate text-3xl font-bold tracking-tight">
             {card.display_name ?? "Member"}
           </h1>
@@ -156,8 +170,9 @@ export default async function MemberProfilePage({
               ) : null}
             </div>
           ) : null}
-        </div>
-      </header>
+          </div>
+        </header>
+      </div>
 
       <section className="rounded-2xl border border-border/70 bg-card p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

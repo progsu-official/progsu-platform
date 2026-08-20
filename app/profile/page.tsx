@@ -14,6 +14,8 @@ import { UpcomingEvents, MAX_PLANS, type UpcomingPlan } from "./upcoming-events"
 import { EducationCard, type VerificationState } from "./education-card";
 import { ResumePreview } from "./resume-preview";
 import { AvatarButton } from "./avatar-button";
+import { ProfileBanner } from "./profile-banner";
+import { NoteBubble } from "./note-bubble";
 import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +35,7 @@ export default async function DashboardHome() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "first_name, last_name, preferred_name, school, major, major_other_text, minor, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles, avatar_url, linkedin_url, github_url, created_at"
+      "first_name, last_name, preferred_name, school, major, major_other_text, minor, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles, avatar_url, banner_url, note, linkedin_url, github_url, created_at"
     )
     .eq("id", user.id)
     .single();
@@ -191,12 +193,24 @@ export default async function DashboardHome() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-7">
-        <AvatarButton
-          avatarUrl={profile?.avatar_url ?? null}
-          displayName={displayName || "?"}
-        />
-        <div className="min-w-0 flex-1 space-y-2">
+      <div>
+        <ProfileBanner bannerUrl={profile?.banner_url ?? null} />
+
+      {/* Pulled up over the banner so the avatar reads as anchored to it
+          rather than stacked under it. */}
+      <header className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-7">
+        <div className="group/avatar relative shrink-0">
+          <div className="absolute bottom-full left-1 mb-3">
+            <NoteBubble note={profile?.note ?? null} />
+          </div>
+          <div className="rounded-full ring-4 ring-background">
+            <AvatarButton
+              avatarUrl={profile?.avatar_url ?? null}
+              displayName={displayName || "?"}
+            />
+          </div>
+        </div>
+        <div className="min-w-0 flex-1 space-y-2 sm:pb-1">
           <div>
             <h1 className="truncate text-3xl font-bold tracking-tight">
               {displayName || "Member"}
@@ -261,7 +275,8 @@ export default async function DashboardHome() {
             <Link href="/profile/settings">Edit profile</Link>
           </Button>
         </div>
-      </header>
+        </header>
+      </div>
 
       <StaleConsentBanner consents={consents ?? []} versions={versions ?? []} />
 
