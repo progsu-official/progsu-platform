@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarDays, CalendarPlus, History, MapPin } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
+import {
+  getRequestOnboardingState,
+  getRequestUser,
+} from "@/lib/auth/request-cache";
+import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { formatTimeRange } from "./_components/event-date";
 
@@ -73,9 +79,33 @@ export default async function MemberEventsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
+  // The gate used to live in the shared /events layout, which also wraps the
+  // now-public event detail page — moved here so only the member-only tabs
+  // (My Plans/Past need an account) stay gated. See app/events/layout.tsx.
+  // An anonymous visitor gets the Upcoming tab only — this is the landing
+  // page's "Discover Events" entry point, per the 2026-08-20 RSVP-first
+  // decision extended to list browsing, not just single event links.
+  const user = await getRequestUser();
+  const supabase = await createClient();
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-8">
+        <header>
+          <h1 className="text-4xl font-bold tracking-tight">Events</h1>
+        </header>
+        <UpcomingTab supabase={supabase} anon />
+      </div>
+    );
+  }
+
+  const state = await getRequestOnboardingState(user.id);
+  if (!state.isAdmin && !state.fullyOnboarded) {
+    redirect(onboardingPathFor(state.nextStep) ?? "/onboarding/verify-email");
+  }
+
   const { tab: rawTab } = await searchParams;
   const tab = resolveTab(rawTab);
-  const supabase = await createClient();
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -119,16 +149,27 @@ export default async function MemberEventsPage({
 
 type SupabaseCtx = Awaited<ReturnType<typeof createClient>>;
 
-async function UpcomingTab({ supabase }: { supabase: SupabaseCtx }) {
-  const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("member_visible_events")
-    .select(
-      "id, slug, title, starts_at, ends_at, location_text, cover_image_path, capacity, waitlist_enabled, going_count, waitlisted_count, hosts"
-    )
-    .gte("ends_at", nowIso)
-    .order("starts_at", { ascending: true })
-    .limit(50);
+async function UpcomingTab({
+  supabase,
+  anon,
+}: {
+  supabase: SupabaseCtx;
+  anon?: boolean;
+}) {
+  // Anonymous visitors read through public_upcoming_events() instead of the
+  // member_visible_events view — same reasoning as public_event_by_slug()
+  // (see 20260820180000/20260820200000): base RLS stays authenticated-only,
+  // this is a narrow SECURITY DEFINER projection instead.
+  const { data, error } = anon
+    ? await supabase.rpc("public_upcoming_events", { p_limit: 50 })
+    : await supabase
+        .from("member_visible_events")
+        .select(
+          "id, slug, title, starts_at, ends_at, location_text, cover_image_path, capacity, waitlist_enabled, going_count, waitlisted_count, hosts"
+        )
+        .gte("ends_at", new Date().toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(50);
 
   if (error) {
     return (

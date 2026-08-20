@@ -1,7 +1,9 @@
 #!/usr/bin/env tsx
 // Smoke: rsvp_to_event capacity/waitlist semantics, direct-insert denial,
-// not-fully-onboarded guard, admin promote_waitlisted_member, and
-// private-invite visibility on rsvp_to_event.
+// not-fully-onboarded RSVP succeeds (2026-08-20 RSVP-first decision —
+// onboarding is no longer a precondition, see
+// 20260820190000_rsvp_drops_onboarding_gate.sql), admin
+// promote_waitlisted_member, and private-invite visibility on rsvp_to_event.
 
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
@@ -231,17 +233,24 @@ async function main() {
       `[smoke-event-rsvp] OK: direct insert into event_rsvps denied (err=${davidDirectErr?.code ?? "none"})`
     );
 
-    // 5. Erin (not fully onboarded) calls rsvp_to_event → P0001.
-    const { error: erinErr } = await erinClient.rpc("rsvp_to_event", {
-      p_event_id: eventId,
-      p_desired: "going",
-    });
-    if (!erinErr) throw new Error("erin rsvp should fail");
-    if (erinErr.code !== "P0001") {
-      throw new Error(`expected P0001 (not fully onboarded), got ${erinErr.code}`);
+    // 5. Erin (not fully onboarded) calls rsvp_to_event → succeeds. Per the
+    // 2026-08-20 RSVP-first decision, onboarding is no longer a precondition
+    // — only auth is. Capacity is already full (alice + bob going), so she
+    // lands on the waitlist rather than "going".
+    const { data: erinRsvp, error: erinErr } = await erinClient.rpc(
+      "rsvp_to_event",
+      { p_event_id: eventId, p_desired: "going" }
+    );
+    if (erinErr) {
+      throw new Error(
+        `not-fully-onboarded rsvp should now succeed, got ${erinErr.code}: ${erinErr.message}`
+      );
+    }
+    if (erinRsvp !== "waitlisted") {
+      throw new Error(`expected erin waitlisted (capacity full), got ${erinRsvp}`);
     }
     console.log(
-      `[smoke-event-rsvp] OK: not-fully-onboarded rsvp_to_event → P0001`
+      `[smoke-event-rsvp] OK: not-fully-onboarded rsvp_to_event succeeds → ${erinRsvp}`
     );
 
     // 6. Bob cancels → slot opens. Admin promotes Carol.

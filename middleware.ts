@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { updateSession } from "@/lib/supabase/middleware";
+import {
+  isPublicEventDetailPath,
+  isPublicEventsListPath,
+} from "@/lib/events/public-path";
 
 // Route classification. Keep these in sync with the canonical route map in
 // docs/07-implementation-plan.md §1.1. Admins bypass member onboarding (D8).
@@ -38,6 +42,13 @@ export async function middleware(request: NextRequest) {
 
   // Public paths: always pass through (session cookies still refreshed above).
   if (isPublicPath(pathname)) {
+    return supabaseResponse;
+  }
+
+  // Single event pages, and the bare /events list (Upcoming tab only for an
+  // anonymous visitor — enforced in app/events/page.tsx), are public
+  // regardless of session.
+  if (isPublicEventDetailPath(pathname) || isPublicEventsListPath(pathname)) {
     return supabaseResponse;
   }
 

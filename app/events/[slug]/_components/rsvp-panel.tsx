@@ -14,6 +14,9 @@ type CurrentRsvp = {
 
 export function RsvpPanel({
   eventId,
+  eventPath,
+  signedIn,
+  postRsvpOnboardingPath,
   initial,
   rsvpOpen,
   capacity,
@@ -22,6 +25,9 @@ export function RsvpPanel({
   waitlistedCount,
 }: {
   eventId: string;
+  eventPath: string;
+  signedIn: boolean;
+  postRsvpOnboardingPath: string | null;
   initial: CurrentRsvp;
   rsvpOpen: boolean;
   capacity: number | null;
@@ -52,10 +58,39 @@ export function RsvpPanel({
         waitlistPosition:
           res.data.effectiveStatus === "waitlisted" ? null : null,
       });
+      // Per the 2026-08-20 RSVP-first decision: a not-yet-onboarded member
+      // gets pushed into the (already minimal) onboarding funnel right after
+      // a successful RSVP, rather than that funnel blocking the RSVP itself.
+      if (
+        postRsvpOnboardingPath &&
+        (res.data.effectiveStatus === "going" ||
+          res.data.effectiveStatus === "waitlisted")
+      ) {
+        router.push(postRsvpOnboardingPath);
+        return;
+      }
       // Refresh the server component so capacity counts + the rest of the
       // page update to match the new state.
       router.refresh();
     });
+  }
+
+  if (!signedIn) {
+    return (
+      <section className="space-y-3 rounded-2xl glass p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Sign in to RSVP — takes a Google sign-in and a phone number.
+          </p>
+        </div>
+        <Button asChild className="h-11 w-full rounded-full text-[15px]">
+          <Link href={`/login?next=${encodeURIComponent(eventPath)}`}>
+            Sign in with Google to RSVP
+          </Link>
+        </Button>
+      </section>
+    );
   }
 
   if (!rsvpOpen) {

@@ -4,6 +4,8 @@ import { ArrowLeft, MapPin, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
+import { getRequestOnboardingState } from "@/lib/auth/request-cache";
+import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { formatTimeRange } from "../_components/event-date";
 import { EventDescription } from "./_components/event-description";
@@ -60,68 +62,132 @@ export default async function MemberEventDetailPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) notFound();
 
-  const { data: eventRaw } = await supabase
-    .from("events")
-    .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, cover_image_path, cancelled_at, cancellation_reason"
-    )
-    .eq("slug", slug)
-    .maybeSingle();
-  // RLS on events gates visibility; rows the user can't view simply return null.
-  if (!eventRaw) notFound();
+  let event: EventRecord;
+  let hosts: HostRow[];
+  let rsvp: RsvpRow | null;
+  let attendance: AttendanceRow | null;
+  let goingCount: number | null;
+  let waitlistedCount: number | null;
+  let holderRaw: Record<string, unknown> | null;
 
-  const event = eventRaw as unknown as EventRecord;
+  if (!user) {
+    // Anonymous visitor, per the 2026-08-20 RSVP-first decision: read through
+    // the narrow public_event_by_slug() projection instead of the base
+    // `events` table — RLS on `events`/`event_hosts` stays authenticated-only
+    // (see supabase/migrations/20260820180000_public_event_by_slug.sql for
+    // why). Only published + members-visibility events come back, which
+    // already excludes draft/archived/cancelled/private_invite exactly like
+    // can_view_event() would for a signed-in member with no relationship to
+    // the event.
+    const { data: publicEventRaw } = await supabase
+      .rpc("public_event_by_slug", { p_slug: slug })
+      .maybeSingle();
+    if (!publicEventRaw) notFound();
+    const p = publicEventRaw as {
+      id: string;
+      slug: string;
+      title: string;
+      description_md: string | null;
+      starts_at: string;
+      ends_at: string;
+      location_text: string | null;
+      location_url: string | null;
+      capacity: number | null;
+      waitlist_enabled: boolean;
+      cover_image_path: string | null;
+      going_count: number;
+      waitlisted_count: number;
+      hosts: HostRow[];
+    };
+    event = {
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      description_md: p.description_md,
+      status: "published",
+      visibility: "members",
+      starts_at: p.starts_at,
+      ends_at: p.ends_at,
+      location_text: p.location_text,
+      location_url: p.location_url,
+      capacity: p.capacity,
+      waitlist_enabled: p.waitlist_enabled,
+      cover_image_path: p.cover_image_path,
+      cancelled_at: null,
+      cancellation_reason: null,
+    };
+    hosts = p.hosts ?? [];
+    rsvp = null;
+    attendance = null;
+    goingCount = p.going_count ?? 0;
+    waitlistedCount = p.waitlisted_count ?? 0;
+    holderRaw = null;
+  } else {
+    const { data: eventRaw } = await supabase
+      .from("events")
+      .select(
+        "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, cover_image_path, cancelled_at, cancellation_reason"
+      )
+      .eq("slug", slug)
+      .maybeSingle();
+    // RLS on events gates visibility; rows the user can't view simply return null.
+    if (!eventRaw) notFound();
 
-  const [
-    { data: hostsRaw },
-    { data: rsvpRaw },
-    { data: attendanceRaw },
-    { count: goingCount },
-    { count: waitlistedCount },
-    { data: holderRaw },
-  ] = await Promise.all([
-    supabase
-      .from("event_hosts")
-      .select("display_name, sort_order")
-      .eq("event_id", event.id)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("event_rsvps")
-      .select("status, waitlisted_at, checkin_token")
-      .eq("event_id", event.id)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("event_attendances")
-      .select("checked_in_at, method")
-      .eq("event_id", event.id)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("event_rsvps")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", event.id)
-      .eq("status", "going"),
-    supabase
-      .from("event_rsvps")
-      .select("*", { count: "exact", head: true })
-      .eq("event_id", event.id)
-      .eq("status", "waitlisted"),
-    supabase
-      .from("profiles")
-      .select("preferred_name, first_name, last_name")
-      .eq("id", user.id)
-      .maybeSingle(),
-  ]);
+    event = eventRaw as unknown as EventRecord;
 
-  const hosts = ((hostsRaw ?? []) as HostRow[]).map((h) => ({
-    display_name: h.display_name,
-    sort_order: h.sort_order,
-  }));
-  const rsvp = (rsvpRaw as RsvpRow | null) ?? null;
-  const attendance = (attendanceRaw as AttendanceRow | null) ?? null;
+    const [
+      { data: hostsRaw },
+      { data: rsvpRaw },
+      { data: attendanceRaw },
+      { count: going },
+      { count: waitlisted },
+      { data: holder },
+    ] = await Promise.all([
+      supabase
+        .from("event_hosts")
+        .select("display_name, sort_order")
+        .eq("event_id", event.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("event_rsvps")
+        .select("status, waitlisted_at, checkin_token")
+        .eq("event_id", event.id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("event_attendances")
+        .select("checked_in_at, method")
+        .eq("event_id", event.id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("event_rsvps")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", event.id)
+        .eq("status", "going"),
+      supabase
+        .from("event_rsvps")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", event.id)
+        .eq("status", "waitlisted"),
+      supabase
+        .from("profiles")
+        .select("preferred_name, first_name, last_name")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
+
+    hosts = ((hostsRaw ?? []) as HostRow[]).map((h) => ({
+      display_name: h.display_name,
+      sort_order: h.sort_order,
+    }));
+    rsvp = (rsvpRaw as RsvpRow | null) ?? null;
+    attendance = (attendanceRaw as AttendanceRow | null) ?? null;
+    goingCount = going;
+    waitlistedCount = waitlisted;
+    holderRaw = holder as Record<string, unknown> | null;
+  }
 
   // Waitlist position via SECURITY DEFINER helper — RLS on event_rsvps is
   // self-only, so a direct count ahead-of-me is impossible from a user-context
@@ -135,6 +201,17 @@ export default async function MemberEventDetailPage({
       typeof positionData === "number" ? positionData : Number(positionData);
     waitlistPosition = Number.isFinite(parsed) ? parsed : null;
   }
+
+  // Fully-onboarded state drives whether a successful RSVP nudges the user
+  // into the onboarding funnel right after (2026-08-20 RSVP-first decision) —
+  // that funnel already lands on /profile's existing completion band, which
+  // already carries the "finish your profile → recruiters see you" framing,
+  // so there is no new copy to write here.
+  const onboardingState = user ? await getRequestOnboardingState(user.id) : null;
+  const postRsvpOnboardingPath =
+    onboardingState && !onboardingState.isAdmin && !onboardingState.fullyOnboarded
+      ? onboardingPathFor(onboardingState.nextStep)
+      : null;
 
   const coverUrl = await resolveCoverUrl(supabase, event.cover_image_path);
   const nowMs = Date.now();
@@ -351,6 +428,9 @@ export default async function MemberEventDetailPage({
 
             <RsvpPanel
               eventId={event.id}
+              eventPath={`/events/${event.slug}`}
+              signedIn={!!user}
+              postRsvpOnboardingPath={postRsvpOnboardingPath}
               initial={{
                 status: rsvp?.status ?? null,
                 waitlistPosition,

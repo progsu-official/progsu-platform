@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { isPublicEventDetailPath } from "@/lib/events/public-path";
 
 // OAuth callback for Supabase Auth. The user returns here from Google with a `code`
 // query param; we exchange it for a session, then route them to their next step.
@@ -64,10 +65,13 @@ export async function GET(request: NextRequest) {
   if (state.isAdmin) {
     targetPath = "/admin";
   } else if (
-    state.fullyOnboarded &&
     requestedNext &&
-    requestedNext.startsWith("/")
+    requestedNext.startsWith("/") &&
+    (state.fullyOnboarded || isPublicEventDetailPath(requestedNext))
   ) {
+    // Public event page: honor `next` even mid-funnel, per the 2026-08-20
+    // RSVP-first decision — landing back on the event is the point; the
+    // onboarding nudge happens after a successful RSVP, not before.
     targetPath = requestedNext;
   } else if (
     !state.studentEmailVerified &&

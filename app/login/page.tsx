@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
+import { isPublicEventDetailPath } from "@/lib/events/public-path";
 
 import { GoogleSignInButton } from "./google-sign-in-button";
 
@@ -35,7 +36,14 @@ export default async function LoginPage({
   if (user) {
     const state = await loadOnboardingState(supabase, user.id);
     if (state.isAdmin) redirect("/admin");
-    if (state.fullyOnboarded && params.next && params.next.startsWith("/")) {
+    if (
+      params.next &&
+      params.next.startsWith("/") &&
+      (state.fullyOnboarded || isPublicEventDetailPath(params.next))
+    ) {
+      // Public event page: honor `next` even mid-funnel, per the 2026-08-20
+      // RSVP-first decision — signing in from there should land back on the
+      // event, not get diverted into onboarding.
       redirect(params.next);
     }
     const next = onboardingPathFor(state.nextStep) ?? "/profile";
