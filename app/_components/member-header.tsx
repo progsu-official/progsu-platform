@@ -36,7 +36,7 @@ export function MemberHeader({
           </span>
         </Link>
 
-        <nav className="flex items-center gap-0.5">
+        <nav>
           <SiteNav showMembers={showMembers} showEvents={showEvents} />
         </nav>
 
