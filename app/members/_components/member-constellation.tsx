@@ -27,15 +27,22 @@ const AXIAL_DIRS = [
 ] as const;
 
 const SQRT3_2 = Math.sqrt(3) / 2;
-const GAP = 14;
+const GAP = 18;
 
-// Fisheye shape. The face under the lens renders well past natural size and
-// the curve drops steeply, which is what makes the centre read as magnified
-// rather than merely "not shrunk" — the old curve peaked at 1.0 and all the
-// depth came from shrinking the rim, so the middle never looked magnified.
-const MAX_SCALE = 1.55;
-const MIN_SCALE = 0.35;
-const MIN_OPACITY = 0.12;
+// Fisheye shape. The dome is wide and low: FALLOFF_EXP near 1 spreads the
+// magnification across most of the frame instead of collapsing within a cell
+// of the lens, and the peak is sized so a centre face and its neighbour just
+// kiss (peak+neighbour diameters ≈ two cells) rather than pile up. GAP grew
+// with the peak — spacing is what buys the overlap headroom.
+//
+// MIN_OPACITY is a *visibility* floor, not a fade-out: the vignette already
+// veils the rim, and a 0.12 floor made far faces vanish against the light
+// background while their lattice lines stayed visible — which read as the
+// grid rendering with nobody on it whenever a new page landed.
+const MAX_SCALE = 1.26;
+const MIN_SCALE = 0.42;
+const MIN_OPACITY = 0.3;
+const FALLOFF_EXP = 1.3;
 
 // Pages after the first are deliberately small and their faces trickle in
 // one by one (ENTRY_STAGGER_MS apart). The prefetch below fires well before
@@ -67,8 +74,8 @@ function hexSpiral(count: number) {
 
 function cellSizeFor(width: number) {
   if (width < 420) return 66;
-  if (width < 720) return 82;
-  return 96;
+  if (width < 720) return 84;
+  return 104;
 }
 
 export function MemberConstellation({
@@ -204,14 +211,26 @@ export function MemberConstellation({
   // over empty space — the "weird" half-empty state. A radial bound means the
   // origin-most face can reach the frame edge, but the lattice can never
   // leave the lens entirely.
+  // Stops 1.5 cells short of the hull: parked exactly at the frontier, the
+  // lens sits on the last loaded ring with half the frame empty — which is
+  // what a mid-load page looked like when the viewer outran the fetch.
+  const panLimit = Math.max(0, hullRadius - cell * 1.5);
+
+  // On a short canvas (phones, split screens) the profile card overlaps the
+  // geometric centre — the lens would sit under the card describing a face
+  // nobody can see. Lift the focal point clear of it. Only when the lattice
+  // can actually pan: a tiny result set is clamped to the origin, and an
+  // offset lens over an unmovable lattice is a ring parked on empty space.
+  const lensOffsetY = (viewport.h || 480) < 620 && panLimit > 0 ? 84 : 0;
+
   const clampPan = useCallback(
     (p: { x: number; y: number }) => {
       const r = Math.hypot(p.x, p.y);
-      if (r <= hullRadius || r === 0) return p;
-      const k = hullRadius / r;
+      if (r <= panLimit || r === 0) return p;
+      const k = panLimit / r;
       return { x: p.x * k, y: p.y * k };
     },
-    [hullRadius],
+    [panLimit],
   );
 
   const paint = useCallback(() => {
@@ -228,15 +247,20 @@ export function MemberConstellation({
       if (!node) continue;
       const px = positions[i].x + pan.current.x;
       const py = positions[i].y + pan.current.y;
-      const distance = Math.hypot(px, py);
+      // Faces render at (px, py); focus/scale/fade measure from the lens
+      // point, which sits lensOffsetY above the geometric centre. Only the
+      // measurement shifts — offsetting the transform too would translate
+      // the whole lattice instead of moving the focal point.
+      const dy = py + lensOffsetY;
+      const distance = Math.hypot(px, dy);
       if (distance < bestDistance) {
         bestDistance = distance;
         bestIndex = i;
       }
-      const t = Math.min(1, Math.hypot(px / rx, py / ry));
-      const shape = (1 - t) ** 2.2;
+      const t = Math.min(1, Math.hypot(px / rx, dy / ry));
+      const shape = (1 - t) ** FALLOFF_EXP;
       const scale = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * shape;
-      const opacity = Math.max(MIN_OPACITY, 1 - 0.9 * t ** 2);
+      const opacity = Math.max(MIN_OPACITY, 1 - 0.7 * t ** 1.6);
       node.style.transform = `translate3d(${px}px, ${py}px, 0) scale(${scale})`;
       node.style.opacity = String(opacity);
       node.style.zIndex = String(Math.round((1 - t) * 100));
@@ -280,7 +304,7 @@ export function MemberConstellation({
       Math.hypot(probeX, probeY) > hullRadius - cell * 2 ||
       Math.hypot(cx, cy) > hullRadius - cell * 3;
     if (nearRim) void loadMoreRef.current();
-  }, [positions, viewport.w, viewport.h, cell, hullRadius]);
+  }, [positions, viewport.w, viewport.h, cell, hullRadius, lensOffsetY]);
 
   const requestFrame = useCallback(() => {
     if (frame.current !== null) return;
@@ -421,11 +445,11 @@ export function MemberConstellation({
       velocity.current = { x: 0, y: 0 };
       panTarget.current = clampPan({
         x: -positions[index].x,
-        y: -positions[index].y,
+        y: -positions[index].y - lensOffsetY,
       });
       requestFrame();
     },
-    [clampPan, positions, requestFrame],
+    [clampPan, positions, requestFrame, lensOffsetY],
   );
 
   // Escape releases a pinned card from anywhere on the page.
@@ -509,8 +533,12 @@ export function MemberConstellation({
         <div
           ref={lensRef}
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/40 transition-opacity duration-300"
-          style={{ width: diameter + 24, height: diameter + 24 }}
+          className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/40 transition-opacity duration-300"
+          style={{
+            width: diameter + 24,
+            height: diameter + 24,
+            top: `calc(50% - ${lensOffsetY}px)`,
+          }}
         />
 
         <ul className="absolute inset-0">
