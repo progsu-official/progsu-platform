@@ -1,72 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  BANNER_MIME_TYPES,
-  MAX_BANNER_BYTES,
-} from "@/lib/actions/banner-schemas";
-import {
-  createBannerUploadUrl,
-  finalizeBannerUpload,
-  removeBanner,
-} from "@/lib/actions/banner";
+import { removeBanner } from "@/lib/actions/banner";
 
-const ACCEPT = BANNER_MIME_TYPES.join(",");
-const MAX_MB = Math.round(MAX_BANNER_BYTES / (1024 * 1024));
+import { BannerDialog } from "./banner-dialog";
 
 /**
  * Editable header image. Same affordance as the avatar: a scrim on
  * hover/focus, but the controls stay reachable on touch where there is no
- * hover to reveal them.
+ * hover to reveal them. Picking the image opens the same crop dialog the
+ * avatar uses, so a banner gets framed rather than dropped in raw.
  */
 export function ProfileBanner({ bannerUrl }: { bannerUrl: string | null }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  function upload(file: File) {
-    if (!(BANNER_MIME_TYPES as readonly string[]).includes(file.type)) {
-      setError("Use a JPEG, PNG, or WebP image.");
-      return;
-    }
-    if (file.size > MAX_BANNER_BYTES) {
-      setError(`Banner must be ${MAX_MB} MB or smaller.`);
-      return;
-    }
-    setError(null);
-
-    startTransition(async () => {
-      const created = await createBannerUploadUrl({
-        mimeType: file.type as (typeof BANNER_MIME_TYPES)[number],
-        fileSize: file.size,
-      });
-      if (!created.ok) {
-        setError(created.error.message);
-        return;
-      }
-      const put = await fetch(created.data.signedUrl, {
-        method: "PUT",
-        headers: { "content-type": file.type },
-        body: file,
-      });
-      if (!put.ok) {
-        setError(`Upload failed (${put.status}).`);
-        return;
-      }
-      const finalized = await finalizeBannerUpload({ path: created.data.path });
-      if (!finalized.ok) {
-        setError(finalized.error.message);
-        return;
-      }
-      if (inputRef.current) inputRef.current.value = "";
-      router.refresh();
-    });
-  }
 
   function clear() {
     setError(null);
@@ -124,7 +77,8 @@ export function ProfileBanner({ bannerUrl }: { bannerUrl: string | null }) {
           <button
             type="button"
             disabled={pending}
-            onClick={() => inputRef.current?.click()}
+            onClick={() => setDialogOpen(true)}
+            aria-haspopup="dialog"
             className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-neutral-900 shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-70"
           >
             <ImagePlus size={15} strokeWidth={1.75} aria-hidden />
@@ -146,18 +100,13 @@ export function ProfileBanner({ bannerUrl }: { bannerUrl: string | null }) {
             </button>
           ) : null}
         </div>
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPT}
-          className="sr-only"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) upload(file);
-          }}
-        />
       </div>
+
+      <BannerDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        hasBanner={Boolean(bannerUrl)}
+      />
 
       {error ? (
         <p role="alert" className="text-sm text-destructive">
