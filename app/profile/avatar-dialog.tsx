@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ImagePlus, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { createAvatarUploadUrl, finalizeAvatarUpload } from "@/lib/actions/avatar";
@@ -41,6 +41,13 @@ export function AvatarDialog({
   const [dragging, setDragging] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  // Measured, not read from the ref during render. geometry() runs while
+  // rendering, and on the first adjust-stage pass the ref is still null, so it
+  // fell back to a hardcoded 288 and sized the image for a viewport that was
+  // never on screen. Nothing re-rendered afterwards, so the wrong scale stuck
+  // until the zoom slider happened to force one -- which is why nudging zoom
+  // "fixed" it.
+  const [viewportWidth, setViewportWidth] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -64,6 +71,23 @@ export function AvatarDialog({
     reset();
     onClose();
   }, [reset, onClose]);
+
+  // Measure the crop viewport as soon as it exists, and keep measuring it.
+  // Layout effect so the corrected width lands before the browser paints,
+  // rather than showing one frame at the fallback scale. ResizeObserver covers
+  // the dialog reflowing on rotate or a window resize mid-crop.
+  const stageKind = stage.kind;
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (stageKind !== "adjust" || !el) return;
+    setViewportWidth(el.clientWidth);
+    const observer = new ResizeObserver(([entry]) => {
+      const next = entry.target.clientWidth;
+      if (next > 0) setViewportWidth(next);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [stageKind]);
 
   // Escape + focus trap + scroll lock.
   useEffect(() => {
@@ -153,7 +177,7 @@ export function AvatarDialog({
 
   // Geometry shared by the preview and the export so they can't disagree.
   function geometry(width: number, height: number) {
-    const viewport = viewportRef.current?.clientWidth ?? 288;
+    const viewport = viewportWidth || viewportRef.current?.clientWidth || 288;
     const base = Math.max(viewport / width, viewport / height); // cover
     const eff = base * zoom;
     const maxX = Math.max(0, (width * eff - viewport) / 2);

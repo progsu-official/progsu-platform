@@ -35,10 +35,26 @@ export default async function DashboardHome() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "first_name, last_name, preferred_name, school, major, major_other_text, minor, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles, avatar_url, banner_url, note, linkedin_url, github_url, created_at"
+      "first_name, last_name, preferred_name, school, major, major_other_text, minor, grad_year, grad_term, class_standing, student_email, student_email_verified, pending_domain_name, open_to_recruiters, interested_roles, avatar_url, linkedin_url, github_url, created_at"
     )
     .eq("id", user.id)
     .single();
+
+  // note and banner_url are queried apart from the row above, and failure is
+  // swallowed on purpose. They arrive in 20260820130000; until that migration
+  // runs, PostgREST rejects the whole select for an unknown column. Folded
+  // into the main query that took the entire profile down with it -- name,
+  // school, links, everything -- because two optional decorations were
+  // missing. A surface nobody has migrated yet should degrade to "no banner",
+  // not to "no profile".
+  const { data: decorations } = await supabase
+    .from("profiles")
+    .select("note, banner_url")
+    .eq("id", user.id)
+    .maybeSingle();
+  const note = (decorations as { note?: string | null } | null)?.note ?? null;
+  const bannerUrl =
+    (decorations as { banner_url?: string | null } | null)?.banner_url ?? null;
 
   const { data: currentResume } = await supabase
     .from("resumes")
@@ -194,14 +210,14 @@ export default async function DashboardHome() {
   return (
     <div className="space-y-8">
       <div>
-        <ProfileBanner bannerUrl={profile?.banner_url ?? null} />
+        <ProfileBanner bannerUrl={bannerUrl} />
 
       {/* Pulled up over the banner so the avatar reads as anchored to it
           rather than stacked under it. */}
       <header className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-7">
         <div className="group/avatar relative shrink-0">
           <div className="absolute bottom-full left-1 mb-3">
-            <NoteBubble note={profile?.note ?? null} />
+            <NoteBubble note={note} />
           </div>
           <div className="rounded-full ring-4 ring-background">
             <AvatarButton
