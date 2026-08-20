@@ -219,6 +219,9 @@ export function ConsentForm({
             }
             errorField={error?.field}
             errorKey="sms_marketing"
+            // sms is optional — "required." would be wrong; surface the
+            // server's actual instruction (add a phone number) instead
+            errorMessage={error?.message}
           />
         </fieldset>
 
@@ -317,6 +320,7 @@ function CheckRow({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
+        aria-invalid={isError || undefined}
       />
       <CheckSquare checked={checked} />
       <span className="min-w-0 flex-1">
@@ -341,7 +345,9 @@ function CheckRow({
 // benefit-card variant for the opt-ins: icon plate on the left, the canonical
 // consent label as the title, a benefit line under it, and the check square on
 // the right — so these read as upgrades, not legal chores. Same native sr-only
-// checkbox contract as CheckRow.
+// checkbox contract as CheckRow, but the accessible name is pinned to the
+// title alone (aria-labelledby) so the hint and badge read as a description,
+// not a run-on name.
 function OptInRow({
   id,
   checked,
@@ -353,6 +359,7 @@ function OptInRow({
   disabled,
   errorField,
   errorKey,
+  errorMessage,
 }: {
   id: string;
   checked: boolean;
@@ -364,6 +371,7 @@ function OptInRow({
   disabled?: boolean;
   errorField?: string;
   errorKey?: string;
+  errorMessage?: string;
 }) {
   const isError = Boolean(errorField && errorKey && errorField === errorKey);
   return (
@@ -387,6 +395,9 @@ function OptInRow({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
+        aria-invalid={isError || undefined}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-hint`}
       />
       <span
         aria-hidden
@@ -401,19 +412,22 @@ function OptInRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium leading-[1.5] text-foreground">
-          {label}
+          <span id={`${id}-label`}>{label}</span>
           {badge ? (
             <span className="ml-2 inline-block rounded-full border border-[hsl(var(--primary)/0.4)] bg-[hsl(var(--primary)/0.06)] px-2 py-0.5 align-middle text-[11px] font-medium leading-none text-primary">
               {badge}
             </span>
           ) : null}
         </span>
-        <span className="mt-1 block text-xs leading-[1.45] text-muted-foreground">
+        <span
+          id={`${id}-hint`}
+          className="mt-1 block text-xs leading-[1.45] text-muted-foreground"
+        >
           {hint}
         </span>
         {isError ? (
           <span role="alert" className="mt-1 block text-xs text-destructive">
-            required.
+            {errorMessage ?? "required."}
           </span>
         ) : null}
       </span>
