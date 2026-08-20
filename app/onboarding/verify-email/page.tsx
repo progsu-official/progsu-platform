@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState } from "@/lib/auth/onboarding";
 
-import { StepHeader } from "../_components/step-header";
+import { OnbIntro, OnbSection } from "../_components/shell";
 import { VerifyEmailForm } from "./verify-email-form";
 
 export const dynamic = "force-dynamic";
@@ -45,23 +45,23 @@ export default async function VerifyEmailPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <StepHeader
-        title={
-          alreadyVerified
-            ? "Your student email is verified"
-            : "Verify your student email"
-        }
-        description={
-          alreadyVerified
-            ? `You verified ${profile?.student_email}. You can change the email on file by verifying a new one below.`
-            : "Enter your school email and we'll send a 6-digit code. This isn't required to finish signing up, but recruiters only see verified members."
-        }
-      />
+    <OnbSection>
       <VerifyEmailForm
         initialEmail={initialEmail}
         fullyOnboarded={state.fullyOnboarded}
+        intro={
+          alreadyVerified ? (
+            <OnbIntro title="you’re verified">
+              {profile?.student_email} is on file. verify a new one below to
+              swap it.
+            </OnbIntro>
+          ) : (
+            <OnbIntro title="verify your student email">
+              we’ll send a 6-digit code to confirm it.
+            </OnbIntro>
+          )
+        }
       />
-    </section>
+    </OnbSection>
   );
 }

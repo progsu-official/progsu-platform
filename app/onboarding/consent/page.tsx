@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
-import { StepHeader } from "../_components/step-header";
+import { OnbSection } from "../_components/shell";
 import { ConsentForm } from "./consent-form";
 
 export const dynamic = "force-dynamic";
@@ -35,15 +35,11 @@ export default async function OnboardingConsentPage() {
   const hasPhone = (profile?.phone_number ?? "").length >= 7;
 
   return (
-    <section className="space-y-7">
-      <StepHeader
-        title="Last thing"
-        description="Privacy and terms are required. Everything else is optional, and you can change any of it later from your settings."
-      />
+    <OnbSection>
       <ConsentForm
         hasPhone={hasPhone}
         prefillRequired={env.ONBOARDING_TEST_MODE}
       />
-    </section>
+    </OnbSection>
   );
 }

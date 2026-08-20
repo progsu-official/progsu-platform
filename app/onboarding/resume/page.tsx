@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState } from "@/lib/auth/onboarding";
 
-import { StepHeader } from "../_components/step-header";
+import { OnbSection } from "../_components/shell";
 import { ResumeUploader } from "./resume-uploader";
 
 export const dynamic = "force-dynamic";
@@ -31,19 +31,11 @@ export default async function OnboardingResumePage() {
     .maybeSingle();
 
   return (
-    <section className="space-y-6">
-      <StepHeader
-        title="Upload your resume"
-        description="PDF only, up to 10 MB. You can replace it any time from your profile."
-      />
-      <div className="rounded-2xl glass p-4 text-sm text-muted-foreground">
-        <strong className="text-foreground">Tip:</strong> remove your SSN, date of
-        birth, and home address before uploading — recruiters don&apos;t need them.
-      </div>
+    <OnbSection>
       <ResumeUploader
         currentFileName={current?.file_name ?? null}
         currentUploadedAt={current?.uploaded_at ?? null}
       />
-    </section>
+    </OnbSection>
   );
 }

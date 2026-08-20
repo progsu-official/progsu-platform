@@ -1,27 +1,28 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Instrument_Serif } from "next/font/google";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState } from "@/lib/auth/onboarding";
 import { StepIndicator } from "./_components/step-indicator";
+import { OnbBackdrop } from "./_components/shell";
+
+import "./onboarding.css";
 
 export const dynamic = "force-dynamic";
-
-// The display voice, loaded on this route only. tailwind.config maps
-// font-serif to --font-display with a Georgia fallback, so a route that uses
-// font-serif has to load the face itself.
-const display = Instrument_Serif({
-  variable: "--font-display",
-  weight: "400",
-  subsets: ["latin"],
-});
 
 type Props = {
   children: React.ReactNode;
 };
 
+// COMPOSITION CONTRACT for step pages:
+// This layout renders ONLY the backdrop + floating header (wordmark +
+// StepIndicator) on a viewport-height root; <main> is a bare h-full host.
+// Each step renders its own <OnbSection> (from ./_components/shell) as its
+// outermost element — the section owns the 38rem column, the top offset, the
+// bottom clearance for the fixed OnbActionBar, and scrolling. Steps that
+// should occupy exactly one viewport pass fill; inside the section, wrap the
+// revealed content in <OnbSurface> and keep <OnbActionBar> a sibling of it.
 export default async function OnboardingLayout({ children }: Props) {
   const supabase = await createClient();
   const {
@@ -38,46 +39,42 @@ export default async function OnboardingLayout({ children }: Props) {
   const state = await loadOnboardingState(supabase, user.id);
 
   return (
+    // Light theme on purpose: no "dark" class here. The `onb` class scopes
+    // every rule in onboarding.css to this route.
     <div
-      className={`${display.variable} dark relative min-h-screen bg-background text-foreground`}
+      className={`onb relative h-dvh overflow-hidden bg-background text-foreground`}
     >
-      {/* Same ambient field the member surfaces float on. Onboarding used to
-          render a flat background, which is why its cards read as grey slabs
-          while every other surface in the app reads as glass. */}
-      <div aria-hidden className="ambient-field" />
+      <OnbBackdrop />
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        {/* Same bound and padding as <main> so the wordmark sits flush with
-            the step title below it. */}
-        <header className="py-5">
-          <div className="mx-auto flex w-full max-w-[38rem] items-center justify-between px-5">
-            <Link
-              href="/"
-              className="rounded-md text-[15px] font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              progsu
-            </Link>
-            <StepIndicator nextStep={state.nextStep} />
+      {/* Floating header, folk-style: content scrolls under it inside each
+          step's OnbSection (whose pt-28 clears it on load). */}
+      <header className="absolute inset-x-5 top-5 z-20 flex items-start justify-between sm:inset-x-6">
+        <Link
+          href="/"
+          className="flex h-12 items-center rounded-md text-[15px] font-bold tracking-tight text-foreground transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          progsu
+        </Link>
+        <div className="flex h-12 items-center">
+          <StepIndicator nextStep={state.nextStep} />
+        </div>
+      </header>
+
+      {env.ONBOARDING_TEST_MODE ? (
+        <div className="absolute inset-x-0 top-[4.25rem] z-20 mx-auto w-full max-w-[38rem] px-5">
+          <div className="rounded-[14px] border border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.06)] px-4 py-2.5 text-center text-xs text-[hsl(var(--primary))]">
+            test mode is on — forms come pre-filled, no emails go out, and the
+            code is always <span className="font-mono font-semibold">000000</span>
+            .
           </div>
-        </header>
+        </div>
+      ) : null}
 
-        {env.ONBOARDING_TEST_MODE ? (
-          <div className="mx-auto w-full max-w-[38rem] px-5 pt-1">
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-              Test mode is on — forms are pre-filled with dummy values, no
-              emails are sent, and the verification code is always{" "}
-              <span className="font-mono font-semibold">000000</span>.
-            </div>
-          </div>
-        ) : null}
-
-        {/* One column for every step, matching the header above it, so the
-            title lands in the same place on each screen instead of each page
-            picking its own width. */}
-        <main className="mx-auto w-full max-w-[38rem] flex-1 px-5 pb-24 pt-4 sm:pb-16 sm:pt-8">
-          {children}
-        </main>
-      </div>
+      {/* Bare host: steps bring their own <OnbSection>. overflow-y-auto is a
+          safety net for any step not yet migrated to the section wrapper. */}
+      <main className="relative z-10 h-full w-full overflow-y-auto">
+        {children}
+      </main>
     </div>
   );
 }

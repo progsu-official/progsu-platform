@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
-import { StepHeader } from "../_components/step-header";
+import { OnbIntro, OnbSection } from "../_components/shell";
 import { ProfileForm } from "./profile-form";
 
 export const dynamic = "force-dynamic";
@@ -72,22 +72,22 @@ export default async function OnboardingProfilePage() {
   const schoolOptions = Array.from(
     new Set((domains ?? []).map((d) => d.school_name as string))
   );
-  const schoolAutoFilled =
-    !!profile?.student_email_verified && !!profile?.school;
-
   return (
-    <section className="space-y-7">
-      <StepHeader
-        title="Let's set you up"
-        description="Five basics so officers know who you are and how to reach you. This takes about a minute."
-      />
-      {legacyMatch && (
-        <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
-          We found you from a past Progsu event and filled in what we had.
-          Worth a quick check below.
-        </div>
-      )}
+    <OnbSection>
       <ProfileForm
+        intro={
+          <OnbIntro title="let's get you set up">
+            the basics — takes about a minute.
+          </OnbIntro>
+        }
+        notice={
+          legacyMatch ? (
+            <div className="rounded-[14px] border border-primary/25 bg-primary/[0.06] px-4 py-3 text-center text-sm text-primary">
+              we found you from a past progsu event and filled in what we had
+              — worth a quick check below.
+            </div>
+          ) : null
+        }
         initial={{
           // Test mode fills any still-empty field with a dummy value so the
           // form submits on a single click.
@@ -111,8 +111,7 @@ export default async function OnboardingProfilePage() {
         }}
         majorOptions={majorOptions}
         schoolOptions={schoolOptions}
-        schoolAutoFilled={schoolAutoFilled}
       />
-    </section>
+    </OnbSection>
   );
 }

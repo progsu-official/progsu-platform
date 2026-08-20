@@ -10,9 +10,9 @@ import type { OnboardingStep } from "@/lib/auth/onboarding";
 // funnel without it, then come back to verify when their OTP actually arrives.
 // See lib/auth/onboarding.ts for the fullyOnboarded rule.
 const STEPS: Array<{ key: OnboardingStep; label: string; path: string }> = [
-  { key: "profile", label: "Profile", path: "/onboarding/profile" },
-  { key: "resume", label: "Resume", path: "/onboarding/resume" },
-  { key: "consent", label: "Consent", path: "/onboarding/consent" },
+  { key: "profile", label: "profile", path: "/onboarding/profile" },
+  { key: "resume", label: "resume", path: "/onboarding/resume" },
+  { key: "consent", label: "consent", path: "/onboarding/consent" },
 ];
 
 // Sits in the header rather than above the form. Three dashes and a label:
@@ -37,9 +37,9 @@ export function StepIndicator({ nextStep }: { nextStep: OnboardingStep }) {
                 aria-current={isActive ? "step" : undefined}
                 className={cn(
                   "block h-1 rounded-full transition-all duration-300 motion-reduce:transition-none",
-                  isActive ? "w-7 bg-primary" : "w-4",
-                  !isActive && isDone && "bg-primary/50",
-                  !isActive && !isDone && "bg-foreground/15"
+                  isActive ? "w-6 bg-primary" : "w-4",
+                  !isActive && isDone && "bg-primary/40",
+                  !isActive && !isDone && "bg-foreground/10"
                 )}
               >
                 <span className="sr-only">
@@ -61,12 +61,16 @@ export function StepIndicator({ nextStep }: { nextStep: OnboardingStep }) {
             <span className="tabular-nums">{STEPS.length}</span>
             <span className="ml-1.5">{current.label}</span>
           </>
-        ) : (
+        ) : nextStep === null ? (
+          // "done" is a claim about the CASCADE, not about which page is
+          // open. On /onboarding/verify-email — a soft step outside the
+          // dashes — a fresh account used to fall through to this branch and
+          // get told it was done before answering a single question.
           <span className="inline-flex items-center gap-1.5">
             <Check size={13} strokeWidth={2.25} aria-hidden className="text-primary" />
-            Done
+            done
           </span>
-        )}
+        ) : null}
       </p>
     </div>
   );

@@ -1,0 +1,140 @@
+/* Onboarding motion grammar, ported from folk's landing-toon.css.
+   Everything is scoped under the `.onb` root class (set on the route root in
+   app/onboarding/layout.tsx) so none of it leaks to other routes. Keyframe
+   names are global in CSS, hence the `onb-` prefix on all of them. */
+
+/* ── staggered reveal ──────────────────────────────────────────────
+   OnbSurface (shell.tsx) tags its wrapper `.onboarding-reveal`. One-shot
+   enter: fade + small rise + slight de-blur, split across the wrapper's
+   direct children so a step's title, body and rows arrive in sequence.
+   The fixed OnbActionBar must always be a SIBLING of this wrapper (never a
+   child) — animating transform/filter on an ancestor would create a
+   containing block and trap its `position: fixed`. */
+.onb .onboarding-reveal > * {
+  animation: onb-reveal-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.onb .onboarding-reveal > *:nth-child(2) {
+  animation-delay: 80ms;
+}
+.onb .onboarding-reveal > *:nth-child(3) {
+  animation-delay: 160ms;
+}
+.onb .onboarding-reveal > *:nth-child(4) {
+  animation-delay: 240ms;
+}
+.onb .onboarding-reveal > *:nth-child(5) {
+  animation-delay: 320ms;
+}
+
+@keyframes onb-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* ── step/substate seam ────────────────────────────────────────────
+   Exit-then-enter grammar driven by useOnbSeam() (seam.tsx): forward exits
+   left (~190ms, fade completes early), the next view enters from the right
+   (~450ms) mid-flight; back mirrors it. Rides `left` + opacity on a
+   position:relative wrapper — a transform here would create a containing
+   block and re-anchor a fixed OnbActionBar living inside the view. */
+.onb .onboarding-seam {
+  position: relative;
+}
+
+.onb .onboarding-seam-exit-fwd {
+  animation:
+    onb-seam-x-out-l 0.19s cubic-bezier(0.64, 0, 0.78, 0) both,
+    onb-seam-fade-out 0.13s linear both;
+}
+
+.onb .onboarding-seam-exit-back {
+  animation:
+    onb-seam-x-out-r 0.19s cubic-bezier(0.64, 0, 0.78, 0) both,
+    onb-seam-fade-out 0.13s linear both;
+}
+
+.onb .onboarding-seam-enter-fwd {
+  animation:
+    onb-seam-x-in-r 0.45s cubic-bezier(0.22, 1, 0.36, 1) both,
+    onb-seam-fade-in 0.3s ease-out both;
+}
+
+.onb .onboarding-seam-enter-back {
+  animation:
+    onb-seam-x-in-l 0.45s cubic-bezier(0.22, 1, 0.36, 1) both,
+    onb-seam-fade-in 0.3s ease-out both;
+}
+
+@keyframes onb-seam-x-out-l {
+  from {
+    left: 0;
+  }
+  to {
+    left: -56px;
+  }
+}
+
+@keyframes onb-seam-x-out-r {
+  from {
+    left: 0;
+  }
+  to {
+    left: 56px;
+  }
+}
+
+@keyframes onb-seam-x-in-r {
+  from {
+    left: 56px;
+  }
+  to {
+    left: 0;
+  }
+}
+
+@keyframes onb-seam-x-in-l {
+  from {
+    left: -56px;
+  }
+  to {
+    left: 0;
+  }
+}
+
+@keyframes onb-seam-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes onb-seam-fade-in {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* useOnbSeam() already commits instantly under reduced motion; this guard
+   also kills the reveal stagger and any seam class that still lands. */
+@media (prefers-reduced-motion: reduce) {
+  .onb .onboarding-reveal > *,
+  .onb .onboarding-seam-exit-fwd,
+  .onb .onboarding-seam-exit-back,
+  .onb .onboarding-seam-enter-fwd,
+  .onb .onboarding-seam-enter-back {
+    animation: none !important;
+  }
+}
