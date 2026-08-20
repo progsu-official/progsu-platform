@@ -88,7 +88,7 @@ export function PhotoSettings({
   const shownUrl = preview ?? currentAvatarUrl;
 
   return (
-    <div className="flex flex-wrap items-center gap-5 rounded-2xl border border-border/70 bg-card p-5">
+    <div className="flex flex-wrap items-center gap-5 rounded-2xl glass p-5">
       <Avatar
         key={shownUrl ?? "none"}
         src={shownUrl}

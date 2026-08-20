@@ -29,10 +29,10 @@ async function main() {
 
   try {
     await page.goto("http://localhost:3000/api/dev-login?role=member");
-    await page.waitForURL("**/dashboard");
+    await page.waitForURL("**/profile");
     console.log("✓ signed in via dev-login bypass");
 
-    await page.goto("http://localhost:3000/dashboard/settings#visibility");
+    await page.goto("http://localhost:3000/profile/settings#visibility");
 
     const discoverableToggle = page.getByRole("checkbox", {
       name: "Let other Progsu members find my profile",

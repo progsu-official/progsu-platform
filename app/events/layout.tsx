@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { readTheme } from "@/lib/theme";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 import { Button } from "@/components/ui/button";
 
 import { MemberHeader } from "@/app/_components/member-header";
+import { ThemeShell } from "@/app/_components/theme-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +46,10 @@ export default async function EventsLayout({
   const pendingDomainName =
     (profile?.pending_domain_name as string | null | undefined) ?? null;
 
+  const theme = await readTheme();
+
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <ThemeShell initialTheme={theme}>
       <MemberHeader
         displayName={displayName}
         email={user.email ?? null}
@@ -61,12 +65,12 @@ export default async function EventsLayout({
         {!state.isAdmin && !state.hasCurrentResume ? <ResumeNudge /> : null}
         {children}
       </main>
-    </div>
+    </ThemeShell>
   );
 }
 
 // Matches the dashboard nudge copy + styling. Kept inline instead of
-// importing from /dashboard to avoid a cross-surface dependency.
+// importing from /profile to avoid a cross-surface dependency.
 function StudentEmailNudge({
   pendingDomainName,
 }: {
@@ -122,7 +126,7 @@ function ResumeNudge() {
         </p>
       </div>
       <Button asChild size="sm">
-        <Link href="/dashboard/settings#resume">Upload resume</Link>
+        <Link href="/profile/settings/resume">Upload resume</Link>
       </Button>
     </section>
   );

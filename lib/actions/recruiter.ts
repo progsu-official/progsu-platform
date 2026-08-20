@@ -28,6 +28,6 @@ export async function setOpenToRecruiters(input: {
     .eq("id", user.id);
   if (error) return err("INTERNAL", error.message);
 
-  revalidatePath("/dashboard");
+  revalidatePath("/profile");
   return ok({ open: parsed.data.open });
 }

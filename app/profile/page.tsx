@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Camera } from "lucide-react";
+import { CalendarDays, FileText } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
@@ -7,13 +7,14 @@ import { resolveCoverUrls } from "@/lib/events/cover-url";
 import { loadProfileCompletion } from "@/lib/auth/profile-completion";
 import { CLASS_STANDING_LABELS } from "@/lib/enums/roles";
 import { Button } from "@/components/ui/button";
-import { Avatar } from "@/app/_components/avatar";
 
-import { OpenToRecruitersToggle } from "./open-to-recruiters-toggle";
-import { ProfileCompletionRing } from "./profile-completion-ring";
+import { ProfileCompletionBand } from "./profile-completion-band";
 import { StaleConsentBanner } from "./stale-consent-banner";
-import { UpcomingEvents, type UpcomingPlan } from "./upcoming-events";
+import { UpcomingEvents, MAX_PLANS, type UpcomingPlan } from "./upcoming-events";
 import { EducationCard, type VerificationState } from "./education-card";
+import { ResumePreview } from "./resume-preview";
+import { AvatarButton } from "./avatar-button";
+import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export default async function DashboardHome() {
           .in("rsvp_status", ["going", "waitlisted"])
           .in("status", ["published", "cancelled"])
           .order("starts_at", { ascending: true })
-          .limit(3)
+          .limit(MAX_PLANS)
       : Promise.resolve({ data: null }),
     env.FEATURE_EVENTS
       ? supabase
@@ -191,11 +192,9 @@ export default async function DashboardHome() {
   return (
     <div className="space-y-8">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-7">
-        <Avatar
-          src={profile?.avatar_url ?? null}
-          name={displayName || "?"}
-          className="h-24 w-24 shrink-0 rounded-full shadow-lg shadow-black/30"
-          textClassName="text-2xl"
+        <AvatarButton
+          avatarUrl={profile?.avatar_url ?? null}
+          displayName={displayName || "?"}
         />
         <div className="min-w-0 flex-1 space-y-2">
           <div>
@@ -259,7 +258,7 @@ export default async function DashboardHome() {
         </div>
         <div className="shrink-0 sm:self-start">
           <Button asChild size="sm" variant="outline" className="rounded-full">
-            <Link href="/dashboard/settings">Edit profile</Link>
+            <Link href="/profile/settings">Edit profile</Link>
           </Button>
         </div>
       </header>
@@ -287,6 +286,8 @@ export default async function DashboardHome() {
         </section>
       ) : null}
 
+      <ProfileCompletionBand completion={completion} />
+
       {/* Full-bleed rather than in the left column: the cover-forward cards
           need the width to stay legible at three across. */}
       {env.FEATURE_EVENTS ? (
@@ -298,8 +299,7 @@ export default async function DashboardHome() {
         />
       ) : null}
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_20rem]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <EducationCard
             school={profile?.school ?? null}
             degreeLine={degreeLine}
@@ -309,23 +309,35 @@ export default async function DashboardHome() {
             pendingDomainName={profile?.pending_domain_name ?? null}
           />
 
-          <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-5">
+          <div className="space-y-2 rounded-2xl glass p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Resume
           </h2>
           {currentResume ? (
             <>
-              <p className="text-sm">
-                <span className="font-medium">{currentResume.file_name}</span>
-                <br />
-                <span className="text-xs text-muted-foreground">
-                  Uploaded{" "}
-                  {new Date(currentResume.uploaded_at).toLocaleDateString()}
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-10 w-8 shrink-0 items-center justify-center rounded-md bg-red-500/12 text-red-600 ring-1 ring-inset ring-red-500/25 dark:text-red-400"
+                >
+                  <FileText size={17} strokeWidth={1.75} />
                 </span>
-              </p>
-              <Button variant="outline" size="sm" asChild className="rounded-full">
-                <Link href="/dashboard/settings#resume">Replace</Link>
-              </Button>
+                <p className="min-w-0 text-sm">
+                  <span className="block truncate font-medium">
+                    {currentResume.file_name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Uploaded{" "}
+                    {new Date(currentResume.uploaded_at).toLocaleDateString()}
+                  </span>
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <ResumePreview fileName={currentResume.file_name} />
+                <Button variant="ghost" size="sm" asChild className="rounded-full">
+                  <Link href="/profile/settings/resume">Replace</Link>
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -333,79 +345,13 @@ export default async function DashboardHome() {
                 No current resume.
               </p>
               <Button size="sm" asChild className="rounded-full">
-                <Link href="/dashboard/settings#resume">Upload</Link>
+                <Link href="/profile/settings/resume">Upload</Link>
               </Button>
             </>
           )}
           </div>
-        </div>
-
-        <aside className="space-y-6">
-          {!profile?.avatar_url ? <PhotoNudgeCard /> : null}
-
-          <ProfileCompletionRing completion={completion} />
-
-          <section className="rounded-2xl border border-border/70 bg-card p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-semibold">Recruiter visibility</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  When on, Progsu can include you in CSV exports we share with
-                  sponsors. Your name, profile, and current resume go out; your
-                  Progsu dashboard stays private.
-                </p>
-              </div>
-              <OpenToRecruitersToggle initialOpen={!!profile?.open_to_recruiters} />
-            </div>
-          </section>
-        </aside>
       </div>
     </div>
-  );
-}
-
-// LinkedIn-style photo prompt, shown until the member has any avatar set.
-function PhotoNudgeCard() {
-  return (
-    <section className="rounded-2xl border border-primary/30 bg-primary/10 p-5">
-      <div className="flex items-center gap-4">
-        <span
-          aria-hidden
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-primary/50 bg-background/40"
-        >
-          <Camera size={20} strokeWidth={1.75} className="text-primary" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">
-            Add a profile photo
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            A clear, friendly headshot helps hosts recognize you at events and
-            makes your card stand out to recruiters.
-          </p>
-        </div>
-      </div>
-      <Button asChild size="sm" className="mt-4 w-full rounded-full">
-        <Link href="/dashboard/settings#photo">Upload a photo</Link>
-      </Button>
-    </section>
-  );
-}
-
-// lucide-react no longer ships brand icons, so these two marks are inlined.
-function LinkedInMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z" />
-    </svg>
-  );
-}
-
-function GitHubMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.58 9.58 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
-    </svg>
   );
 }
 

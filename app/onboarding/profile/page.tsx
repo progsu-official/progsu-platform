@@ -31,7 +31,7 @@ export default async function OnboardingProfilePage() {
     const next = onboardingPathFor(state.nextStep);
     if (next) redirect(next);
   }
-  if (state.fullyOnboarded) redirect("/dashboard");
+  if (state.fullyOnboarded) redirect("/profile");
 
   const [{ data: profile }, { data: majors }, { data: domains }, { data: legacyMatch }] =
     await Promise.all([

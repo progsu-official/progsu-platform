@@ -279,7 +279,7 @@ export default async function MemberEventDetailPage({
               <div className="flex items-center gap-3">
                 <div
                   aria-hidden
-                  className="w-11 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-card text-center"
+                  className="w-11 shrink-0 overflow-hidden rounded-lg glass text-center"
                 >
                   <p className="bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {monthShortFormatter.format(startDate)}
@@ -304,7 +304,7 @@ export default async function MemberEventDetailPage({
                 <div className="flex items-center gap-3">
                   <div
                     aria-hidden
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-card"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg glass"
                   >
                     <MapPin
                       size={17}
@@ -343,7 +343,7 @@ export default async function MemberEventDetailPage({
                 inCheckInWindow={inCheckInWindow}
               />
             ) : attendance ? (
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
                 <span aria-hidden>✓</span> Checked in at{" "}
                 {new Date(attendance.checked_in_at).toLocaleString()}.
               </div>

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { VerifyEmailForm } from "@/app/onboarding/verify-email/verify-email-form";
 
-// Account email section on /dashboard/settings (docs/15-settings-account-email).
+// Account email section on /profile/settings (docs/15-settings-account-email).
 // Read-only Google sign-in row + editable student email with inline OTP flow.
 // "Change student email" is always visible — even when verified — so a user
 // can switch schools mid-semester without leaving settings.
@@ -126,14 +126,14 @@ function StudentEmailBadge({
   }
   if (pendingDomainName) {
     return (
-      <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+      <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-600 dark:text-amber-400">
         Pending: {pendingDomainName}
       </span>
     );
   }
   if (studentEmail) {
     return (
-      <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+      <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-600 dark:text-amber-400">
         Awaiting verification
       </span>
     );

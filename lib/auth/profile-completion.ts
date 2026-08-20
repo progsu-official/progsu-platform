@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Profile-completion ring data source (docs/14-low-friction-signup §3).
-// Returns a flat 10-slot checklist with recruiter-eligibility threshold = all
-// of slots 1..7 satisfied. Slots 8..10 are polish.
+// Returns a flat 11-slot checklist with recruiter-eligibility threshold = all
+// of slots 1..7 satisfied. The rest are polish and must stay
+// countsTowardRecruiter:false — that set gates the recruiter CSV export.
 
 export type CompletionSlot = {
   key: string;
@@ -30,6 +31,7 @@ type ProfileRow = {
   class_standing: string | null;
   interested_roles: string[] | null;
   open_to_recruiters: boolean;
+  avatar_url: string | null;
   linkedin_url: string | null;
   github_url: string | null;
   portfolio_url: string | null;
@@ -54,7 +56,7 @@ export async function loadProfileCompletion(
       supabase
         .from("profiles")
         .select(
-          "id, school, student_email_verified, grad_year, grad_term, class_standing, interested_roles, open_to_recruiters, linkedin_url, github_url, portfolio_url"
+          "id, school, student_email_verified, grad_year, grad_term, class_standing, interested_roles, open_to_recruiters, avatar_url, linkedin_url, github_url, portfolio_url"
         )
         .eq("id", userId)
         .single<ProfileRow>(),
@@ -86,7 +88,7 @@ export async function loadProfileCompletion(
     {
       key: "resume",
       label: "Upload your resume",
-      href: "/dashboard/settings#resume",
+      href: "/profile/settings/resume",
       done: hasResume,
       countsTowardRecruiter: true,
     },
@@ -100,56 +102,63 @@ export async function loadProfileCompletion(
     {
       key: "grad-year",
       label: "Set your graduation year",
-      href: "/dashboard/settings#academic",
+      href: "/profile/settings#academic",
       done: p?.grad_year != null,
       countsTowardRecruiter: true,
     },
     {
       key: "class-standing",
       label: "Pick your class standing",
-      href: "/dashboard/settings#academic",
+      href: "/profile/settings#academic",
       done: !!p?.class_standing,
       countsTowardRecruiter: true,
     },
     {
       key: "grad-term",
       label: "Set your graduation term",
-      href: "/dashboard/settings#academic",
+      href: "/profile/settings#academic",
       done: !!p?.grad_term,
       countsTowardRecruiter: true,
     },
     {
       key: "roles",
       label: "Choose roles you're open to",
-      href: "/dashboard/settings#roles",
+      href: "/profile/settings#roles",
       done: (p?.interested_roles ?? []).length > 0,
       countsTowardRecruiter: true,
     },
     {
       key: "recruiter-visibility",
       label: "Turn on recruiter visibility",
-      href: "/dashboard/settings#recruiter",
+      href: "/profile/settings/notifications",
       done: !!p?.open_to_recruiters && recruiterConsentOk,
       countsTowardRecruiter: true,
     },
     {
+      key: "photo",
+      label: "Add a profile photo",
+      href: "/profile/settings#photo",
+      done: !!p?.avatar_url,
+      countsTowardRecruiter: false,
+    },
+    {
       key: "linkedin",
       label: "Add your LinkedIn",
-      href: "/dashboard/settings#links",
+      href: "/profile/settings#links",
       done: !!p?.linkedin_url,
       countsTowardRecruiter: false,
     },
     {
       key: "github",
       label: "Add your GitHub",
-      href: "/dashboard/settings#links",
+      href: "/profile/settings#links",
       done: !!p?.github_url,
       countsTowardRecruiter: false,
     },
     {
       key: "portfolio",
       label: "Add your portfolio or website",
-      href: "/dashboard/settings#links",
+      href: "/profile/settings#links",
       done: !!p?.portfolio_url,
       countsTowardRecruiter: false,
     },

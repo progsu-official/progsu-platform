@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Local-only Google OAuth bypass: signs in a fixed fully-onboarded test
-// account (member or admin, via ?role=) and redirects to /dashboard.
+// account (member or admin, via ?role=) and redirects to /profile.
 // Hard-gated on NODE_ENV so this can never run against a real deployment
 // regardless of any other env var. Same accounts scripts/dev-seed.ts seeds
 // with a full mock dataset — this route just creates a bare-minimum version
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       .replace(/=+$/, "");
 
   const requestedNext = request.nextUrl.searchParams.get("next");
-  const targetPath = requestedNext && requestedNext.startsWith("/") ? requestedNext : "/dashboard";
+  const targetPath = requestedNext && requestedNext.startsWith("/") ? requestedNext : "/profile";
   const response = NextResponse.redirect(new URL(targetPath, request.url));
   response.cookies.set(`sb-${ref}-auth-token`, cookieValue, {
     path: "/",

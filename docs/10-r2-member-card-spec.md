@@ -258,7 +258,7 @@ No admin write policy. Force-takedown goes through a future `admin_force_set_pro
 ### 5.1 `/members` directory
 
 - Feature-flagged; flag off → middleware 404.
-- Gate: authenticated + fully onboarded (same cascade as `/dashboard`).
+- Gate: authenticated + fully onboarded (same cascade as `/profile`).
 - Uses `list_member_cards(viewer, cursor, limit, search?)` helper (SECURITY DEFINER, sibling to `member_card_for_viewer`).
 - Cursor pagination, page size 24, ordered `last_discoverability_change_at desc, user_id`.
 - Search: name-prefix only in R2. No school/role filters.
@@ -272,7 +272,7 @@ No admin write policy. Force-takedown goes through a future `admin_force_set_pro
 - If `auth.uid() = card.user_id`, show "Preview mode" banner.
 - No OG/social tags that expose private data.
 
-### 5.3 `/dashboard/settings` new Profile Visibility section
+### 5.3 `/profile/settings` new Profile Visibility section
 
 - Toggle: `discoverable` — flipping to true triggers re-acceptance path if privacy version is stale.
 - Toggle: `share_attended_events` — no re-acceptance needed.
@@ -282,7 +282,7 @@ No admin write policy. Force-takedown goes through a future `admin_force_set_pro
 
 ### 5.4 Re-acceptance client flow
 
-When `set_profile_visibility` returns `ERR_REACCEPT_PRIVACY`, client routes through `/privacy?reaccept=member_directory&return=/dashboard/settings#visibility` which writes a new `consents` row and redirects back.
+When `set_profile_visibility` returns `ERR_REACCEPT_PRIVACY`, client routes through `/privacy?reaccept=member_directory&return=/profile/settings#visibility` which writes a new `consents` row and redirects back.
 
 ---
 
@@ -422,8 +422,8 @@ Three reasons:
 
 - `supabase/migrations/20260424xxxxxx_member_cards.sql` — new.
 - `app/members/layout.tsx`, `app/members/page.tsx`, `app/members/[slug]/page.tsx` — new.
-- `app/dashboard/settings/page.tsx` — add visibility section.
-- `app/dashboard/settings/visibility-settings.tsx` — new component.
+- `app/profile/settings/page.tsx` — add visibility section.
+- `app/profile/settings/visibility-settings.tsx` — new component.
 - `app/privacy/page.tsx` — copy update + version bump.
 - `lib/env.ts` — add `FEATURE_MEMBER_DIRECTORY`.
 - `lib/actions/members.ts` — new; wrap helpers in server actions.

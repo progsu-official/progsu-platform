@@ -39,9 +39,9 @@ The recruiter-eligibility threshold is items **1–7 all present**. Items 8–10
 
 ## 2. Where the ring lives
 
-Route: `/dashboard` page, top-of-page placement, above the existing events summary card.
+Route: `/profile` page, top-of-page placement, above the existing events summary card.
 
-Component: `app/dashboard/profile-completion-ring.tsx` (new). Server component that takes `OnboardingState` + a small query for the extra columns (grad_year, linkedin_url, etc.) not already on `OnboardingState`.
+Component: `app/profile/profile-completion-ring.tsx` (new). Server component that takes `OnboardingState` + a small query for the extra columns (grad_year, linkedin_url, etc.) not already on `OnboardingState`.
 
 Rendering:
 - Desktop: horizontal card ~96px tall. Ring (SVG circle, ~72×72) on the left, count "7/10" centered in the ring, a heading + the top 2 nudge lines stacked on the right with a "See all" link when there are more than 2 missing.
@@ -49,8 +49,8 @@ Rendering:
 - At 10/10: render a thin `Profile complete` badge row instead of the full card.
 
 Interaction:
-- Each nudge line is a `<Link>` to `/dashboard/settings?tab=profile#<anchor>` where anchor maps to the relevant form section. Anchors: `resume`, `verify-email`, `academic`, `roles`, `recruiter`, `links`.
-- The ring itself is also clickable (`aria-label="Profile 7 of 10 complete. Open profile settings."`) and goes to `/dashboard/settings?tab=profile`.
+- Each nudge line is a `<Link>` to `/profile/settings?tab=profile#<anchor>` where anchor maps to the relevant form section. Anchors: `resume`, `verify-email`, `academic`, `roles`, `recruiter`, `links`.
+- The ring itself is also clickable (`aria-label="Profile 7 of 10 complete. Open profile settings."`) and goes to `/profile/settings?tab=profile`.
 - A muted "Why complete it?" text link next to the heading opens a tooltip: "A complete profile helps recruiters and event hosts find you. You control what's shared."
 
 Loading:
@@ -111,7 +111,7 @@ export async function loadProfileCompletion(
 ): Promise<ProfileCompletion> { /* one profile row + one resume row + consent latest-per-type */ }
 ```
 
-Called from `app/dashboard/page.tsx`. Two extra round-trips is acceptable — `/dashboard` already does several.
+Called from `app/profile/page.tsx`. Two extra round-trips is acceptable — `/profile` already does several.
 
 No new RPC needed; all reads are already permitted to the caller (own profile, own resumes, own consents).
 
@@ -119,7 +119,7 @@ No new RPC needed; all reads are already permitted to the caller (own profile, o
 
 ## 6. Settings page anchors
 
-File: `app/dashboard/settings/page.tsx` (existing). Needs a `?tab=profile` tab and in-section anchor targets (`id="resume"`, `id="verify-email"`, `id="academic"`, etc.) so the deep links in the ring land users at the right control.
+File: `app/profile/settings/page.tsx` (existing). Needs a `?tab=profile` tab and in-section anchor targets (`id="resume"`, `id="verify-email"`, `id="academic"`, etc.) so the deep links in the ring land users at the right control.
 
 No change to the settings action surface — `updateProfile` already accepts all these fields. Just UX grouping.
 

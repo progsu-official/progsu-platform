@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const errorParam = url.searchParams.get("error");
   const origin = env.NEXT_PUBLIC_SITE_URL;
-  const settingsUrl = new URL("/dashboard/settings#visibility", origin);
+  const settingsUrl = new URL("/profile/settings/visibility", origin);
 
   if (errorParam || !code) {
     settingsUrl.searchParams.set(

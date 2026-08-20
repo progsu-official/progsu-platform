@@ -44,7 +44,7 @@ Result: the forced signup journey drops from "OAuth → verify (skippable) → 1
 
 ## 2. Profile-completion ring
 
-- A circular progress control on `/dashboard` showing `N/M` completed optional-recommended fields.
+- A circular progress control on `/profile` showing `N/M` completed optional-recommended fields.
 - Each missing field = one nudge line with a CTA that deep-links to the relevant settings section.
 - Visual only — the actual recruiter gate is enforced server-side in `public.recruiter_eligible_members`.
 - **Threshold for recruiter visibility = 100% (option C).** Strict on purpose. A recruiter-visible card must have: resume active, `grad_year`, `class_standing`, `grad_term`, `interested_roles` (≥1), and the existing `open_to_recruiters` + `recruiter_resume_sharing` consent. LinkedIn / GitHub / portfolio stay optional even for recruiter eligibility (signal, not gate).

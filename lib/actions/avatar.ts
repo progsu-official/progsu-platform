@@ -142,7 +142,7 @@ export async function finalizeAvatarUpload(
     p_metadata: { path, file_size: size },
   });
 
-  revalidatePath("/dashboard");
+  revalidatePath("/profile");
   return ok({ avatarUrl: publicUrl });
 }
 
@@ -174,7 +174,7 @@ export async function removeAvatar(): Promise<ActionResult<{ removed: true }>> {
     p_metadata: {},
   });
 
-  revalidatePath("/dashboard");
+  revalidatePath("/profile");
   return ok({ removed: true });
 }
 

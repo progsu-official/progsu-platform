@@ -2,7 +2,19 @@
 
 import { useState, useTransition } from "react";
 
+import { Globe } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
+import {
+  PrefixedInput,
+  linkedinHandleFrom,
+  linkedinUrlFrom,
+  githubHandleFrom,
+  githubUrlFrom,
+  siteHostFrom,
+  siteUrlFrom,
+} from "./prefixed-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -262,32 +274,56 @@ export function ProfileSettings({
         Optional. Shown as icons on your profile when directory visibility is
         on (Settings → Visibility).
       </p>
+      {/* State still holds full URLs — that's what the schema validates and the
+          column stores. These fields convert at the boundary so the member only
+          types a handle, and a pasted URL collapses to one on the way in. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Row label="LinkedIn">
-          <Input
-            type="url"
-            value={state.linkedinUrl}
-            onChange={(e) => setState({ ...state, linkedinUrl: e.target.value })}
-            placeholder="https://linkedin.com/in/you"
+          <PrefixedInput
+            id="linkedin-handle"
+            prefix="linkedin.com/in/"
+            icon={<LinkedInMark className="h-3.5 w-3.5" />}
+            value={linkedinHandleFrom(state.linkedinUrl)}
+            placeholder="joeyzhang"
             disabled={pending}
+            onChange={(next) =>
+              setState({
+                ...state,
+                linkedinUrl: linkedinUrlFrom(linkedinHandleFrom(next)),
+              })
+            }
           />
         </Row>
         <Row label="GitHub">
-          <Input
-            type="url"
-            value={state.githubUrl}
-            onChange={(e) => setState({ ...state, githubUrl: e.target.value })}
-            placeholder="https://github.com/you"
+          <PrefixedInput
+            id="github-handle"
+            prefix="github.com/"
+            icon={<GitHubMark className="h-3.5 w-3.5" />}
+            value={githubHandleFrom(state.githubUrl)}
+            placeholder="joeyzhang"
             disabled={pending}
+            onChange={(next) =>
+              setState({
+                ...state,
+                githubUrl: githubUrlFrom(githubHandleFrom(next)),
+              })
+            }
           />
         </Row>
         <Row label="Portfolio / site">
-          <Input
-            type="url"
-            value={state.portfolioUrl}
-            onChange={(e) => setState({ ...state, portfolioUrl: e.target.value })}
-            placeholder="https://"
+          <PrefixedInput
+            id="portfolio-host"
+            prefix="https://"
+            icon={<Globe size={14} strokeWidth={1.75} aria-hidden />}
+            value={siteHostFrom(state.portfolioUrl)}
+            placeholder="joeyz.world"
             disabled={pending}
+            onChange={(next) =>
+              setState({
+                ...state,
+                portfolioUrl: siteUrlFrom(siteHostFrom(next)),
+              })
+            }
           />
         </Row>
       </div>

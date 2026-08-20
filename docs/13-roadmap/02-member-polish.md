@@ -20,17 +20,17 @@ Total estimated effort: **~11-14 hours** (670-830 minutes). Priority column answ
 
 ---
 
-## Gap 1 — `/dashboard` Upcoming Events Card is Bare-Bones
+## Gap 1 — `/profile` Upcoming Events Card is Bare-Bones
 
 ### Current state
 
-`app/dashboard/page.tsx` lines 210-289 define `UpcomingEventsCard`. Each row shows only the event title, a `new Date(starts_at).toLocaleString()` timestamp, and a going/waitlisted pill. The data fetch at line 43-49 selects only `event_id, slug, title, starts_at, rsvp_status` from `self_event_history`.
+`app/profile/page.tsx` lines 210-289 define `UpcomingEventsCard`. Each row shows only the event title, a `new Date(starts_at).toLocaleString()` timestamp, and a going/waitlisted pill. The data fetch at line 43-49 selects only `event_id, slug, title, starts_at, rsvp_status` from `self_event_history`.
 
 Missing: location, status badge (is this event still published or was it cancelled?), cover thumbnail, no way to change RSVP without clicking through, waitlist position for the waitlisted state.
 
 ### Exact files to touch
 
-- `app/dashboard/page.tsx` lines 41-50 (expand the `select`), lines 210-289 (rewrite `UpcomingEventsCard`).
+- `app/profile/page.tsx` lines 41-50 (expand the `select`), lines 210-289 (rewrite `UpcomingEventsCard`).
 
 ### Specific code changes
 

@@ -23,7 +23,7 @@ export default async function OnboardingConsentPage() {
     const next = onboardingPathFor(state.nextStep);
     if (next) redirect(next);
   }
-  if (state.fullyOnboarded) redirect("/dashboard");
+  if (state.fullyOnboarded) redirect("/profile");
 
   const { data: profile } = await supabase
     .from("profiles")

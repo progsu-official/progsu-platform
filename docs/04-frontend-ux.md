@@ -38,7 +38,7 @@
 
 | Path              | Purpose                                           | Rendering | Auth        | Redirect rules                                              |
 |-------------------|---------------------------------------------------|-----------|-------------|-------------------------------------------------------------|
-| `/`               | Landing page explaining Progsu + single CTA.     | Server    | None        | If signed in and fully onboarded -> `/dashboard`.            |
+| `/`               | Landing page explaining Progsu + single CTA.     | Server    | None        | If signed in and fully onboarded -> `/profile`.            |
 | `/login`          | Magic-link / OAuth sign-in entry.                 | Server*   | None        | If signed in -> route through onboarding gate (see §7).     |
 | `/legal/privacy`  | Privacy policy (source: Privacy agent).           | Server    | None        | —                                                           |
 | `/legal/terms`    | Terms of service.                                 | Server    | None        | —                                                           |
@@ -49,7 +49,7 @@
 
 | Path             | Purpose                                           | Rendering | Auth        | Redirect rules                                              |
 |------------------|---------------------------------------------------|-----------|-------------|-------------------------------------------------------------|
-| `/auth/callback` | Handle Supabase OAuth/magic-link exchange, set session cookie, bounce to next onboarding step or `/dashboard`. | Server (Route Handler + small page) | Partial | See §7 funnel. |
+| `/auth/callback` | Handle Supabase OAuth/magic-link exchange, set session cookie, bounce to next onboarding step or `/profile`. | Server (Route Handler + small page) | Partial | See §7 funnel. |
 
 ### Onboarding — `(onboarding)` group, auth required
 
@@ -59,16 +59,16 @@
 | `/onboarding/profile`         | Collect profile (name, school, major, grad year, roles, etc.) | Server + client form | Yes  | Must have `student_email_verified=true`.                |
 | `/onboarding/resume`          | Upload resume PDF.                                           | Server + client    | Yes  | Must have `profile_completed=true`.                     |
 | `/onboarding/consent`         | 5 consent checkboxes.                                        | Server + client form | Yes  | Must have resume uploaded.                              |
-| `/onboarding/done`            | Success screen; auto-redirect to `/dashboard` after 2s.      | Server            | Yes  | Must have all consents recorded; else bounce back.      |
+| `/onboarding/done`            | Success screen; auto-redirect to `/profile` after 2s.      | Server            | Yes  | Must have all consents recorded; else bounce back.      |
 
 ### Member — `(app)` group, auth required, fully onboarded
 
 | Path                  | Purpose                                                    | Rendering          | Auth | Redirect rules                                        |
 |-----------------------|------------------------------------------------------------|--------------------|------|-------------------------------------------------------|
-| `/dashboard`          | Landing for members — status card + quick actions.         | Server             | Yes  | If not fully onboarded -> §7 funnel.                  |
-| `/dashboard/profile`  | View + edit profile.                                       | Server + client form | Yes  | —                                                     |
-| `/dashboard/resume`   | Replace resume, view current version + history.            | Server + client    | Yes  | —                                                     |
-| `/dashboard/settings` | Email prefs, recruiter opt-in toggle, delete account, consent re-review. | Server + client | Yes  | —                                                     |
+| `/profile`          | Landing for members — status card + quick actions.         | Server             | Yes  | If not fully onboarded -> §7 funnel.                  |
+| `/profile/profile`  | View + edit profile.                                       | Server + client form | Yes  | —                                                     |
+| `/profile/resume`   | Replace resume, view current version + history.            | Server + client    | Yes  | —                                                     |
+| `/profile/settings` | Email prefs, recruiter opt-in toggle, delete account, consent re-review. | Server + client | Yes  | —                                                     |
 
 ### Admin — `(admin)` group, auth + `is_admin=true` server-enforced
 
@@ -256,7 +256,7 @@ Two sub-forms on the same page, state-machined.
 |-------|--------|----------|-------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
 | code  | string | Yes      | `z.string().regex(/^\d{6}$/, "Enter the 6-digit code.")` | OtpInput auto-submits on 6 digits. Resend disabled for 60s. Expires in 10 min (see Auth doc). |
 
-### 4.3 `/onboarding/profile` (and `/dashboard/profile`)
+### 4.3 `/onboarding/profile` (and `/profile/profile`)
 
 | Field               | Type          | Required | Zod rule                                                                                                           | UX notes                                                                                        |
 |---------------------|---------------|----------|--------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
@@ -296,7 +296,7 @@ Two sub-forms on the same page, state-machined.
 **Role options (starter list, edit before launch):**
 `["Software Engineering (General)", "Backend", "Frontend", "Full-stack", "Mobile", "Infrastructure / DevOps", "Machine Learning", "Data Science", "Data Engineering", "Security", "Embedded / Systems", "Product Management", "Quant", "Research", "Design Engineering"]`
 
-### 4.4 `/onboarding/resume` (and `/dashboard/resume`)
+### 4.4 `/onboarding/resume` (and `/profile/resume`)
 
 | Field   | Type | Required | Zod rule                                                                                                                                                   | UX notes                                                                   |
 |---------|------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
@@ -714,14 +714,14 @@ Cascade applied:
 |--------------------------------------------------|-----------------------------------------------------------|-------------------------------------------------|
 | Any non-public route                             | No session                                                | `/login?next={requestedPath}`                   |
 | Any `(app)` or `(onboarding)` route              | `nextOnboardingStep(me) !== null` and requested path !== that step | `nextOnboardingStep(me)`              |
-| `(onboarding)` route                             | `nextOnboardingStep(me) === null`                         | `/dashboard`                                    |
+| `(onboarding)` route                             | `nextOnboardingStep(me) === null`                         | `/profile`                                    |
 | `/onboarding/verify-email`                       | already verified                                          | next step                                       |
 | `/onboarding/profile`                            | profile not ready AND email not verified                  | `/onboarding/verify-email`                      |
 | `/onboarding/resume`                             | profile not done                                          | `/onboarding/profile`                           |
 | `/onboarding/consent`                            | no resume                                                 | `/onboarding/resume`                            |
 | `/admin/*`                                       | signed in, not admin                                      | `notFound()` (404)                              |
 | `/admin/*`                                       | signed in, admin, but NOT fully onboarded as a member     | Still allowed — admins can bypass the funnel on admin routes. |
-| `/login` or `/`                                  | signed in AND fully onboarded                             | `/dashboard`                                    |
+| `/login` or `/`                                  | signed in AND fully onboarded                             | `/profile`                                    |
 
 **Post-login redirect:** honor the `?next=` query param iff it resolves to a safe relative path we own and the user is allowed to view it (re-run the funnel before honoring).
 

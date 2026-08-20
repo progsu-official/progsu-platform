@@ -16,8 +16,8 @@ Roughly 40 existing members as of 2026-04-24. Bucket them by what they'll see on
 | B. Fully completed old gate + has active resume + recruiter opt-in BUT missing one of {grad_year, class_standing, grad_term, interested_roles} | 2–5 | Ring shows 9/10 or 8/10 with a CTA to fill the missing field. **Drops out of `recruiter_eligible_members` until they complete.** | Temporary loss of recruiter visibility. |
 | C. Fully completed old gate, no resume | 5–10 | Ring shows 9/10 (missing resume only). Not in the recruiter view (same as today). | None — they weren't eligible today either. |
 | D. Fully completed old gate, resume, no recruiter opt-in | 5–10 | Ring shows 9/10 (missing "Turn on recruiter visibility"). Not in the recruiter view (same as today). | None. |
-| E. Admin | 1–2 | Admin bypass unchanged. No funnel, no ring on `/dashboard` because admins land on `/admin` first. | None. |
-| F. Partially onboarded (mid-funnel when deploy happens) | 0–3 | Old nextStep evaluation finds them already complete under the new (looser) gate, bounces them to `/dashboard`. They'll see a ring reflecting whatever they actually have. | None. |
+| E. Admin | 1–2 | Admin bypass unchanged. No funnel, no ring on `/profile` because admins land on `/admin` first. | None. |
+| F. Partially onboarded (mid-funnel when deploy happens) | 0–3 | Old nextStep evaluation finds them already complete under the new (looser) gate, bounces them to `/profile`. They'll see a ring reflecting whatever they actually have. | None. |
 
 **Cost in recruiter-eligible members** is bucket B — the only bucket where a member who was in the recruiter view yesterday isn't today. See `04-recruiter-visibility.md` §4 for the numeric guideline.
 
@@ -82,6 +82,6 @@ There is no feature flag for this change because it touches `is_fully_onboarded(
 
 ## 7. Monitoring
 
-- Watch the dashboard-load endpoint for latency regressions — the ring adds a few queries to `/dashboard`. Acceptable budget: +50ms P50.
+- Watch the dashboard-load endpoint for latency regressions — the ring adds a few queries to `/profile`. Acceptable budget: +50ms P50.
 - Watch the profile-form submission error rate on `/onboarding/profile` — the new major-dropdown + other-text validation is the most likely source of new error_codes. Expected: near zero after the first hour.
 - Watch `admin_recruiter_eligible_count()` daily for the first week. The number should climb back toward the pre-migration baseline as members fill their rings.

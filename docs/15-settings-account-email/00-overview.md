@@ -2,7 +2,7 @@
 
 Owner: Settings UX
 Last revised: 2026-04-24
-Status: Planning. No code yet. Scope: a single new section on `/dashboard/settings`. No schema changes, no new server actions, no privacy bump.
+Status: Planning. No code yet. Scope: a single new section on `/profile/settings`. No schema changes, no new server actions, no privacy bump.
 
 ---
 
@@ -16,7 +16,7 @@ Spec line: **no new gate, no privacy bump, just expose existing capability.** Re
 
 ## 1. UI shape
 
-A new `<section id="account-email">` placed above `#profile` on `/dashboard/settings`. Two fields stacked.
+A new `<section id="account-email">` placed above `#profile` on `/profile/settings`. Two fields stacked.
 
 **Google sign-in** — read-only `<dl>` row showing `profiles.google_email`. Subtitle: *"This is your sign-in email and can't be changed here."* Visually a greyed/disabled `Input` for symmetry with the field below.
 
@@ -58,7 +58,7 @@ The "Change student email" button is **always** visible (even verified). Clickin
 
 `requestStudentEmailCode` and `verifyStudentEmailCode` are already idempotent and re-verify-safe: the verify path issues `update profiles set student_email=…, student_email_verified=true` unconditionally and writes a fresh audit row each time. No server-side change needed.
 
-Extract `app/onboarding/verify-email/verify-email-form.tsx` into `components/verify-student-email/verify-email-form.tsx` (or keep at `app/(shared)/verify-email-form.tsx` if the team prefers app-relative). Both `/onboarding/verify-email/page.tsx` and `/dashboard/settings/page.tsx` import it.
+Extract `app/onboarding/verify-email/verify-email-form.tsx` into `components/verify-student-email/verify-email-form.tsx` (or keep at `app/(shared)/verify-email-form.tsx` if the team prefers app-relative). Both `/onboarding/verify-email/page.tsx` and `/profile/settings/page.tsx` import it.
 
 Props after extraction:
 - `initialEmail: string` — prefills the input.
@@ -86,7 +86,7 @@ The `profiles_update_own` `with check` clause forbids client writes to `student_
 - No new unit-style smoke. `scripts/smoke-otp-flow.ts` already exercises `requestStudentEmailCode` + `verifyStudentEmailCode` end-to-end including re-verify; adding a settings-page wrapper smoke would be redundant.
 - New Playwright scenario: `tests/e2e/scenarios/09-settings-change-student-email.spec.ts`. Steps:
   1. Seed a fully-onboarded user with a verified `@student.gsu.edu` student email (mirror seeding from `08-low-friction-signup.spec.ts`).
-  2. Sign in, `goto("/dashboard/settings")`, scroll to `#account-email`.
+  2. Sign in, `goto("/profile/settings")`, scroll to `#account-email`.
   3. Assert the Google email row renders the seed email and is disabled.
   4. Assert the verified badge shows `✓ Verified` with the seeded date.
   5. Click "Change student email", fill a new `@student.gsu.edu` address, click "Send verification code".
@@ -112,5 +112,5 @@ The `profiles_update_own` `with check` clause forbids client writes to `student_
 ## 6. Open questions the user might push back on
 
 1. **Position: above Profile, or just below it?** Recommendation: **above**. Sign-in identity > profile fields; this also matches the natural mental model ("who am I" → "what do I tell recruiters").
-2. **Should `google_email` also stay as the existing read-only `dt/dd` row on `/dashboard`, or move exclusively into settings?** Recommendation: **leave the dashboard row alone**, just stop being the only place to see it. Two read-only displays of the same value is cheap; removing the dashboard row is a separate cleanup.
+2. **Should `google_email` also stay as the existing read-only `dt/dd` row on `/profile`, or move exclusively into settings?** Recommendation: **leave the dashboard row alone**, just stop being the only place to see it. Two read-only displays of the same value is cheap; removing the dashboard row is a separate cleanup.
 3. **Locked-by-default vs always-editable input for the verified state.** Recommendation: **always editable** (one click less; the verify step is itself the destructive confirmation). Revisit only if we see accidental re-verifies in logs.

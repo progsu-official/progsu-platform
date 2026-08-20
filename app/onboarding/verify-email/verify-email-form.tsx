@@ -59,7 +59,7 @@ function useNow(intervalMs = 1000) {
 }
 
 // Reusable across onboarding (/onboarding/verify-email) and settings
-// (/dashboard/settings#account-email). Mode controls post-success behavior:
+// (/profile/settings/account). Mode controls post-success behavior:
 //   - "onboarding" → router.push(skipDestination); router.refresh().
 //   - "settings"   → calls onSuccess; caller collapses inline UI + refreshes.
 // allowSkip toggles the "Verify later" reserveStudentEmail path. Settings
@@ -82,7 +82,7 @@ export function VerifyEmailForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
-  const skipDestination = fullyOnboarded ? "/dashboard" : "/onboarding/profile";
+  const skipDestination = fullyOnboarded ? "/profile" : "/onboarding/profile";
   const [state, setState] = useState<FormState>({
     phase: initialEmail ? "email" : "email",
     email: initialEmail,

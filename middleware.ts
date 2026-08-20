@@ -7,7 +7,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 const PUBLIC_PREFIXES = ["/", "/login", "/privacy", "/terms", "/auth/callback"];
 const ADMIN_PREFIXES = ["/admin"];
 const ONBOARDING_PREFIX = "/onboarding";
-const MEMBER_PREFIXES = ["/dashboard", "/events", "/members"];
+const MEMBER_PREFIXES = ["/profile", "/events", "/members"];
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;

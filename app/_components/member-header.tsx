@@ -21,10 +21,10 @@ export function MemberHeader({
   showEvents: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
+    <header className="glass-blur sticky top-0 z-40 border-b border-border/60">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
         <Link
-          href="/dashboard"
+          href="/profile"
           className="flex items-baseline gap-1.5 text-[15px] font-bold tracking-tight text-foreground"
         >
           progsu

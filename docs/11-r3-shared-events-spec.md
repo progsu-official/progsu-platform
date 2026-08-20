@@ -305,7 +305,7 @@ Flag changes take effect next request. `share_shared_event_counts` column is NOT
 ### 8.1 `/privacy` changes
 
 1. **New section: "Shared event history with other members"** stating:
-   - Opt-in via `/dashboard/settings`.
+   - Opt-in via `/profile/settings`.
    - Mutual opt-in required.
    - Events with fewer than 10 attendees never included.
    - Sensitive events never shown by name.
@@ -455,7 +455,7 @@ Gate-fail ~0.1 ms vs gate-pass ~10 ms. Viewer already knows their own opt-in sta
 
 - `supabase/migrations/20260425xxxxxx_shared_events.sql` — new; CHECK constraint + `shared_events_for_viewer` + extended `set_profile_visibility`.
 - `app/members/[slug]/page.tsx` — extend with shared-events section.
-- `app/dashboard/settings/visibility-settings.tsx` — activate third toggle.
+- `app/profile/settings/visibility-settings.tsx` — activate third toggle.
 - `app/privacy/page.tsx` — v3.0 copy update.
 - `lib/actions/members.ts` — new `getSharedEventsForViewer` wrapper.
 - `scripts/smoke-shared-events-visibility.ts` — new.

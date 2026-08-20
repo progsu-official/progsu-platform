@@ -67,7 +67,7 @@ export default function PrivacyPage() {
         <p>
           These are transactional emails tied to your participation. They are
           separate from the marketing email setting in your{" "}
-          <Link href="/dashboard/settings" className="text-primary underline underline-offset-4">
+          <Link href="/profile/settings" className="text-primary underline underline-offset-4">
             dashboard settings
           </Link>
           , and turning marketing email off does <em>not</em> silence event
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Member directory and profile visibility</h2>
         <p>
           You can opt into a peer-visible member directory from your{" "}
-          <Link href="/dashboard/settings#visibility" className="text-primary underline underline-offset-4">
+          <Link href="/profile/settings/visibility" className="text-primary underline underline-offset-4">
             settings
           </Link>
           . When it&apos;s on, other Progsu members can visit{" "}
@@ -159,7 +159,7 @@ export default function PrivacyPage() {
         <p>
           We do not sell your data. You can withdraw consent at any time from
           your{" "}
-          <Link href="/dashboard/settings" className="text-primary underline underline-offset-4">
+          <Link href="/profile/settings" className="text-primary underline underline-offset-4">
             dashboard settings
           </Link>
           . CSVs already downloaded before you withdraw remain out of our reach

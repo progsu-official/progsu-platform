@@ -6,7 +6,7 @@ import { CalendarDays, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // Shared member-area nav (Events/Members). Previously each of
-// app/dashboard, app/members, app/events hand-rolled its own header and
+// app/profile, app/members, app/events hand-rolled its own header and
 // they'd drifted: dashboard linked to neither Members nor Events at all.
 // One nav, used by all three layouts, so that can't happen again.
 // Profile lives in the header avatar menu, not here.

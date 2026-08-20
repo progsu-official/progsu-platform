@@ -60,7 +60,7 @@ export function RsvpPanel({
 
   if (!rsvpOpen) {
     return (
-      <section className="rounded-2xl border border-border/70 bg-card/70 p-5 text-sm backdrop-blur">
+      <section className="rounded-2xl glass p-5 text-sm">
         <p className="text-muted-foreground">
           RSVPs are closed for this event.
         </p>
@@ -69,7 +69,7 @@ export function RsvpPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-lg shadow-black/20 backdrop-blur">
+    <section className="space-y-4 rounded-2xl glass p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
@@ -88,14 +88,14 @@ export function RsvpPanel({
         error.toLowerCase().includes("not fully onboarded") ? (
           <div
             role="alert"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 dark:border-amber-400/30 dark:bg-amber-400/10 px-3 py-2 text-xs"
           >
-            <span className="text-amber-200">
+            <span className="text-amber-800 dark:text-amber-200">
               Finish setting up your member profile to RSVP.
             </span>
             <Link
               href="/onboarding/consent"
-              className="font-semibold text-amber-300 underline-offset-2 hover:underline"
+              className="font-semibold text-amber-700 dark:text-amber-300 underline-offset-2 hover:underline"
             >
               Finish setup →
             </Link>
@@ -180,7 +180,7 @@ function CurrentStateLine({ current }: { current: CurrentRsvp }) {
   if (current.status === "waitlisted") {
     const pos = current.waitlistPosition;
     return (
-      <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+      <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-600 dark:text-amber-400">
         You&apos;re on the waitlist
         {pos != null ? ` — position #${pos}.` : "."} We&apos;ll email if a
         spot opens.

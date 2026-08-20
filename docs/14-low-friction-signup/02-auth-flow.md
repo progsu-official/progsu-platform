@@ -18,7 +18,7 @@ Google OAuth
                                 └─> /onboarding/verify-email (soft step)  <-- writes profiles.school on success
                                       └─> nextOnboardingStep() → consent
                                             └─> /onboarding/consent       <-- 3 required consents
-                                                  └─> /dashboard          <-- ring shown, recruiter gate evaluated
+                                                  └─> /profile          <-- ring shown, recruiter gate evaluated
 ```
 
 Note: step order in the funnel is `profile → verify-email (soft) → consent`. The step indicator currently shows all four including resume; resume is no longer in the redirect chain (unchanged from `20260426000200`). The profile step moves in front of verify-email because:
@@ -44,7 +44,7 @@ Visible fields:
 | `major` | select dropdown | yes | Options fetched from `majors` where `is_active = true`, sorted by `sort_order`. |
 | `major_other_text` | text input | yes *when `major = 'other'`* | Hidden by default, appears when dropdown hits "Other". Max 100 chars. |
 
-**Removed from this form** (moved to `/dashboard/settings` profile section):
+**Removed from this form** (moved to `/profile/settings` profile section):
 - `preferred_name`
 - `school` (auto-populated by verify-email)
 - `minor`
@@ -107,7 +107,7 @@ Unchanged. `/onboarding/consent` continues to collect the three required consent
 
 ---
 
-## 5. After the funnel: `/dashboard`
+## 5. After the funnel: `/profile`
 
 On a fresh user's first dashboard load:
 
@@ -124,6 +124,6 @@ See `03-profile-completion-ring.md` for the ring details.
 
 - Returning user with the old completed profile has all 10 fields set → ring = 10/10, nothing changes.
 - Returning user who filled the old-gate profile but never uploaded a resume → ring = 9/10, recruiter eligibility unchanged (still gated by resume).
-- Returning user mid-funnel before this ships: they are on the OLD fields, so `is_fully_onboarded()` will return true the moment they finish the NEW minimum (since the new gate is a subset of the old). They'll get kicked forward to `/dashboard` and see a high ring count.
+- Returning user mid-funnel before this ships: they are on the OLD fields, so `is_fully_onboarded()` will return true the moment they finish the NEW minimum (since the new gate is a subset of the old). They'll get kicked forward to `/profile` and see a high ring count.
 
 No data migrations required. No downtime.

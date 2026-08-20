@@ -68,7 +68,7 @@ Laws that do plausibly apply: **CAN-SPAM** (any marketing email we send later mu
 
 - **Required** (user cannot finish onboarding without them): `privacy_policy`, `terms_of_service`. These are the legal basis for the user being in the app at all.
 - **Optional** (separately toggleable): `recruiter_resume_sharing`, `email_marketing`, `sms_marketing`. A user must be able to finish onboarding with all three unchecked.
-- **All three optional consents must be togglable later** at `/dashboard/settings` (or the spec's `/profile/consents`). Toggling "off" inserts a new row with a withdrawal marker, or equivalently a new `accepted = false` row for the current version. Revoking must take effect on the next read — no caching longer than a request.
+- **All three optional consents must be togglable later** at `/profile/settings` (or the spec's `/profile/consents`). Toggling "off" inserts a new row with a withdrawal marker, or equivalently a new `accepted = false` row for the current version. Revoking must take effect on the next read — no caching longer than a request.
 
 ### Version bumping
 

@@ -48,7 +48,7 @@ Steps:
 4. Fill first/last/phone, pick a real major (not "Other"), submit.
 5. Expect redirect to `/onboarding/verify-email`. Enter a GSU email (from the seeded `school_domains`), get the OTP from the test email harness, submit.
 6. Expect redirect to `/onboarding/consent`. Check all three consents, submit.
-7. Expect redirect to `/dashboard`.
+7. Expect redirect to `/profile`.
 8. Assert the `ProfileCompletionRing` component renders.
 9. Assert the ring reads "4/10" — items #1 and #2 from the ring list are done (resume nope, but verified email yes), and items #7/#8/#9/#10 are no, #3-#6 are no. Count: verified email yes + 0 others from ring slots not covered by signup = 1/10. (Adjust the expected count to match reality after `03-profile-completion-ring.md` §1 is finalized; the scenario doc lists the ring as 10-slot with the first two as resume + verify-email.)
    - Recount on reflection: after the happy path, the user has verified email (slot 2) and no resume, no grad_year, no class_standing, no grad_term, no interested_roles, no recruiter opt-in, no linkedin, no github, no portfolio = **1/10**. Use "1/10" as the assertion.
@@ -93,7 +93,7 @@ New helper: `tests/e2e/_helpers/complete-old-profile.ts` — a one-function wrap
 ### Low
 
 - **Major dropdown queries `majors` on every profile-page render.** Cache in `app/onboarding/profile/page.tsx` via `cache()` from React 19. Revalidate when admin edits a major (rare). Fine to skip for v1; the table is tiny.
-- **Ring calculation on `/dashboard` adds round trips.** Mitigation: single batched query or Promise.all the two extra reads (resume + profile). See `03-profile-completion-ring.md` §5.
+- **Ring calculation on `/profile` adds round trips.** Mitigation: single batched query or Promise.all the two extra reads (resume + profile). See `03-profile-completion-ring.md` §5.
 
 ---
 

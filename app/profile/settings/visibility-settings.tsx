@@ -79,7 +79,7 @@ export function VisibilitySettings({
       if (!r.ok) {
         if (r.error.field === "privacy_policy") {
           setReacceptHref(
-            "/privacy?reaccept=member_directory&return=/dashboard/settings%23visibility"
+            "/privacy?reaccept=member_directory&return=/profile/settings/visibility"
           );
           setError(r.error.message);
           return;

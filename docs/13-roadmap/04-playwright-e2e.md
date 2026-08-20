@@ -261,7 +261,7 @@ export const test = base.extend<Fixtures>({
     const context = await browser.newContext();
     await signInAndInjectCookies(context, email, "e2e-testpassword-12345");
     const page = await context.newPage();
-    await page.goto("/dashboard");
+    await page.goto("/profile");
     await use(page);
     await context.close();
   },
@@ -277,7 +277,7 @@ export const test = base.extend<Fixtures>({
     const context = await browser.newContext();
     await signInAndInjectCookies(context, email, "e2e-testpassword-12345");
     const page = await context.newPage();
-    await page.goto("/dashboard");
+    await page.goto("/profile");
     await use(page);
     await context.close();
   },
@@ -357,15 +357,15 @@ test("privacy_policy version bump pushes user to /onboarding/consent", async ({
   memberPage,
   memberUserId,
 }) => {
-  await memberPage.goto("/dashboard");
-  await expect(memberPage.getByRole("heading", { name: /dashboard/i })).toBeVisible();
+  await memberPage.goto("/profile");
+  await expect(memberPage.getByRole("heading", { name: /profile/i })).toBeVisible();
 
   const admin = adminClient();
   const newVersion = `v${Date.now()}`;
   await admin.from("consent_versions").update({ version: newVersion }).eq("consent_type", "privacy_policy");
 
   try {
-    await memberPage.goto("/dashboard");
+    await memberPage.goto("/profile");
     await expect(memberPage).toHaveURL(/\/onboarding\/consent/);
     await expect(memberPage.getByText(/privacy policy/i)).toBeVisible();
 
@@ -373,7 +373,7 @@ test("privacy_policy version bump pushes user to /onboarding/consent", async ({
     await memberPage.getByLabel(/i accept the terms/i).check();
     await memberPage.getByLabel(/i confirm i am 18/i).check();
     await memberPage.getByRole("button", { name: /continue/i }).click();
-    await expect(memberPage).toHaveURL(/\/onboarding\/done|\/dashboard/);
+    await expect(memberPage).toHaveURL(/\/onboarding\/done|\/profile/);
   } finally {
     await admin
       .from("consent_versions")

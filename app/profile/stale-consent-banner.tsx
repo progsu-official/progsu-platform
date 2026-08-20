@@ -52,7 +52,7 @@ export function StaleConsentBanner({
         remain eligible for recruiter sharing.
       </p>
       <Link
-        href="/dashboard/settings#consents"
+        href="/profile/settings/notifications"
         className="mt-2 inline-block text-primary underline underline-offset-4"
       >
         Review preferences →

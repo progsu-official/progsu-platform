@@ -60,7 +60,7 @@ export async function updateProfile(
   }
 
   revalidatePath("/onboarding/profile");
-  revalidatePath("/dashboard");
+  revalidatePath("/profile");
   return ok({ updated: true });
 }
 
@@ -120,6 +120,6 @@ export async function updateMinimalProfile(
   if (error) return err("INTERNAL", error.message);
 
   revalidatePath("/onboarding/profile");
-  revalidatePath("/dashboard");
+  revalidatePath("/profile");
   return ok({ updated: true });
 }

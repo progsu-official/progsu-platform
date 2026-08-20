@@ -61,8 +61,8 @@ The live repo today is a member CRM, not an events app.
 - **Current member surface**:
   - `/login`
   - `/onboarding/*`
-  - `/dashboard`
-  - `/dashboard/settings`
+  - `/profile`
+  - `/profile/settings`
 - **Current admin surface**:
   - `/admin`
   - `/admin/members`
@@ -225,8 +225,8 @@ Do not conflate “people shown on the event page” with “people allowed to m
 - `/terms`
 - `/auth/callback`
 - `/onboarding/*`
-- `/dashboard`
-- `/dashboard/settings`
+- `/profile`
+- `/profile/settings`
 - `/admin`
 - `/admin/members`
 - `/admin/members/[id]`
@@ -239,7 +239,7 @@ Do not conflate “people shown on the event page” with “people allowed to m
 
 - `/events`
 - `/events/[slug]`
-- optional `/dashboard/events` if we choose a dedicated dashboard subsection rather than only a summary card
+- optional `/profile/events` if we choose a dedicated dashboard subsection rather than only a summary card
 
 ### Release 1 new admin routes
 
@@ -695,7 +695,7 @@ Recommended admin information architecture:
 - check-in CTA during the valid event window if RSVP = `going`
 
 Dashboard
-- add an “Upcoming events” summary card on `/dashboard`
+- add an “Upcoming events” summary card on `/profile`
 
 Private-invite flow
 - invited members should receive in-app visibility and optional invite messaging

@@ -46,13 +46,13 @@ async function main() {
     if (root.status !== 200) throw new Error(`/ status=${root.status}`);
     console.log(`  ✓ GET / = ${root.status}`);
 
-    // 2. Unauthenticated visit to /dashboard → 307 → /login?next=/dashboard.
-    const dash = await headWithRedirect("/dashboard");
-    if (dash.status !== 307) throw new Error(`/dashboard expected 307 got ${dash.status}`);
+    // 2. Unauthenticated visit to /profile → 307 → /login?next=/profile.
+    const dash = await headWithRedirect("/profile");
+    if (dash.status !== 307) throw new Error(`/profile expected 307 got ${dash.status}`);
     if (!dash.location?.includes("/login")) throw new Error(`expected /login redirect, got ${dash.location}`);
-    if (!dash.location?.includes("next=%2Fdashboard") && !dash.location?.includes("next=/dashboard"))
+    if (!dash.location?.includes("next=%2Fdashboard") && !dash.location?.includes("next=/profile"))
       throw new Error(`expected next query, got ${dash.location}`);
-    console.log(`  ✓ GET /dashboard = 307 → ${dash.location}`);
+    console.log(`  ✓ GET /profile = 307 → ${dash.location}`);
 
     // 3. Unauthenticated /onboarding/profile → /login.
     const onb = await headWithRedirect("/onboarding/profile");

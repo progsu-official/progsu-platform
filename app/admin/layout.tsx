@@ -66,7 +66,7 @@ export default async function AdminLayout({
               a nav row. */}
           <div className="px-3 pb-3">
             <Link
-              href="/dashboard"
+              href="/profile"
               className="group flex items-center justify-between gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-3 text-sm font-medium text-primary transition-colors hover:border-primary/60 hover:bg-primary/20"
             >
               <span className="flex items-center gap-2.5">

@@ -89,7 +89,7 @@ export async function setProfileVisibility(
   });
   if (error) return mapPgError(error);
 
-  revalidatePath("/dashboard/settings");
+  revalidatePath("/profile/settings");
   revalidatePath("/members");
   return ok({ updated: true });
 }
@@ -119,7 +119,7 @@ export async function setProfileSlug(
   const slug = typeof data === "string" ? data : null;
   if (!slug) return err("INTERNAL", "Slug set but response missing.");
 
-  revalidatePath("/dashboard/settings");
+  revalidatePath("/profile/settings");
   revalidatePath("/members");
   return ok({ slug });
 }

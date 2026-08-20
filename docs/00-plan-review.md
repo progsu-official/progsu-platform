@@ -10,7 +10,7 @@ This review found that the planning set is strong in coverage but not yet safe t
 
 1. **Core schema drift.** `02`, `04`, `05`, and `07` describe incompatible `profiles` and `resumes` shapes. The most dangerous mismatch is `full_name` / `graduation_year` in `02` versus `first_name` / `last_name` / `school` / `grad_year` plus resume `status`/`deleted_at` flows in `05`/`07`.
 2. **Consent withdrawal was not buildable.** `06` requires append-only, latest-row-wins consent history, but `02` still made `(user_id, consent_type, version)` unique. That blocks withdrawal and same-version re-enable flows.
-3. **Route/funnel drift.** The docs disagreed on `/privacy` vs `/legal/privacy`, `/profile/*` vs `/dashboard/*`, and whether `/onboarding/consent` exists. `07` also routed stale-consent users to a page it did not actually build.
+3. **Route/funnel drift.** The docs disagreed on `/privacy` vs `/legal/privacy`, `/profile/*` vs `/profile/*`, and whether `/onboarding/consent` exists. `07` also routed stale-consent users to a page it did not actually build.
 4. **OTP verification lost atomicity.** The bcrypt reconciliation in `07` split compare, consume, profile update, and audit across multiple steps, which opens race conditions and makes the “precomputed hash” RPC design incorrect.
 5. **Export behavior had no single source of truth.** Preview, download, and SQL eligibility were all defined separately. The docs also disagreed on whether recruiter exports include `student_email`.
 6. **Privacy/deletion gates were too soft.** The docs referenced deletion request handling, retention rules, legal pages, and export prerequisites, but the implementation plan did not turn them into concrete schema or release gates.
@@ -20,7 +20,7 @@ This review found that the planning set is strong in coverage but not yet safe t
 - `docs/07-implementation-plan.md` plus this review note are the canonical source of truth until upstream docs are aligned.
 - Canonical public routes are `/`, `/login`, `/privacy`, and `/terms`.
 - Canonical onboarding routes are `/onboarding/verify-email`, `/onboarding/profile`, `/onboarding/resume`, `/onboarding/consent`, and `/onboarding/done`.
-- Canonical member routes are `/dashboard`, `/dashboard/profile`, `/dashboard/resume`, and `/dashboard/settings`.
+- Canonical member routes are `/profile`, `/profile/profile`, `/profile/resume`, and `/profile/settings`.
 - Canonical admin routes are `/admin`, `/admin/members`, `/admin/members/[id]`, `/admin/export`, `/admin/audit`, and `/admin/settings` (read-only in V0).
 - V0 profile collection is limited to: `first_name`, `last_name`, `preferred_name`, `school`, `major`, `minor`, `class_standing`, `grad_year`, `grad_term`, `interested_roles`, `linkedin_url`, `github_url`, `portfolio_url`, `phone_number`, and `open_to_recruiters`, plus system/admin fields.
 - V0 does **not** collect pronouns, GPA, city/location, work authorization, internship/full-time toggles, or similar sensitive/extra fields.
@@ -37,7 +37,7 @@ This review found that the planning set is strong in coverage but not yet safe t
 
 - `02-data-security.md`: align schema, consent uniqueness/view rules, OTP model, and export columns with the canonical contract.
 - `03-auth-verification.md`: align OTP request/verify details, redirect sanitization, and the absence of a separate `school_email_verifications` table.
-- `04-frontend-ux.md`: remove stale magic-link/login content, delete non-approved profile fields, and align routes with `/privacy`, `/terms`, `/dashboard/*`, and `/onboarding/consent`.
+- `04-frontend-ux.md`: remove stale magic-link/login content, delete non-approved profile fields, and align routes with `/privacy`, `/terms`, `/profile/*`, and `/onboarding/consent`.
 - `05-backend-api.md`: align action contracts, export transport, error shape, and schema assumptions with the refined plan.
 - `06-privacy-compliance.md`: align export field language, retention notes, and route references with the canonical contract where needed.
 

@@ -38,7 +38,7 @@ export default async function LoginPage({
     if (state.fullyOnboarded && params.next && params.next.startsWith("/")) {
       redirect(params.next);
     }
-    const next = onboardingPathFor(state.nextStep) ?? "/dashboard";
+    const next = onboardingPathFor(state.nextStep) ?? "/profile";
     redirect(next);
   }
 

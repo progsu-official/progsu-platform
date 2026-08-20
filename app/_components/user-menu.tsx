@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { signOut } from "@/lib/actions/session";
 
 import { Avatar } from "./avatar";
+import { useTheme } from "./theme-shell";
 
 // Account menu behind the header avatar. Replaces the old "Profile" nav pill
 // and the always-visible "Sign out" button — both were spending top-level
@@ -20,6 +22,7 @@ import { Avatar } from "./avatar";
 
 type MenuItem =
   | { kind: "link"; label: string; href: string }
+  | { kind: "theme"; label: string }
   | { kind: "signout"; label: string };
 
 export function UserMenu({
@@ -37,10 +40,13 @@ export function UserMenu({
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
   const menuId = useId();
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
   const items: MenuItem[] = [
-    { kind: "link", label: "View profile", href: "/dashboard" },
-    { kind: "link", label: "Settings", href: "/dashboard/settings" },
+    { kind: "link", label: "View profile", href: "/profile" },
+    { kind: "link", label: "Settings", href: "/profile/settings" },
+    { kind: "theme", label: "Dark mode" },
     { kind: "signout", label: "Sign out" },
   ];
 
@@ -130,7 +136,7 @@ export function UserMenu({
           id={menuId}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-border/80 bg-popover shadow-xl shadow-black/40"
+          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-border/80 bg-popover shadow-xl shadow-black/10 dark:shadow-black/40"
         >
           <div className="flex items-center gap-3 px-3 py-3">
             <Avatar
@@ -165,6 +171,42 @@ export function UserMenu({
                 >
                   {item.label}
                 </Link>
+              ) : item.kind === "theme" ? (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={isDark}
+                  ref={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  tabIndex={-1}
+                  onKeyDown={(e) => onItemKeyDown(e, i)}
+                  // Stays open so the switch visibly lands on the new state.
+                  onClick={toggleTheme}
+                  className={`${itemClass} flex items-center justify-between gap-3`}
+                >
+                  <span className="flex items-center gap-2">
+                    {isDark ? (
+                      <Moon size={15} strokeWidth={1.75} aria-hidden />
+                    ) : (
+                      <Sun size={15} strokeWidth={1.75} aria-hidden />
+                    )}
+                    {item.label}
+                  </span>
+                  <span
+                    aria-hidden
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+                      isDark ? "bg-primary" : "bg-muted-foreground/30"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
+                        isDark ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </span>
+                </button>
               ) : (
                 <form key={item.label} action={signOut}>
                   <button

@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { readTheme } from "@/lib/theme";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { MemberHeader } from "@/app/_components/member-header";
+import { ThemeShell } from "@/app/_components/theme-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +38,10 @@ export default async function DashboardLayout({
   const displayName =
     profile?.first_name ?? user.user_metadata?.given_name ?? "You";
 
+  const theme = await readTheme();
+
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <ThemeShell initialTheme={theme}>
       <MemberHeader
         displayName={displayName}
         email={user.email ?? null}
@@ -47,6 +51,6 @@ export default async function DashboardLayout({
         showEvents={env.FEATURE_EVENTS}
       />
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
-    </div>
+    </ThemeShell>
   );
 }

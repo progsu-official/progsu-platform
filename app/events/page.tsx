@@ -83,7 +83,7 @@ export default async function MemberEventsPage({
         <h1 className="text-4xl font-bold tracking-tight">Events</h1>
         <nav
           aria-label="Event views"
-          className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-card p-1"
+          className="inline-flex items-center gap-0.5 rounded-full glass p-1"
         >
           {TABS.map((t) => {
             const active = t.key === tab;
@@ -585,7 +585,7 @@ function EventCard({
     <li className="list-none">
       <Link
         href={href}
-        className="group flex gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg hover:shadow-black/20"
+        className="group flex gap-4 rounded-2xl glass glass-interactive p-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       >
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm text-muted-foreground">
@@ -665,11 +665,11 @@ function Badge({
     tone === "primary"
       ? "bg-primary/15 text-primary"
       : tone === "amber"
-        ? "bg-amber-400/15 text-amber-300"
+        ? "bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300"
         : tone === "destructive"
           ? "bg-destructive/15 text-destructive"
           : tone === "invite"
-            ? "bg-indigo-400/15 text-indigo-300"
+            ? "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300"
             : "bg-muted text-muted-foreground";
   return (
     <span

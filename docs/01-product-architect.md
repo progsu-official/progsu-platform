@@ -88,13 +88,13 @@ Push-back calls flagged below in Section 10 (Open Questions) and inline where re
    - [optional] Email updates from Progsu (email_marketing v1)
    - [optional] SMS updates from Progsu (sms_marketing v1) — grayed if no phone entered
    Also a toggle: "Open to recruiters right now" (`open_to_recruiters`), which is separate from the consent and can be flipped any time.
-10. On submit, each accepted consent becomes a `consents` row with version string. `profile_completed` flips true. Redirect to `/dashboard`.
+10. On submit, each accepted consent becomes a `consents` row with version string. `profile_completed` flips true. Redirect to `/profile`.
 
 ### 4.2 Returning student (login + resume update)
 1. Student goes to `/login`, clicks Google.
 2. Supabase session established. Middleware loads `profile`. If `profile_completed = false` or `student_email_verified = false`, redirect into the missing onboarding step.
-3. Otherwise redirect to `/dashboard` which shows: verified status, current consents with dates, current resume filename + uploaded date, recruiter-export eligibility banner (green/amber with reason).
-4. To update resume: click "Replace resume" on `/dashboard` or go to `/profile/resume`. Upload flow replaces `resume_url` and writes a `resume_history` row pointing to the old object. Email confirmation sent via Resend.
+3. Otherwise redirect to `/profile` which shows: verified status, current consents with dates, current resume filename + uploaded date, recruiter-export eligibility banner (green/amber with reason).
+4. To update resume: click "Replace resume" on `/profile` or go to `/profile/resume`. Upload flow replaces `resume_url` and writes a `resume_history` row pointing to the old object. Email confirmation sent via Resend.
 5. To change consents: `/profile/consents` shows current state; any new checkbox click writes a fresh `consents` row (versioned). Revoking recruiter_resume_sharing immediately removes the student from future CSV exports (never retroactively deletes prior exports, which are logged).
 
 ### 4.3 Admin daily workflow
@@ -128,7 +128,7 @@ Push-back calls flagged below in Section 10 (Open Questions) and inline where re
 - `/onboarding/profile` — First-time profile fields form.
 - `/onboarding/resume` — First-time resume upload.
 - `/onboarding/consent` — First-time consent acceptance + recruiter toggle.
-- `/dashboard` — Member home: verification status, consents summary, resume status, recruiter-export eligibility, edit links.
+- `/profile` — Member home: verification status, consents summary, resume status, recruiter-export eligibility, edit links.
 - `/profile` — Edit profile fields (same form as onboarding, populated).
 - `/profile/resume` — Replace current resume; show upload date of current.
 - `/profile/consents` — Granular consent management + `open_to_recruiters` toggle.

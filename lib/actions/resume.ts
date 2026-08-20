@@ -168,6 +168,44 @@ export async function finalizeResumeUpload(
   return ok({ resumeId, downloadUrl: signedDownload.signedUrl });
 }
 
+// Short-lived signed URL for previewing your own current resume.
+//
+// Takes no arguments on purpose: the row is looked up by auth.uid() + is_current,
+// so there's no id for a caller to swap. The signing itself goes through the
+// user-context client, whose storage policy only permits objects under the
+// caller's own {user_id}/ prefix — a second, independent guard.
+export async function createResumePreviewUrl(): Promise<
+  ActionResult<{ url: string; fileName: string; expiresInSeconds: number }>
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "You must be signed in.");
+
+  const { data: row, error: rowErr } = await supabase
+    .from("resumes")
+    .select("storage_path, file_name")
+    .eq("user_id", user.id)
+    .eq("is_current", true)
+    .maybeSingle();
+  if (rowErr) return err("INTERNAL", rowErr.message);
+  if (!row) return err("NOT_FOUND", "You don't have a resume uploaded yet.");
+
+  const { data: signed, error: signErr } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(row.storage_path, DOWNLOAD_TTL_SECONDS);
+  if (signErr || !signed?.signedUrl) {
+    return err("STORAGE_OBJECT_MISSING", "Couldn't open that resume. Try re-uploading it.");
+  }
+
+  return ok({
+    url: signed.signedUrl,
+    fileName: row.file_name,
+    expiresInSeconds: DOWNLOAD_TTL_SECONDS,
+  });
+}
+
 export async function deleteResume(
   rawInput: DeleteResumeInput
 ): Promise<ActionResult<{ deleted: true }>> {

@@ -11,7 +11,7 @@ import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 // Success paths:
 //   - admin → /admin
 //   - member with next onboarding step → /onboarding/<step>
-//   - member fully onboarded → /dashboard
+//   - member fully onboarded → /profile
 //
 // Failure paths:
 //   - anything else → /login?error=<reason>
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     // later" escape that drops them into /onboarding/profile.
     targetPath = "/onboarding/verify-email";
   } else {
-    targetPath = onboardingPathFor(state.nextStep) ?? "/dashboard";
+    targetPath = onboardingPathFor(state.nextStep) ?? "/profile";
   }
 
   // Explicitly forward every cookie written into the Next cookie store during

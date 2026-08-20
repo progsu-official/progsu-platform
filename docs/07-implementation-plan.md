@@ -48,7 +48,7 @@ All conflicts surfaced across the six docs, with the decision and one-line ratio
 | 13 | Duplicate student email behavior: `03` §3.2 returns `EMAIL_TAKEN` revealing prior holder; `06` §8 implies generic error | **V0: ship `EMAIL_TAKEN` with generic copy** ("That email is already in use on another Progsu account. Contact an admin if this is a mistake."). Do not echo the other user. | Matches `03`; keeps admin-assist path. Flag for privacy re-review at V1. |
 | 14 | Age-gate checkbox: `06` R6 / §13 Q1 requires; `01`/`04` silent | **[Updated per D3] Required in V0.** Age floor is 18+. Enforced via a dedicated `age_confirmation` consent row (not bundled into privacy/ToS) captured on the consent page; submission blocks if unchecked. | Owner directive 2026-04-21; keeps affirmative-consent semantics and makes age verifiable in audit log. |
 | 15 | Phone + SMS consent interlock: `06` §3.1 requires "can't send SMS without consent AND phone"; `04`/`05` allow phone any time | **Server-side invariant: `sms_marketing=true` requires `phone_number` present and E.164.** Zod cross-field refinement on `recordConsent`. | Prevents collecting-but-can't-use case. |
-| 16 | Resume "tip" copy about PII: `06` R3 requires tip under file picker | **Ship PII warning on `/onboarding/resume` and `/dashboard/resume`.** Copy: "Tip: remove your SSN, date of birth, and home address before uploading — recruiters don't need them." | Lightweight privacy guard; no engineering cost. |
+| 16 | Resume "tip" copy about PII: `06` R3 requires tip under file picker | **Ship PII warning on `/onboarding/resume` and `/profile/resume`.** Copy: "Tip: remove your SSN, date of birth, and home address before uploading — recruiters don't need them." | Lightweight privacy guard; no engineering cost. |
 | 17 | Role taxonomy mismatch: `02` uses 12 values; `05` uses 12 slightly different values; `04` §4.3a lists 15 human labels | **Adopt `02`'s enum as canonical.** Frontend labels map in a table in `lib/enums/roles.ts`. Update `05`'s list to match `02`. | Single enum, one source. |
 | 18 | Class standing enum: `02` has `freshman, sophomore, junior, senior, graduate, phd, alumni`; `05` has `... grad, alumni, other` | **Adopt `02`'s enum (no `other`; include `phd`).** | Don't need "other"; keeps filters clean. |
 | 19 | `profiles.student_email_verified` trigger-write vs RPC: `02` §5.2 policy forbids direct updates, routes through `verify_student_email` RPC; `03` §3.3 updates directly in the action | **Transaction wins.** Keep user-context callers unable to update verification fields, but do the full verify state transition in one server-only Postgres transaction instead of the current RPC/bcrypt split. | Fixes race conditions and keeps verification writes off the client path. |
@@ -73,7 +73,7 @@ The following is the build contract coding agents should implement even where `0
 
 - **Public routes:** `/`, `/login`, `/privacy`, `/terms`
 - **Onboarding routes:** `/onboarding/verify-email`, `/onboarding/profile`, `/onboarding/resume`, `/onboarding/consent`, `/onboarding/done`
-- **Member routes:** `/dashboard`, `/dashboard/profile`, `/dashboard/resume`, `/dashboard/settings`
+- **Member routes:** `/profile`, `/profile/profile`, `/profile/resume`, `/profile/settings`
 - **Admin routes:** `/admin`, `/admin/members`, `/admin/members/[id]`, `/admin/export`, `/admin/audit`, `/admin/settings`
 - **Download route:** actual recruiter CSV download ships as a route handler under `app/api/admin/export/route.ts`
 - **Profile field allow-list:** `first_name`, `last_name`, `preferred_name`, `school`, `major`, `minor`, `class_standing`, `grad_year`, `grad_term`, `interested_roles`, `linkedin_url`, `github_url`, `portfolio_url`, `phone_number`, `open_to_recruiters`, plus system fields (`google_email`, `student_email`, verification/admin flags, timestamps)
@@ -417,23 +417,23 @@ Source: `03` §3.2; reconciled rate limit per reconciliation #6; hash per #11. V
 
 **26. `/onboarding/resume` page.** Implement `ResumeUploader` with the three-action flow: `createResumeUploadUrl → PUT → finalizeResumeUpload`. Include PII tip copy (reconciliation #16). This step handles upload only. Verify: upload fails with wrong MIME; valid uploads advance to `/onboarding/consent`.
 
-**27. `/onboarding/consent` + `/onboarding/done` pages.** `/onboarding/consent` collects required Privacy/ToS plus the **required `age_confirmation`** checkbox (decision **D3** — "I confirm I am 18 or older"), plus optional recruiter/email/sms marketing choices. SMS stays disabled without a phone number. On submit, iterate `recordConsent(...)` once per consent type (including `age_confirmation`), then show `/onboarding/done` as the unnumbered success screen with a 2-second redirect to `/dashboard`. Verify: required consents (including age) are enforced, withdrawing later remains append-only, and landing on `/onboarding/done` when `nextOnboardingStep(me)!==null` bounces back to the correct step.
+**27. `/onboarding/consent` + `/onboarding/done` pages.** `/onboarding/consent` collects required Privacy/ToS plus the **required `age_confirmation`** checkbox (decision **D3** — "I confirm I am 18 or older"), plus optional recruiter/email/sms marketing choices. SMS stays disabled without a phone number. On submit, iterate `recordConsent(...)` once per consent type (including `age_confirmation`), then show `/onboarding/done` as the unnumbered success screen with a 2-second redirect to `/profile`. Verify: required consents (including age) are enforced, withdrawing later remains append-only, and landing on `/onboarding/done` when `nextOnboardingStep(me)!==null` bounces back to the correct step.
 
 ### Phase 5 — Member dashboard (steps 28–31)
 
-**28. `(app)` layout.** Server-component gate: redirect to `/login` if no session; redirect to `nextOnboardingStep` if not fully onboarded. Render nav bar per `04` §2.2 with `<UserMenu>`. Verify: un-onboarded user can never reach `/dashboard`.
+**28. `(app)` layout.** Server-component gate: redirect to `/login` if no session; redirect to `nextOnboardingStep` if not fully onboarded. Render nav bar per `04` §2.2 with `<UserMenu>`. Verify: un-onboarded user can never reach `/profile`.
 
-**29. `/dashboard` page.** Server component: verification badge, consent summary (via `v_latest_consents`), current resume file + uploaded date, eligibility banner powered by the same export-eligibility helper used by preview/download. Copy from `04` §5. Verify: banner flips green when all four conditions meet; amber with reason otherwise.
+**29. `/profile` page.** Server component: verification badge, consent summary (via `v_latest_consents`), current resume file + uploaded date, eligibility banner powered by the same export-eligibility helper used by preview/download. Copy from `04` §5. Verify: banner flips green when all four conditions meet; amber with reason otherwise.
 
-**30. `/dashboard/profile` + `/dashboard/resume`.** Reuse `<ProfileForm mode="edit">` and `<ResumeUploader>`. Replace-flow UI on resume: show current filename + uploaded date + "Replace" button opens the picker. Verify: profile update optimistic toast; resume replace flips `is_current` and retains history rows.
+**30. `/profile/profile` + `/profile/resume`.** Reuse `<ProfileForm mode="edit">` and `<ResumeUploader>`. Replace-flow UI on resume: show current filename + uploaded date + "Replace" button opens the picker. Verify: profile update optimistic toast; resume replace flips `is_current` and retains history rows.
 
-**31. `/dashboard/settings`.** Sections:
+**31. `/profile/settings`.** Sections:
 1. Connected account (Google email, verified school email, sign-out).
 2. Consents (the 5 V0 consent types with version/date; withdrawal dialog for recruiter sharing per `06` §5).
 3. `open_to_recruiters` toggle (separate from consent, per `06` §5).
 4. Delete account (submits `requestAccountDeletion`, writes `account_deletion_requests`, audits it, and emails `PRIVACY_INBOX_EMAIL`; fulfillment remains manual).
 
-Source: `01` §5; `06` §5, §9. Verify: withdrawing recruiter consent writes an `accepted=false` row and the banner on `/dashboard` flips amber within the same request.
+Source: `01` §5; `06` §5, §9. Verify: withdrawing recruiter consent writes an `accepted=false` row and the banner on `/profile` flips amber within the same request.
 
 ### Phase 6 — Admin (steps 32–35)
 
@@ -602,7 +602,7 @@ Each task is a self-contained prompt for a coding agent. Acceptance criteria are
 - **Steps**:
   1. `middleware.ts`: matcher excluding `_next/*`, `favicon.ico`, `api/webhooks/*`; call `updateSession()`; return response.
   2. `lib/onboarding/funnel.ts`: pure `nextOnboardingStep(member)` per `04` §7 with 4 steps (reconciliation #3).
-  3. `app/auth/callback/route.ts`: read `code` + `next`; `supabase.auth.exchangeCodeForSession`; load profile; compute `next = searchParams.next ?? nextOnboardingStep(profile) ?? '/dashboard'`; redirect.
+  3. `app/auth/callback/route.ts`: read `code` + `next`; `supabase.auth.exchangeCodeForSession`; load profile; compute `next = searchParams.next ?? nextOnboardingStep(profile) ?? '/profile'`; redirect.
 - **Acceptance**:
   - Stale session refreshes automatically on page navigation (observe `sb-<...>` cookie `Set-Cookie` header).
   - Fresh Google login lands on `/onboarding/verify-email`.
@@ -615,7 +615,7 @@ Each task is a self-contained prompt for a coding agent. Acceptance criteria are
 - **Steps**:
   1. Marketing layout per `04` §2.1.
   2. Login page: server shell with copy from `04` §5.2 + `<LoginForm/>` client island.
-  3. `LoginForm`: single "Continue with Google" `<Button>` calling `supabase.auth.signInWithOAuth({ provider:'google', redirectTo: \`${origin}/auth/callback?next=/dashboard\` })`.
+  3. `LoginForm`: single "Continue with Google" `<Button>` calling `supabase.auth.signInWithOAuth({ provider:'google', redirectTo: \`${origin}/auth/callback?next=/profile\` })`.
   4. `signOut` server action: `supabase.auth.signOut()`; `redirect('/')`.
 - **Acceptance**:
   - `/login` renders with Google button.
@@ -657,7 +657,7 @@ Each task is a self-contained prompt for a coding agent. Acceptance criteria are
 ### Task 9: `/onboarding/verify-email` page — email form + OTP form + state machine
 - **Files**: `app/(onboarding)/layout.tsx`, `components/onboarding/StepShell.tsx`, `components/onboarding/StepIndicator.tsx`, `app/(onboarding)/verify-email/page.tsx`, `components/forms/StudentEmailForm.tsx`, `components/forms/OtpInput.tsx`, `components/forms/OtpResendTimer.tsx`, `lib/auth/requireSession.ts`.
 - **Steps**:
-  1. `(onboarding)/layout.tsx`: server gate: if no session → `/login?next=<path>`; if `nextOnboardingStep==null` → `/dashboard`; if URL !== computed step → redirect. Render `<StepShell>` + `<StepIndicator currentStep={n} completedSteps={[...]} />`.
+  1. `(onboarding)/layout.tsx`: server gate: if no session → `/login?next=<path>`; if `nextOnboardingStep==null` → `/profile`; if URL !== computed step → redirect. Render `<StepShell>` + `<StepIndicator currentStep={n} completedSteps={[...]} />`.
   2. `StepIndicator`: 4 steps, done/active/locked states per `04` §6.
   3. Page: server fetches `profile`; computes current step `n=1`; renders `<StudentEmailForm/>` → on success swaps to `<OtpInput/>` per `03` Appendix B.
   4. `OtpInput`: 6 individual inputs, paste-aware, auto-advance, per-digit aria-label per `04` §9.
@@ -721,10 +721,10 @@ Spin a fresh `supabase start` per CI job; apply migrations; seed; then:
 
 ### 7.3 E2E (Playwright)
 
-- **Full onboarding happy path**: Google OAuth stub → verify email (intercept the Resend send and read the code from a test hook) → profile → resume → consent → done → `/dashboard`.
+- **Full onboarding happy path**: Google OAuth stub → verify email (intercept the Resend send and read the code from a test hook) → profile → resume → consent → done → `/profile`.
 - **Admin login + export**: seed second test user as admin; list members; filter by school; export CSV; assert CSV headers + row count matches preview; confirm signed URL downloads; confirm the file contains no structured contact channels.
 - **Admin-as-404 for non-admin**: unauthenticated and non-admin both see 404 on `/admin/*`.
-- **Consent withdrawal**: toggle off recruiter consent on `/dashboard/settings`; immediately re-run export; previously-included user absent.
+- **Consent withdrawal**: toggle off recruiter consent on `/profile/settings`; immediately re-run export; previously-included user absent.
 
 ### 7.4 Manual QA (20-item smoke list)
 
@@ -736,10 +736,10 @@ Spin a fresh `supabase start` per CI job; apply migrations; seed; then:
 6. Profile form validation rejects missing required fields; 7-role input blocked.
 7. Resume upload accepts a ≤10 MB PDF; rejects 11 MB; rejects .docx.
 8. Consent page required boxes checked; optionals togglable; SMS grayed without phone.
-9. Onboarding "Done" auto-redirects to `/dashboard`.
-10. `/dashboard` eligibility banner green when all 4 conditions true; amber with reason otherwise.
+9. Onboarding "Done" auto-redirects to `/profile`.
+10. `/profile` eligibility banner green when all 4 conditions true; amber with reason otherwise.
 11. Replace resume flow: new file uploads, old version listed in history (admin view).
-12. Withdraw recruiter consent on `/dashboard/settings`: banner flips amber.
+12. Withdraw recruiter consent on `/profile/settings`: banner flips amber.
 13. Non-admin hitting `/admin` returns 404.
 14. Admin hitting `/admin` renders distinct shell with badge.
 15. Member table filters via URL — sharing URL with another admin shows identical view.

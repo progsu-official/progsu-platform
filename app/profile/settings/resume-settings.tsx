@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ResumePreview } from "../resume-preview";
 import { cn } from "@/lib/utils";
 import {
   createResumeUploadUrl,
@@ -104,14 +105,17 @@ export function ResumeSettings({
   return (
     <div className="space-y-4">
       {currentFileName ? (
-        <div className="rounded-md border p-4 text-sm">
-          <p className="text-muted-foreground">Current resume</p>
-          <p className="font-medium">{currentFileName}</p>
-          {currentUploadedAt ? (
-            <p className="text-xs text-muted-foreground">
-              uploaded {new Date(currentUploadedAt).toLocaleDateString()}
-            </p>
-          ) : null}
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-4 text-sm">
+          <div className="min-w-0">
+            <p className="text-muted-foreground">Current resume</p>
+            <p className="truncate font-medium">{currentFileName}</p>
+            {currentUploadedAt ? (
+              <p className="text-xs text-muted-foreground">
+                uploaded {new Date(currentUploadedAt).toLocaleDateString()}
+              </p>
+            ) : null}
+          </div>
+          <ResumePreview fileName={currentFileName} />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">No current resume.</p>

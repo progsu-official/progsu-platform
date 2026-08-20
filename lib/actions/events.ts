@@ -495,7 +495,7 @@ async function requireAuthenticatedContext() {
 
 function revalidateMemberEventPaths(slug?: string) {
   revalidatePath("/events");
-  revalidatePath("/dashboard");
+  revalidatePath("/profile");
   if (slug) {
     revalidatePath(`/events/${slug}`);
     revalidatePath(`/events/${slug}/check-in`);
