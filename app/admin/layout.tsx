@@ -51,7 +51,7 @@ export default async function AdminLayout({
           (app/_components/member-header.tsx): logo, nav, account cluster on
           the right — no sidebar. */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-card/80 backdrop-blur">
-        <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-4">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-4">
           <Link href="/admin" className="flex shrink-0 items-baseline gap-1.5">
             <span className="text-[15px] font-bold tracking-tight text-foreground">
               progsu
@@ -73,7 +73,7 @@ export default async function AdminLayout({
               className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:px-3 sm:py-1 sm:text-xs sm:font-medium"
             >
               <Eye size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
-              <span className="hidden sm:inline">View as member</span>
+              <span className="hidden sm:inline">Member</span>
             </Link>
 
             <Avatar

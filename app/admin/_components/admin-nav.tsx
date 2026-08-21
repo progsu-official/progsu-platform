@@ -25,7 +25,7 @@ export function AdminNav({ showEvents }: { showEvents: boolean }) {
   const items = ITEMS.filter((i) => showEvents || i.href !== "/admin/events");
 
   return (
-    <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden scroll-fade-x sm:gap-2">
+    <nav className="flex min-w-0 items-center gap-1 overflow-x-auto overflow-y-hidden scroll-fade-x sm:gap-2">
       {items.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
