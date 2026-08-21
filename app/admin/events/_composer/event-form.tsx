@@ -335,7 +335,7 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
             autoComplete="off"
             placeholder="Event name"
             className={cn(
-              "w-full bg-transparent font-serif text-5xl leading-tight tracking-tight text-white sm:text-6xl",
+              "w-full bg-transparent font-serif text-4xl leading-tight tracking-tight text-white sm:text-6xl",
               "placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
             )}
           />
@@ -561,7 +561,7 @@ function TimeRow({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 pl-2">
+    <div className="flex flex-wrap items-center gap-3 pl-2">
       <span className="flex w-16 shrink-0 items-center gap-2.5 text-[15px] text-white/85">
         <span
           aria-hidden
@@ -574,8 +574,8 @@ function TimeRow({
         />
         {label}
       </span>
-      <div className="ml-auto flex min-w-0 gap-1.5">
-        <div className="w-40 shrink-0">
+      <div className="ml-auto flex min-w-0 basis-full gap-1.5 sm:basis-auto">
+        <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
           <DatePicker
             value={date}
             onChange={onDate}
@@ -583,7 +583,7 @@ function TimeRow({
             label={`${label} date`}
           />
         </div>
-        <div className="w-32 shrink-0">
+        <div className="w-28 shrink-0 sm:w-32">
           <TimePicker
             value={time}
             onChange={onTime}

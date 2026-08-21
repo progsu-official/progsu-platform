@@ -200,12 +200,12 @@ function StatTile({
   hint?: string | null;
 }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-4">
+    <div className="rounded-2xl border border-border/70 bg-card p-3 sm:p-4">
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         <Icon size={13} strokeWidth={1.75} aria-hidden />
         {label}
       </div>
-      <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+      <p className="mt-2 text-xl font-bold tracking-tight tabular-nums text-foreground sm:text-2xl">
         {value}
       </p>
       {hint ? (

@@ -209,17 +209,13 @@ export default async function AdminEventDetailPage({
               inside the Details tab below; this is read-only context. */}
           <div className="min-w-0 space-y-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-mono">{ev.slug}</span>
-                  <span aria-hidden>·</span>
-                  <StatusText status={ev.status} />
-                </div>
+              <div className="order-2 space-y-1 sm:order-1">
                 <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
                   {ev.title}
                 </h1>
+                <StatusText status={ev.status} />
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="order-1 flex shrink-0 items-center gap-2 sm:order-2">
                 <ScanQrButton eventId={ev.id} />
                 <CheckInInfoPopover />
               </div>
@@ -307,7 +303,7 @@ function StatusText({ status }: { status: string }) {
   // Same "published" -> "active" display mapping as the events list page.
   const label = status === "published" ? "active" : status;
   return (
-    <span className={`font-medium uppercase tracking-wide ${tone}`}>
+    <span className={`text-xs font-medium uppercase tracking-wide ${tone}`}>
       {label}
     </span>
   );
