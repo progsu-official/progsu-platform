@@ -117,17 +117,14 @@ export default async function AdminLayout({
               </span>
             </Link>
             <AdminNav showEvents={env.FEATURE_EVENTS} horizontal />
+            <Link
+              href="/profile"
+              title="View as member"
+              className="ml-auto shrink-0 rounded-full border border-primary/40 bg-primary/10 p-2.5 text-primary"
+            >
+              <Eye size={15} strokeWidth={1.75} aria-hidden />
+            </Link>
           </div>
-
-          {/* Floating on mobile instead of living in the packed top bar —
-              the sidebar's "View as member" button covers this on md+. */}
-          <Link
-            href="/profile"
-            title="View as member"
-            className="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-primary/40 bg-primary/15 text-primary shadow-lg backdrop-blur md:hidden"
-          >
-            <Eye size={18} strokeWidth={1.75} aria-hidden />
-          </Link>
 
           <main className="min-w-0 flex-1 p-6 lg:p-8">
           {!onboarding.fullyOnboarded ? (

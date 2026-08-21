@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Shield } from "lucide-react";
+import { Eye } from "lucide-react";
 
 import { SiteNav } from "./site-nav";
 import { UserMenu } from "./user-menu";
@@ -51,7 +51,7 @@ export function MemberHeader({
               title="Admin"
               className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:px-3 sm:py-1 sm:text-xs sm:font-medium"
             >
-              <Shield size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
+              <Eye size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
               <span className="hidden sm:inline">Admin</span>
             </Link>
           ) : null}

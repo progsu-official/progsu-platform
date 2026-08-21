@@ -5,14 +5,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
 import { EventCard, joinHosts } from "@/app/events/_components/event-card";
 
+import { StatusFilterSelect } from "./status-filter-select";
+
 export const dynamic = "force-dynamic";
 
-type TabKey = "draft" | "published" | "past" | "cancelled" | "archived";
+type TabKey = "all" | "draft" | "published" | "past" | "cancelled" | "archived";
 
 // "published" stays the DB status/TabKey value (matches public.event_status_t
 // and every existing filter/default below) — only the displayed label reads
-// "Active", and this array's order drives the nav pill order too.
+// "Active", and this array's order drives the filter dropdown order too.
 const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "all", label: "All" },
   { key: "published", label: "Active" },
   { key: "draft", label: "Draft" },
   { key: "past", label: "Past" },
@@ -29,8 +32,8 @@ type SearchParams = {
 };
 
 function resolveTab(raw: string | undefined): TabKey {
-  if (!raw) return "published";
-  return (TABS.find((t) => t.key === raw)?.key ?? "published") as TabKey;
+  if (!raw) return "all";
+  return (TABS.find((t) => t.key === raw)?.key ?? "all") as TabKey;
 }
 
 export default async function AdminEventsPage({
@@ -123,55 +126,27 @@ export default async function AdminEventsPage({
 
   return (
     <div className="space-y-6">
-      <header className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
-            <p className="text-xs text-muted-foreground">
-              {count ?? 0} {tab} event{count === 1 ? "" : "s"}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/events/analytics"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <BarChart3 size={15} strokeWidth={1.75} aria-hidden />
-              Analytics
-            </Link>
-            <Link
-              href="/admin/events/new"
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Plus size={15} strokeWidth={2} aria-hidden />
-              Create event
-            </Link>
-          </div>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
+          <StatusFilterSelect tabs={TABS} active={tab} />
         </div>
-
-        <nav
-          aria-label="Event status"
-          className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto overflow-y-hidden rounded-full border border-border/70 bg-muted/40 p-1 text-sm"
-        >
-          {TABS.map((t) => {
-            const active = t.key === tab;
-            return (
-              <Link
-                key={t.key}
-                href={`/admin/events?tab=${t.key}`}
-                aria-current={active ? "page" : undefined}
-                className={
-                  "shrink-0 rounded-full px-4 py-1.5 transition-colors " +
-                  (active
-                    ? "bg-card font-medium text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {t.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/events/analytics"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <BarChart3 size={15} strokeWidth={1.75} aria-hidden />
+            Analytics
+          </Link>
+          <Link
+            href="/admin/events/new"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Plus size={15} strokeWidth={2} aria-hidden />
+            Create event
+          </Link>
+        </div>
       </header>
 
       {error ? (
