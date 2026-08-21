@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Shield } from "lucide-react";
 
 import { SiteNav } from "./site-nav";
 import { UserMenu } from "./user-menu";
@@ -25,7 +26,7 @@ export function MemberHeader({
 }) {
   return (
     <header className="glass-nav sticky top-0 z-40">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-4">
         <Link
           href={displayName ? "/profile" : "/"}
           className="flex items-baseline gap-1.5 text-[15px] font-bold tracking-tight text-foreground"
@@ -43,13 +44,15 @@ export function MemberHeader({
           <SiteNav showMembers={showMembers} showEvents={showEvents} />
         </nav>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {isAdmin ? (
             <Link
               href="/admin"
-              className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              title="Admin"
+              className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:px-3 sm:py-1 sm:text-xs sm:font-medium"
             >
-              Admin
+              <Shield size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
+              <span className="hidden sm:inline">Admin</span>
             </Link>
           ) : null}
           {displayName ? (

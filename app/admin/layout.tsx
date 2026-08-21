@@ -106,7 +106,30 @@ export default async function AdminLayout({
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 p-6 lg:p-8">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-border/60 bg-card/80 px-3 py-2.5 backdrop-blur md:hidden">
+            <Link href="/admin" className="flex items-baseline gap-1.5 pl-1">
+              <span className="text-[13px] font-bold tracking-tight text-foreground">
+                progsu
+              </span>
+              <span className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary">
+                admin
+              </span>
+            </Link>
+            <AdminNav showEvents={env.FEATURE_EVENTS} horizontal />
+          </div>
+
+          {/* Floating on mobile instead of living in the packed top bar —
+              the sidebar's "View as member" button covers this on md+. */}
+          <Link
+            href="/profile"
+            title="View as member"
+            className="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-primary/40 bg-primary/15 text-primary shadow-lg backdrop-blur md:hidden"
+          >
+            <Eye size={18} strokeWidth={1.75} aria-hidden />
+          </Link>
+
+          <main className="min-w-0 flex-1 p-6 lg:p-8">
           {!onboarding.fullyOnboarded ? (
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3">
               <div className="text-sm">
@@ -127,7 +150,8 @@ export default async function AdminLayout({
             </div>
           ) : null}
           {children}
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );

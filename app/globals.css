@@ -74,6 +74,11 @@
 @layer base {
   * {
     @apply border-border;
+    /* WebKit's default tap-highlight rectangle on custom-styled buttons
+       (e.g. the note bubble over the profile banner) is a mobile-only-touch
+       artifact with no desktop equivalent — every :active/:focus state here
+       is already styled deliberately, so the browser default is redundant. */
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
@@ -277,5 +282,17 @@
     .constellation-card-in {
       animation: none;
     }
+  }
+
+  /* Fades the trailing edge of a horizontal scroll strip so a partially
+     visible item reads as "more to scroll", not a clipping bug, and hides
+     the scrollbar track since the fade already signals overflow. */
+  .scroll-fade-x {
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    scrollbar-width: none;
+  }
+  .scroll-fade-x::-webkit-scrollbar {
+    display: none;
   }
 }

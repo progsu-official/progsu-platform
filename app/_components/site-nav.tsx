@@ -117,7 +117,7 @@ export function SiteNav({
             onClick={() => setPendingHref(href)}
             aria-current={pathname.startsWith(href) ? "page" : undefined}
             className={cn(
-              "relative z-10 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors",
+              "relative z-10 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm transition-colors sm:px-3",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
                 ? "font-medium text-foreground"
@@ -125,7 +125,7 @@ export function SiteNav({
             )}
           >
             <Icon size={15} strokeWidth={1.75} aria-hidden />
-            {label}
+            <span className="hidden sm:inline">{label}</span>
           </Link>
         );
       })}

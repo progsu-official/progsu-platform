@@ -45,14 +45,14 @@ export function SettingsNav({ showVisibility }: { showVisibility: boolean }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={
-                  "flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                  "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-2.5 sm:px-3 " +
                   (active
                     ? "bg-muted font-medium text-foreground"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")
                 }
               >
                 <Icon size={16} strokeWidth={1.75} aria-hidden />
-                {label}
+                <span className="hidden sm:inline">{label}</span>
               </Link>
             </li>
           );
