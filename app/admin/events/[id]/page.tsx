@@ -212,8 +212,6 @@ export default async function AdminEventDetailPage({
                 {ev.title}
               </h1>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <StatusText status={ev.status} />
-                <span aria-hidden>·</span>
                 <span className="inline-flex items-center gap-1.5">
                   <Users size={13} strokeWidth={1.75} aria-hidden />
                   {goingCount ?? 0} going
@@ -221,6 +219,8 @@ export default async function AdminEventDetailPage({
                     ? ` · ${waitlistedCount} waitlisted`
                     : ""}
                 </span>
+                <span aria-hidden>·</span>
+                <StatusText status={ev.status} />
               </div>
             </div>
 
