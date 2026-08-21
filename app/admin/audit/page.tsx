@@ -42,8 +42,10 @@ export default async function AdminAuditPage() {
                 <td className="px-3 py-2 text-xs text-muted-foreground">
                   {r.target_user_id?.slice(0, 8) ?? "—"}
                 </td>
-                <td className="max-w-md px-3 py-2 font-mono text-xs">
-                  {JSON.stringify(r.metadata)}
+                <td className="max-w-xs px-3 py-2 font-mono text-xs">
+                  <p className="truncate" title={JSON.stringify(r.metadata)}>
+                    {JSON.stringify(r.metadata)}
+                  </p>
                 </td>
               </tr>
             ))}
