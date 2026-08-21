@@ -50,6 +50,30 @@ export function wallTimeToUtcIso(
   return new Date(instant).toISOString();
 }
 
+/** UTC instant (ms) -> wall-clock {date, time} in `timeZone`. Inverse of
+ * `wallTimeToUtcIso`, used to seed the composer from an already-stored
+ * `starts_at`/`ends_at` when editing an existing event. */
+export function utcInstantToWallTime(
+  instantMs: number,
+  timeZone: string
+): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(instantMs));
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}
+
 /** "GMT-04:00" for a zone, at the instant the composer is editing. */
 export function gmtLabel(timeZone: string, instantMs: number): string {
   const offset = zoneOffsetMs(instantMs, timeZone);

@@ -2,7 +2,7 @@ import QRCode from "qrcode";
 
 // D12/§7.5: the member's personal event ticket. The QR encodes their
 // per-RSVP checkin_token (unique per attendee, minted by the DB trigger when
-// status enters `going`); staff redeem it from /admin/events/[id]/check-in.
+// status enters `going`); staff scan it inline from /admin/events/[id].
 // Rendered whenever the RSVP is `going` — redemption is admin-gated
 // server-side, so showing the pass early costs nothing and gives members a
 // keepsake object, Luma-style.

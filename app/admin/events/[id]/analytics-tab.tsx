@@ -1,5 +1,16 @@
 // Server component — renders the jsonb blob from admin_event_analytics_for
-// as tiles + small tables. No client JS.
+// as tiles + grouped rows. No client JS.
+
+import {
+  BellRing,
+  CalendarCheck,
+  Clock,
+  QrCode,
+  UserPlus,
+  UserX,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type AnalyticsData = {
   event?: {
@@ -57,11 +68,13 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatTile
+          icon={Users}
           label="Going"
           value={String(going)}
           hint={capacity != null ? `of ${capacity}` : null}
         />
         <StatTile
+          icon={CalendarCheck}
           label="Attendance"
           value={
             attendanceRate != null
@@ -77,90 +90,96 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
           }
         />
         <StatTile
+          icon={UserPlus}
           label="Walk-ins"
           value={String(attendance.walk_ins ?? 0)}
           hint="no prior RSVP"
         />
         <StatTile
+          icon={UserX}
           label="No-shows"
           value={eventEnded ? String(attendance.no_shows ?? 0) : "—"}
           hint={eventEnded ? "going w/o check-in" : "after event ends"}
         />
         <StatTile
+          icon={QrCode}
           label="Check-in method"
           value={`${attendance.self_code ?? 0} / ${attendance.admin_click ?? 0}`}
           hint="self / admin"
         />
         <StatTile
+          icon={Clock}
           label="Waitlist"
           value={String(rsvp.waitlisted ?? 0)}
           hint={event.waitlist_enabled ? "enabled" : "disabled"}
         />
       </div>
 
-      <section className="space-y-2">
-        <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
+      <section className="rounded-2xl border border-border/70 bg-card p-5">
+        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           RSVP breakdown
         </h3>
-        <table className="w-full overflow-hidden rounded-md border text-sm">
-          <tbody className="divide-y">
-            <Row label="Going" value={rsvp.going ?? 0} />
-            <Row label="Waitlisted" value={rsvp.waitlisted ?? 0} />
-            <Row label="Declined" value={rsvp.declined ?? 0} />
-            <Row label="Cancelled" value={rsvp.cancelled ?? 0} />
-            <Row
-              label="Promoted from waitlist"
-              value={attendance.promoted_from_waitlist ?? 0}
-              muted
-            />
-            <Row label="Walk-ins" value={attendance.walk_ins ?? 0} muted />
-          </tbody>
-        </table>
+        <div className="divide-y divide-border/60">
+          <Row label="Going" value={rsvp.going ?? 0} />
+          <Row label="Waitlisted" value={rsvp.waitlisted ?? 0} />
+          <Row label="Declined" value={rsvp.declined ?? 0} />
+          <Row label="Cancelled" value={rsvp.cancelled ?? 0} />
+          <Row
+            label="Promoted from waitlist"
+            value={attendance.promoted_from_waitlist ?? 0}
+            muted
+          />
+          <Row label="Walk-ins" value={attendance.walk_ins ?? 0} muted />
+        </div>
       </section>
 
-      <section className="space-y-2">
-        <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
+      <section className="rounded-2xl border border-border/70 bg-card p-5">
+        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Timing
         </h3>
-        <table className="w-full overflow-hidden rounded-md border text-sm">
-          <tbody className="divide-y">
-            <TimeRow label="Created" at={event.created_at} />
-            <TimeRow label="Published" at={event.published_at ?? null} />
-            <TimeRow label="First RSVP" at={timing.first_rsvp_at ?? null} />
-            <TimeRow label="First check-in" at={timing.first_checkin_at ?? null} />
-            <TimeRow label="Event start" at={event.starts_at} />
-            <TimeRow label="Event end" at={event.ends_at} />
-            <TimeRow label="Reminder sent" at={event.reminder_sent_at ?? null} />
-            {event.cancelled_at ? (
-              <>
-                <TimeRow label="Cancelled" at={event.cancelled_at} />
-                {event.cancellation_reason ? (
-                  <tr>
-                    <td className="px-3 py-2 font-medium text-muted-foreground">
-                      Reason
-                    </td>
-                    <td className="px-3 py-2">{event.cancellation_reason}</td>
-                  </tr>
-                ) : null}
-                {event.starts_at ? (
-                  <tr>
-                    <td className="px-3 py-2 font-medium text-muted-foreground">
-                      Cancellation lead time
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatLead(event.cancelled_at, event.starts_at)}
-                    </td>
-                  </tr>
-                ) : null}
-              </>
-            ) : null}
-            <TimeRow label="Archived" at={event.archived_at ?? null} />
-          </tbody>
-        </table>
+        <div className="divide-y divide-border/60">
+          <TimeRow label="Created" at={event.created_at} />
+          <TimeRow label="Published" at={event.published_at ?? null} />
+          <TimeRow label="First RSVP" at={timing.first_rsvp_at ?? null} />
+          <TimeRow label="First check-in" at={timing.first_checkin_at ?? null} />
+          <TimeRow label="Event start" at={event.starts_at} />
+          <TimeRow label="Event end" at={event.ends_at} />
+          <TimeRow
+            label="Reminder sent"
+            at={event.reminder_sent_at ?? null}
+            icon={BellRing}
+          />
+          {event.cancelled_at ? (
+            <>
+              <TimeRow label="Cancelled" at={event.cancelled_at} />
+              {event.cancellation_reason ? (
+                <div className="flex items-center gap-3 py-3">
+                  <p className="w-40 shrink-0 text-sm text-muted-foreground">
+                    Reason
+                  </p>
+                  <p className="text-sm text-foreground">
+                    {event.cancellation_reason}
+                  </p>
+                </div>
+              ) : null}
+              {event.starts_at ? (
+                <div className="flex items-center gap-3 py-3">
+                  <p className="w-40 shrink-0 text-sm text-muted-foreground">
+                    Cancellation lead time
+                  </p>
+                  <p className="text-sm text-foreground">
+                    {formatLead(event.cancelled_at, event.starts_at)}
+                  </p>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          <TimeRow label="Archived" at={event.archived_at ?? null} />
+        </div>
       </section>
 
-      <section className="space-y-2">
-        <h3 className="text-xs uppercase tracking-wide text-muted-foreground">
+      <section className="rounded-2xl border border-border/70 bg-card p-5">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Notifications
         </h3>
         <NotificationsMatrix entries={notifications} />
@@ -170,22 +189,27 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
 }
 
 function StatTile({
+  icon: Icon,
   label,
   value,
   hint,
 }: {
+  icon: LucideIcon;
   label: string;
   value: string;
   hint?: string | null;
 }) {
   return (
-    <div className="rounded-md border p-3">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-2xl border border-border/70 bg-card p-4">
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Icon size={13} strokeWidth={1.75} aria-hidden />
         {label}
+      </div>
+      <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+        {value}
       </p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
       {hint ? (
-        <p className="text-[10px] text-muted-foreground">{hint}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
       ) : null}
     </div>
   );
@@ -201,28 +225,38 @@ function Row({
   muted?: boolean;
 }) {
   return (
-    <tr>
-      <td
+    <div className="flex items-center justify-between py-3">
+      <p
         className={
-          "px-3 py-2 font-medium " +
-          (muted ? "text-muted-foreground" : "text-foreground")
+          "text-sm " + (muted ? "text-muted-foreground" : "text-foreground")
         }
       >
         {label}
-      </td>
-      <td className="px-3 py-2 text-right tabular-nums">{value}</td>
-    </tr>
+      </p>
+      <p className="text-sm tabular-nums text-foreground">{value}</p>
+    </div>
   );
 }
 
-function TimeRow({ label, at }: { label: string; at: string | null | undefined }) {
+function TimeRow({
+  label,
+  at,
+  icon: Icon,
+}: {
+  label: string;
+  at: string | null | undefined;
+  icon?: LucideIcon;
+}) {
   return (
-    <tr>
-      <td className="px-3 py-2 font-medium text-muted-foreground">{label}</td>
-      <td className="px-3 py-2 text-xs">
+    <div className="flex items-center gap-3 py-3">
+      <p className="flex w-40 shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+        {Icon ? <Icon size={13} strokeWidth={1.75} aria-hidden /> : null}
+        {label}
+      </p>
+      <p className="text-sm text-foreground">
         {at ? new Date(at).toLocaleString() : "—"}
-      </td>
-    </tr>
+      </p>
+    </div>
   );
 }
 
@@ -239,29 +273,31 @@ function NotificationsMatrix({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="overflow-x-auto rounded-xl border border-border/70">
       <table className="w-full text-sm">
-        <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
+        <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-3 py-2 text-left font-medium">Kind</th>
+            <th className="px-4 py-3 text-left">Kind</th>
             {statuses.map((s) => (
-              <th key={s} className="px-3 py-2 text-right font-medium capitalize">
+              <th key={s} className="px-4 py-3 text-right capitalize">
                 {s.replace("_", " ")}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y">
+        <tbody className="divide-y divide-border/60">
           {kinds.map((k) => (
             <tr key={k}>
-              <td className="px-3 py-2 font-medium capitalize">{k}</td>
+              <td className="px-4 py-3 font-medium capitalize text-foreground">
+                {k}
+              </td>
               {statuses.map((s) => {
                 const n = entries[`${k}:${s}`] ?? 0;
                 return (
                   <td
                     key={s}
                     className={
-                      "px-3 py-2 text-right tabular-nums " +
+                      "px-4 py-3 text-right tabular-nums " +
                       (n === 0 ? "text-muted-foreground" : "text-foreground")
                     }
                   >

@@ -12,7 +12,11 @@ import { adminCheckInByToken } from "@/lib/actions/events";
 // API), so one code path instead of a native-API + fallback split.
 export function QrScanner({ eventId }: { eventId: string }) {
   const router = useRouter();
-  const [active, setActive] = useState(false);
+  // Starts active: landing on this page from "Day-of check-in" should open
+  // straight to a scanning camera, not require a second click. Stop/start
+  // stays available as a manual toggle (privacy, battery, or if permission
+  // was denied and the guest wants to retry).
+  const [active, setActive] = useState(true);
   const [status, setStatus] = useState<
     { kind: "idle" }
     | { kind: "checking" }

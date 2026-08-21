@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, CalendarPlus, History, MapPin } from "lucide-react";
+import { CalendarDays, CalendarPlus, History } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +11,7 @@ import {
 } from "@/lib/auth/request-cache";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 
-import { formatTimeRange } from "./_components/event-date";
+import { EventCard, joinHosts } from "./_components/event-card";
 
 export const dynamic = "force-dynamic";
 
@@ -67,12 +67,6 @@ type InviteRow = {
   location_text: string | null;
   cover_image_path: string | null;
 };
-
-function joinHosts(hosts: HostRef[] | null | undefined): string | null {
-  if (!hosts || hosts.length === 0) return null;
-  const sorted = [...hosts].sort((a, b) => a.sort_order - b.sort_order);
-  return sorted.map((h) => h.display_name).join(", ");
-}
 
 export default async function MemberEventsPage({
   searchParams,
@@ -595,86 +589,6 @@ function EventTimeline({ items }: { items: TimelineItem[] }) {
 // --------------------------------------------------------------------
 // Presentational helpers
 // --------------------------------------------------------------------
-
-function EventCard({
-  href,
-  title,
-  hosts,
-  startsAt,
-  endsAt,
-  location,
-  cancelled,
-  coverUrl,
-  footer,
-  showDate,
-}: {
-  href: string;
-  title: string;
-  hosts: string | null;
-  startsAt: string;
-  endsAt: string;
-  location: string | null;
-  cancelled?: boolean;
-  coverUrl?: string | null;
-  footer?: React.ReactNode;
-  showDate?: boolean;
-}) {
-  const timeLabel = showDate
-    ? `${monthDayFormatter.format(new Date(startsAt))} · ${formatTimeRange(startsAt, endsAt)}`
-    : formatTimeRange(startsAt, endsAt);
-  return (
-    <li className="list-none">
-      <Link
-        href={href}
-        className="group flex gap-4 rounded-2xl glass glass-interactive p-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-      >
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm text-muted-foreground">
-            <time dateTime={startsAt}>{timeLabel}</time>
-          </p>
-          <h3
-            className={
-              "text-lg font-semibold leading-snug transition-colors group-hover:text-primary " +
-              (cancelled ? "text-muted-foreground line-through" : "text-foreground")
-            }
-          >
-            {title}
-          </h3>
-          {hosts ? (
-            <p className="truncate text-sm text-muted-foreground">By {hosts}</p>
-          ) : null}
-          {location ? (
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin size={14} strokeWidth={1.75} aria-hidden className="shrink-0" />
-              <span className="truncate">{location}</span>
-            </p>
-          ) : null}
-          {footer ? <div className="pt-1.5 text-xs">{footer}</div> : null}
-        </div>
-        <div
-          className={
-            "relative h-24 w-24 shrink-0 self-start overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted to-primary/20 sm:h-[6.5rem] sm:w-[6.5rem] " +
-            (cancelled ? "opacity-50 grayscale" : "")
-          }
-        >
-          {coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <CalendarDays
-                size={22}
-                strokeWidth={1.5}
-                className="text-muted-foreground/60"
-                aria-hidden
-              />
-            </div>
-          )}
-        </div>
-      </Link>
-    </li>
-  );
-}
 
 function CapacityLine({ ev }: { ev: UpcomingRow }) {
   const going = ev.going_count ?? 0;

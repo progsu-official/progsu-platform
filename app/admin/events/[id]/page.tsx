@@ -1,36 +1,44 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, MapPin, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
+import { formatTimeRange } from "@/app/events/_components/event-date";
+import { EventDescription } from "@/app/events/[slug]/_components/event-description";
+import { CheckInInfoPopover } from "./_components/checkin-info-popover";
+import { ScanQrButton } from "./_components/scan-qr-button";
 
 import { DetailsTab } from "./details-tab";
-import { AccessTab } from "./access-tab";
 import { GuestsTab } from "./guests-tab";
-import { NotificationsTab } from "./notifications-tab";
 import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
 import { TabNav } from "./tab-nav";
 import type { EventRecord, RosterRow } from "./types";
 
+const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
+const monthShortFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+});
+
 export const dynamic = "force-dynamic";
 
-// Day-of check-in itself (QR scan + roster search) lives at its own route,
-// /admin/events/[id]/check-in, linked from the header below, not a tab here.
-type TabKey =
-  | "details"
-  | "access"
-  | "guests"
-  | "notifications"
-  | "analytics"
-  | "activity";
+// QR scanning opens inline via ScanQrButton below, not a separate route —
+// the Attendees tab (key "guests" internally) already has the manual
+// check-in/roster search a standalone check-in page would have duplicated.
+// Access (invite-by-email) and Notifications (email toggles) were folded in
+// here and into the Details composer respectively — see guests-tab.tsx and
+// event-form.tsx.
+type TabKey = "details" | "guests" | "analytics" | "activity";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "details", label: "Details" },
-  { key: "access", label: "Access" },
-  { key: "guests", label: "Guests" },
-  { key: "notifications", label: "Notifications" },
+  { key: "guests", label: "Attendees" },
   { key: "analytics", label: "Analytics" },
   { key: "activity", label: "Activity" },
 ];
@@ -97,46 +105,194 @@ export default async function AdminEventDetailPage({
     })),
   };
 
-  const coverUrl = await resolveCoverUrl(admin, ev.cover_image_path);
+  const [coverUrl, { count: goingCount }, { count: waitlistedCount }] =
+    await Promise.all([
+      resolveCoverUrl(admin, ev.cover_image_path),
+      admin
+        .from("event_rsvps")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", ev.id)
+        .eq("status", "going"),
+      admin
+        .from("event_rsvps")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", ev.id)
+        .eq("status", "waitlisted"),
+    ]);
+
+  const startDate = new Date(ev.starts_at);
 
   return (
-    <div className="space-y-6">
-      <nav className="text-xs text-muted-foreground">
-        <Link href="/admin/events" className="hover:underline">
-          &larr; All events
-        </Link>
-      </nav>
+    <div className="relative">
+      {/* Same blown-up-cover ambience as the member detail page (see
+          app/events/[slug]/page.tsx) but toned down for admin's flat, light
+          "room" — a decorative wash, not the glass/ambient-field material,
+          which admin surfaces deliberately don't share (DESIGN.md §0).
+          `inset-x-0` instead of the member page's `w-screen`/`left-1/2` trick
+          — this container sits inside the admin content column (offset by
+          the fixed sidebar), not the full viewport, so centering on 100vw
+          would overflow past the real right edge. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-[-2.5rem] -z-10 h-72 overflow-hidden"
+      >
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={coverUrl}
+            alt=""
+            className="h-full w-full scale-125 object-cover opacity-15 blur-3xl saturate-150"
+          />
+        ) : (
+          <div className="absolute left-1/2 top-0 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/85 to-background" />
+      </div>
 
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{ev.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            <span className="font-mono">{ev.slug}</span> ·{" "}
-            <StatusText status={ev.status} /> ·{" "}
-            {new Date(ev.starts_at).toLocaleString()} &rarr;{" "}
-            {new Date(ev.ends_at).toLocaleString()}
-          </p>
+      <div className="space-y-6">
+        <nav>
+          <Link
+            href="/admin/events"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft size={14} aria-hidden />
+            All events
+          </Link>
+        </nav>
+
+        <div className="grid gap-6 rounded-2xl border border-border/70 bg-card p-6 lg:grid-cols-[15rem_1fr] lg:gap-10 lg:p-8">
+          {/* Left rail: cover art + hosts + crowd — mirrors the member page's
+              left rail, flat instead of glassy. */}
+          <div className="space-y-4">
+            <div className="aspect-square w-full max-w-[15rem] overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-muted to-primary/20 shadow-lg shadow-black/5">
+              {coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverUrl} alt="" className="h-full w-full object-cover" />
+              ) : null}
+            </div>
+
+            {ev.hosts.length > 0 ? (
+              <section className="space-y-2">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Hosted by
+                </h2>
+                <ul className="space-y-1.5">
+                  {ev.hosts.map((h) => (
+                    <li
+                      key={`${h.sort_order}-${h.display_name}`}
+                      className="flex items-center gap-2.5 text-sm text-foreground"
+                    >
+                      <span
+                        aria-hidden
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold uppercase text-primary"
+                      >
+                        {h.display_name.charAt(0)}
+                      </span>
+                      {h.display_name}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users size={15} strokeWidth={1.75} aria-hidden />
+              {goingCount ?? 0} going
+              {ev.waitlist_enabled && (waitlistedCount ?? 0) > 0
+                ? ` · ${waitlistedCount} waitlisted`
+                : ""}
+            </p>
+          </div>
+
+          {/* Right column: title, when/where, description — the "what a
+              member sees" summary. Admin controls (publish/cancel/etc.) stay
+              inside the Details tab below; this is read-only context. */}
+          <div className="min-w-0 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono">{ev.slug}</span>
+                  <span aria-hidden>·</span>
+                  <StatusText status={ev.status} />
+                </div>
+                <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+                  {ev.title}
+                </h1>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <ScanQrButton eventId={ev.id} />
+                <CheckInInfoPopover />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-3">
+                <div
+                  aria-hidden
+                  className="w-11 shrink-0 overflow-hidden rounded-lg border border-border/70 text-center"
+                >
+                  <p className="bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {monthShortFormatter.format(startDate)}
+                  </p>
+                  <p className="py-0.5 text-sm font-semibold tabular-nums">
+                    {startDate.getDate()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    <time dateTime={ev.starts_at}>
+                      {fullDateFormatter.format(startDate)}
+                    </time>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatTimeRange(ev.starts_at, ev.ends_at)}
+                  </p>
+                </div>
+              </div>
+
+              {ev.location_text || ev.location_url ? (
+                <div className="flex items-center gap-3">
+                  <div
+                    aria-hidden
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70"
+                  >
+                    <MapPin
+                      size={17}
+                      strokeWidth={1.75}
+                      className="text-muted-foreground"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {ev.location_text ?? ev.location_url}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {ev.description_md ? (
+              <section className="space-y-2 border-t border-border/60 pt-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  About this event
+                </h2>
+                <EventDescription md={ev.description_md} />
+              </section>
+            ) : null}
+          </div>
         </div>
-        <Link
-          href={`/admin/events/${ev.id}/check-in`}
-          className="rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent/10"
-        >
-          Day-of check-in &rarr;
-        </Link>
-      </header>
 
-      <TabNav tabs={TABS} active={tab} eventId={ev.id} />
+        <TabNav tabs={TABS} active={tab} eventId={ev.id} />
 
-      <section className="mt-4">
-        {tab === "details" ? (
-          <DetailsTab event={ev} coverUrl={coverUrl} />
-        ) : null}
-        {tab === "access" ? <AccessTabServer eventId={ev.id} event={ev} /> : null}
-        {tab === "guests" ? <GuestsTabServer eventId={ev.id} /> : null}
-        {tab === "notifications" ? <NotificationsTab event={ev} /> : null}
-        {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
-        {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
-      </section>
+        <section className="mt-4">
+          {tab === "details" ? (
+            <DetailsTab event={ev} coverUrl={coverUrl} />
+          ) : null}
+          {tab === "guests" ? <GuestsTabServer eventId={ev.id} event={ev} /> : null}
+          {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
+          {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
+        </section>
+      </div>
     </div>
   );
 }
@@ -148,15 +304,16 @@ function StatusText({ status }: { status: string }) {
       : status === "cancelled"
         ? "text-destructive"
         : "text-muted-foreground";
+  // Same "published" -> "active" display mapping as the events list page.
+  const label = status === "published" ? "active" : status;
   return (
     <span className={`font-medium uppercase tracking-wide ${tone}`}>
-      {status}
+      {label}
     </span>
   );
 }
 
-// Access tab loads invite list before rendering the client body.
-async function AccessTabServer({
+async function GuestsTabServer({
   eventId,
   event,
 }: {
@@ -164,47 +321,21 @@ async function AccessTabServer({
   event: EventRecord;
 }) {
   const admin = createAdminClient();
-  const { data: invites } = await admin
-    .from("event_invites")
-    .select(
-      "user_id, invited_by, invited_at, revoked_at, profiles!event_invites_user_id_fkey(first_name, last_name, google_email, student_email)"
-    )
-    .eq("event_id", eventId)
-    .order("invited_at", { ascending: false });
-
-  type ProfileRef = {
-    first_name: string | null;
-    last_name: string | null;
-    google_email: string | null;
-    student_email: string | null;
-  };
-  const rows = (invites ?? []).map((i) => {
-    // Supabase types the embedded relationship as an array; flatten it.
-    const rel = i.profiles as ProfileRef | ProfileRef[] | null | undefined;
-    const p: ProfileRef | null = Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
-    return {
-      user_id: i.user_id as string,
-      invited_by: (i.invited_by as string | null) ?? null,
-      invited_at: i.invited_at as string,
-      revoked_at: (i.revoked_at as string | null) ?? null,
-      first_name: p?.first_name ?? null,
-      last_name: p?.last_name ?? null,
-      email: p?.student_email ?? p?.google_email ?? null,
-    };
-  });
-
-  return <AccessTab event={event} invites={rows} />;
-}
-
-async function GuestsTabServer({ eventId }: { eventId: string }) {
   // Must use the user-context client because admin_event_roster_for()
   // checks public.is_admin(auth.uid()) server-side. Service-role has no
   // auth.uid() and the RPC would raise "admin only". The parent layout
   // has already gated on is_admin so the caller here is guaranteed admin.
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_event_roster_for", {
-    p_event_id: eventId,
-  });
+  const [{ data, error }, { data: invites }] = await Promise.all([
+    supabase.rpc("admin_event_roster_for", { p_event_id: eventId }),
+    admin
+      .from("event_invites")
+      .select(
+        "user_id, invited_by, invited_at, revoked_at, profiles!event_invites_user_id_fkey(first_name, last_name, google_email, student_email)"
+      )
+      .eq("event_id", eventId)
+      .order("invited_at", { ascending: false }),
+  ]);
   if (error) {
     return (
       <p className="text-sm text-destructive">
@@ -235,7 +366,35 @@ async function GuestsTabServer({ eventId }: { eventId: string }) {
     invited_at: (r.invited_at as string | null) ?? null,
   }));
 
-  return <GuestsTab eventId={eventId} rows={rows} />;
+  type ProfileRef = {
+    first_name: string | null;
+    last_name: string | null;
+    google_email: string | null;
+    student_email: string | null;
+  };
+  const inviteRows = (invites ?? []).map((i) => {
+    // Supabase types the embedded relationship as an array; flatten it.
+    const rel = i.profiles as ProfileRef | ProfileRef[] | null | undefined;
+    const p: ProfileRef | null = Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
+    return {
+      user_id: i.user_id as string,
+      invited_by: (i.invited_by as string | null) ?? null,
+      invited_at: i.invited_at as string,
+      revoked_at: (i.revoked_at as string | null) ?? null,
+      first_name: p?.first_name ?? null,
+      last_name: p?.last_name ?? null,
+      email: p?.student_email ?? p?.google_email ?? null,
+    };
+  });
+
+  return (
+    <GuestsTab
+      eventId={eventId}
+      event={event}
+      rows={rows}
+      invites={inviteRows}
+    />
+  );
 }
 
 async function AnalyticsTabServer({ eventId }: { eventId: string }) {

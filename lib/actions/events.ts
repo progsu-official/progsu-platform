@@ -94,7 +94,6 @@ function revalidateEventPaths(eventId?: string) {
   revalidatePath("/admin/events");
   if (eventId) {
     revalidatePath(`/admin/events/${eventId}`);
-    revalidatePath(`/admin/events/${eventId}/check-in`);
   }
 }
 
