@@ -7,7 +7,7 @@ import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { getRequestOnboardingState } from "@/lib/auth/request-cache";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 
-import { formatTimeRange } from "../_components/event-date";
+import { EVENT_TIME_ZONE, formatTimeRange } from "../_components/event-date";
 import { EventDescription } from "./_components/event-description";
 import { EventTicket } from "./_components/event-ticket";
 import { RsvpPanel } from "./_components/rsvp-panel";
@@ -43,12 +43,18 @@ type AttendanceRow = { checked_in_at: string; method: string };
 const CHECK_IN_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h before start to 2h after end.
 
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   weekday: "long",
   month: "long",
   day: "numeric",
 });
 const monthShortFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   month: "short",
+});
+const dayNumberFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
+  day: "numeric",
 });
 
 export default async function MemberEventDetailPage({
@@ -362,7 +368,7 @@ export default async function MemberEventDetailPage({
                     {monthShortFormatter.format(startDate)}
                   </p>
                   <p className="py-0.5 text-sm font-semibold tabular-nums">
-                    {startDate.getDate()}
+                    {dayNumberFormatter.format(startDate)}
                   </p>
                 </div>
                 <div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, Clock, MapPin, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EVENT_TIME_ZONE } from "@/app/events/_components/event-date";
 
 // How many plans the dashboard shows. Exported so the query limit and the
 // "is there room for the browse card" check can't drift apart.
@@ -12,10 +13,17 @@ export const MAX_PLANS = 3;
 // *when* before they read anything else — the one thing that decides whether
 // this row still needs their attention today.
 
-const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
-const dayFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric" });
+const monthFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
+  month: "short",
+});
+const dayFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
+  day: "numeric",
+});
 // Compact enough to sit on one line in a ~320px card: "Aug 24, 5:30 PM".
 const whenFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   month: "short",
   day: "numeric",
   hour: "numeric",

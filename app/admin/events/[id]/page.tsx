@@ -5,7 +5,7 @@ import { ArrowLeft, MapPin, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
-import { formatTimeRange } from "@/app/events/_components/event-date";
+import { EVENT_TIME_ZONE, formatTimeRange } from "@/app/events/_components/event-date";
 import { EventDescription } from "@/app/events/[slug]/_components/event-description";
 import { CheckInInfoPopover } from "./_components/checkin-info-popover";
 import { ScanQrButton } from "./_components/scan-qr-button";
@@ -18,12 +18,18 @@ import { TabNav } from "./tab-nav";
 import type { EventRecord, RosterRow } from "./types";
 
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   weekday: "long",
   month: "long",
   day: "numeric",
 });
 const monthShortFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   month: "short",
+});
+const dayNumberFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
+  day: "numeric",
 });
 
 export const dynamic = "force-dynamic";
@@ -240,7 +246,7 @@ export default async function AdminEventDetailPage({
                     {monthShortFormatter.format(startDate)}
                   </p>
                   <p className="py-0.5 text-sm font-semibold tabular-nums">
-                    {startDate.getDate()}
+                    {dayNumberFormatter.format(startDate)}
                   </p>
                 </div>
                 <div>

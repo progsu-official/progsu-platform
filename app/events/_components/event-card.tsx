@@ -7,9 +7,10 @@
 import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 
-import { formatTimeRange } from "./event-date";
+import { EVENT_TIME_ZONE, formatTimeRange } from "./event-date";
 
 const monthDayFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   month: "short",
   day: "numeric",
 });

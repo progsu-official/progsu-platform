@@ -12,6 +12,11 @@ import {
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { EventCard, joinHosts } from "./_components/event-card";
+import {
+  EVENT_TIME_ZONE,
+  zonedDayKey,
+  zonedDayStartUtcMs,
+} from "./_components/event-date";
 
 export const dynamic = "force-dynamic";
 
@@ -501,19 +506,24 @@ type TimelineItem = {
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const weekdayFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   weekday: "long",
 });
 const monthDayFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
   month: "short",
   day: "numeric",
 });
 
 // "Today / Wednesday", "Tomorrow / Thursday", "Friday / Aug 21",
-// "Aug 25 / Monday" — mirrors Luma's date rail.
+// "Aug 25 / Monday" — mirrors Luma's date rail. Diffed in EVENT_TIME_ZONE,
+// not the ambient runtime zone (UTC on the server, viewer's device on the
+// client) — otherwise events near midnight Eastern could land under the
+// wrong day, same bug as the raw-UTC event times.
 function dayLabels(day: Date, now: Date): [string, string] {
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(day) - startOfDay(now)) / MS_PER_DAY);
+  const diffDays = Math.round(
+    (zonedDayStartUtcMs(day) - zonedDayStartUtcMs(now)) / MS_PER_DAY
+  );
   const weekday = weekdayFormatter.format(day);
   const monthDay = monthDayFormatter.format(day);
   if (diffDays === 0) return ["Today", weekday];
@@ -529,7 +539,7 @@ function EventTimeline({ items }: { items: TimelineItem[] }) {
   const groups: Array<{ dayKey: string; day: Date; items: TimelineItem[] }> = [];
   for (const item of items) {
     const day = new Date(item.startsAt);
-    const dayKey = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+    const dayKey = zonedDayKey(day);
     const last = groups[groups.length - 1];
     if (last && last.dayKey === dayKey) {
       last.items.push(item);
