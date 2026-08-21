@@ -2,28 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  AtSign,
-  CalendarDays,
-  Download,
-  LayoutDashboard,
-  ScrollText,
-  Settings,
-  Users,
-} from "lucide-react";
+import { CalendarDays, LayoutDashboard, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; exact?: boolean };
 
+// Export, Domain requests, Audit log, and Settings aren't top-level anymore —
+// they're small/rarely-touched enough to live as quick-link cards on
+// Overview instead of permanent nav real estate (see admin/page.tsx).
 // Overview is exact-match so it doesn't stay lit on every /admin/* route.
 const ITEMS: Item[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/events", label: "Events", icon: CalendarDays },
-  { href: "/admin/export", label: "Export", icon: Download },
-  { href: "/admin/domain-requests", label: "Domain requests", icon: AtSign },
-  { href: "/admin/audit", label: "Audit log", icon: ScrollText },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/members", label: "Members", icon: Users },
 ];
 
 // horizontal: the same items as a scrollable icon-only strip, for the mobile

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Download, ScrollText, Settings } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -116,7 +117,44 @@ export default async function AdminHomePage() {
           warn={stats.pendingDomains > 0}
         />
       </div>
+
+      {/* Everything below is small/rarely-touched enough that it doesn't
+          earn permanent nav real estate — reachable from here instead of
+          the sidebar (see admin-nav.tsx). */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <LinkTile label="Export" icon={Download} href="/admin/export" />
+        <LinkTile label="Audit log" icon={ScrollText} href="/admin/audit" />
+        <LinkTile label="Settings" icon={Settings} href="/admin/settings" />
+      </div>
     </div>
+  );
+}
+
+function LinkTile({
+  label,
+  icon: Icon,
+  href,
+}: {
+  label: string;
+  icon: LucideIcon;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex h-full items-center justify-between gap-2 rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-black/20"
+    >
+      <span className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+        <Icon size={15} strokeWidth={1.75} className="text-muted-foreground" aria-hidden />
+        {label}
+      </span>
+      <ArrowUpRight
+        size={14}
+        strokeWidth={2}
+        aria-hidden
+        className="shrink-0 text-muted-foreground/50 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+      />
+    </Link>
   );
 }
 
