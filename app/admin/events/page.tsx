@@ -151,7 +151,7 @@ export default async function AdminEventsPage({
 
         <nav
           aria-label="Event status"
-          className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-muted/40 p-1 text-sm"
+          className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto overflow-y-hidden rounded-full border border-border/70 bg-muted/40 p-1 text-sm"
         >
           {TABS.map((t) => {
             const active = t.key === tab;
@@ -161,7 +161,7 @@ export default async function AdminEventsPage({
                 href={`/admin/events?tab=${t.key}`}
                 aria-current={active ? "page" : undefined}
                 className={
-                  "rounded-full px-4 py-1.5 transition-colors " +
+                  "shrink-0 rounded-full px-4 py-1.5 transition-colors " +
                   (active
                     ? "bg-card font-medium text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground")
@@ -207,7 +207,6 @@ export default async function AdminEventsPage({
                 showDate
                 footer={
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={r.status as string} />
                     <span className="text-muted-foreground">
                       {counts.going} going
                       {capacity !== null ? ` / ${capacity} cap` : ""}
@@ -215,6 +214,7 @@ export default async function AdminEventsPage({
                         ? ` · ${counts.waitlisted} waitlisted`
                         : ""}
                     </span>
+                    <StatusBadge status={r.status as string} />
                     {r.visibility === "private_invite" ? (
                       <span className="text-muted-foreground">· Invite-only</span>
                     ) : null}
