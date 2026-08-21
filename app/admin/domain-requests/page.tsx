@@ -76,7 +76,7 @@ export default async function AdminDomainRequestsPage() {
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No requests yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-md border">
+        <div className="overflow-x-auto overflow-y-hidden rounded-md border">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-left text-xs uppercase text-muted-foreground">
               <tr>

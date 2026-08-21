@@ -416,27 +416,6 @@ function RosterSection({
               `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
               r.user_id.slice(0, 8);
             const email = r.student_email ?? r.google_email ?? "—";
-            const meta = [
-              r.waitlist_position != null ? `Waitlist #${r.waitlist_position}` : null,
-              r.attended
-                ? [
-                    "Checked in",
-                    r.checked_in_at
-                      ? new Date(r.checked_in_at).toLocaleTimeString()
-                      : null,
-                    r.attendance_method === "qr_token"
-                      ? "(QR)"
-                      : r.attendance_method === "admin_click"
-                        ? "(manual)"
-                        : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-                : null,
-              r.invited ? "Invited" : null,
-            ]
-              .filter(Boolean)
-              .join(" · ");
             return (
               <div key={r.user_id} className="space-y-2 p-3">
                 <div className="flex items-start justify-between gap-2">
@@ -453,9 +432,31 @@ function RosterSection({
                   </div>
                   <RsvpBadge status={r.rsvp_status} />
                 </div>
-                {meta ? (
-                  <p className="text-xs text-muted-foreground">{meta}</p>
-                ) : null}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <p>Waitlist #{r.waitlist_position ?? "—"}</p>
+                  <p>
+                    Attended:{" "}
+                    {r.attended ? (
+                      <span className="text-emerald-700 dark:text-emerald-400">
+                        Yes
+                        {r.checked_in_at
+                          ? ` · ${new Date(r.checked_in_at).toLocaleTimeString()}`
+                          : ""}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </p>
+                  <p>
+                    Check-in:{" "}
+                    {r.attendance_method === "qr_token"
+                      ? "QR scan"
+                      : r.attendance_method === "admin_click"
+                        ? "Manual"
+                        : "—"}
+                  </p>
+                  <p>Invited: {r.invited ? "Yes" : "—"}</p>
+                </div>
                 <RosterRowActions
                   eventId={eventId}
                   row={r}

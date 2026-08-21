@@ -19,7 +19,7 @@ export default async function AdminSettingsPage() {
       </header>
       <section className="space-y-2">
         <h2 className="text-sm font-semibold">School domains</h2>
-        <div className="overflow-hidden rounded-md border">
+        <div className="overflow-x-auto overflow-y-hidden rounded-md border">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-left text-xs uppercase text-muted-foreground">
               <tr>
