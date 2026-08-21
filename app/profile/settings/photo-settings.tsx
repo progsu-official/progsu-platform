@@ -89,29 +89,31 @@ export function PhotoSettings({
 
   return (
     <div className="flex flex-wrap items-center gap-5 rounded-2xl glass p-5">
-      <Avatar
-        key={shownUrl ?? "none"}
-        src={shownUrl}
-        name={displayName}
-        className="h-20 w-20 rounded-full"
-        textClassName="text-xl"
-      />
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-medium text-foreground">Profile photo</p>
-        <p className="text-sm text-muted-foreground">
-          A clear headshot helps hosts recognize you at check-in and makes
-          your member card stand out to recruiters. JPEG, PNG, or WebP, up
-          to 2 MB.
-        </p>
-        {status.kind === "error" ? (
-          <p role="alert" className="text-sm text-destructive">
-            {status.message}
+      <div className="flex min-w-0 flex-1 items-center gap-5">
+        <Avatar
+          key={shownUrl ?? "none"}
+          src={shownUrl}
+          name={displayName}
+          className="h-20 w-20 shrink-0 rounded-full"
+          textClassName="text-xl"
+        />
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-medium text-foreground">Profile photo</p>
+          <p className="text-sm text-muted-foreground">
+            A clear headshot helps hosts recognize you at check-in and makes
+            your member card stand out to recruiters. JPEG, PNG, or WebP, up
+            to 2 MB.
           </p>
-        ) : status.kind === "saved" ? (
-          <p className="text-sm text-primary">Photo updated.</p>
-        ) : null}
+          {status.kind === "error" ? (
+            <p role="alert" className="text-sm text-destructive">
+              {status.message}
+            </p>
+          ) : status.kind === "saved" ? (
+            <p className="text-sm text-primary">Photo updated.</p>
+          ) : null}
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
         <input
           ref={inputRef}
           type="file"

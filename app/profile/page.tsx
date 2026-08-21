@@ -224,19 +224,34 @@ export default async function DashboardHome() {
           not, so without a stacking context of its own the banner paints on
           top and swallows clicks meant for the controls in the overlap. */}
       <header className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
-        <div className="group/avatar relative -mt-16 shrink-0 sm:-mt-20">
-          {/* z-20 beats the avatar button's own `relative`: both are in this
-              stacking context, the button comes later in the DOM, so without
-              an explicit z the bubble's tail painted underneath the avatar. */}
-          <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
-            <NoteBubble note={note} />
+        {/* Wrapped with the mobile "Edit profile" so that button sits right
+            under the banner, at the top of the stack, instead of after all
+            the identity text below -- the sm:hidden pair further down
+            re-shows it beside the school on desktop, where it isn't
+            competing with the banner's own hover controls. */}
+        <div className="flex w-full items-start justify-between gap-3 sm:w-auto sm:contents">
+          <div className="group/avatar relative -mt-16 shrink-0 self-start sm:-mt-20">
+            {/* self-start: without it this column stretches to the full-width
+                row (flex-col's default align-items: stretch on mobile, before
+                sm:items-start kicks in), so the ring wrapper below stops being
+                a circle and the note above stops centering on the actual
+                avatar. */}
+            {/* z-20 beats the avatar button's own `relative`: both are in this
+                stacking context, the button comes later in the DOM, so without
+                an explicit z the bubble's tail painted underneath the avatar. */}
+            <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
+              <NoteBubble note={note} />
+            </div>
+            <div className="rounded-full ring-4 ring-background">
+              <AvatarButton
+                avatarUrl={profile?.avatar_url ?? null}
+                displayName={displayName || "?"}
+              />
+            </div>
           </div>
-          <div className="rounded-full ring-4 ring-background">
-            <AvatarButton
-              avatarUrl={profile?.avatar_url ?? null}
-              displayName={displayName || "?"}
-            />
-          </div>
+          <Button asChild size="sm" variant="outline" className="mt-1 shrink-0 rounded-full sm:hidden">
+            <Link href="/profile/settings">Edit profile</Link>
+          </Button>
         </div>
         <div className="min-w-0 flex-1 space-y-2 sm:pt-2">
           {/* Marks sit on the name line rather than in a row of their own:
@@ -314,7 +329,7 @@ export default async function DashboardHome() {
             either way, where it would fight the banner's own hover controls
             for the same pixels. */}
         <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end sm:pt-2">
-          <Button asChild size="sm" variant="outline" className="rounded-full">
+          <Button asChild size="sm" variant="outline" className="hidden rounded-full sm:inline-flex">
             <Link href="/profile/settings">Edit profile</Link>
           </Button>
           {profile?.school ? (
