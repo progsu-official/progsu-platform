@@ -215,7 +215,17 @@ export function DetailsTab({
       <div
         className={`${display.variable} relative isolate overflow-hidden rounded-2xl bg-[#2E1240] p-6 lg:p-10`}
       >
-        <EventForm event={event} coverUrl={coverUrl} recentLocations={[]} />
+        {/* key forces a remount on every successful save: EventForm only
+            seeds its date/time/title state from props at mount (see its own
+            comment on the datetime useEffect), so router.refresh() alone
+            left the form showing stale values — most visibly the time,
+            since an unchanged title/slug wouldn't reveal it. */}
+        <EventForm
+          key={event.updated_at}
+          event={event}
+          coverUrl={coverUrl}
+          recentLocations={[]}
+        />
       </div>
     </div>
   );
