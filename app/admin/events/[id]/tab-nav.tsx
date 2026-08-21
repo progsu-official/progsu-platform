@@ -12,7 +12,7 @@ export function TabNav({
   eventId: string;
 }) {
   return (
-    <nav className="flex flex-wrap gap-1 border-b text-sm">
+    <nav className="flex gap-1 overflow-x-auto border-b text-sm">
       {tabs.map((t) => {
         const isActive = t.key === active;
         return (
@@ -20,7 +20,7 @@ export function TabNav({
             key={t.key}
             href={`/admin/events/${eventId}?tab=${t.key}`}
             className={
-              "-mb-px border-b-2 px-3 py-2 " +
+              "-mb-px shrink-0 border-b-2 px-2 py-2 sm:px-3 " +
               (isActive
                 ? "border-primary font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground")

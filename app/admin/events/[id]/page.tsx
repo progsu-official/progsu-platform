@@ -150,7 +150,7 @@ export default async function AdminEventDetailPage({
       </div>
 
       <div className="space-y-6">
-        <nav>
+        <nav className="flex items-center justify-between gap-3">
           <Link
             href="/admin/events"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
@@ -158,11 +158,18 @@ export default async function AdminEventDetailPage({
             <ArrowLeft size={14} aria-hidden />
             All events
           </Link>
+          {/* Above the cover art, not tucked beside the title, so it's
+              reachable the instant the page loads instead of after scrolling
+              past the grid below. */}
+          <div className="flex shrink-0 items-center gap-2">
+            <ScanQrButton eventId={ev.id} />
+            <CheckInInfoPopover />
+          </div>
         </nav>
 
         <div className="grid gap-6 rounded-2xl border border-border/70 bg-card p-6 lg:grid-cols-[15rem_1fr] lg:gap-10 lg:p-8">
-          {/* Left rail: cover art + hosts + crowd — mirrors the member page's
-              left rail, flat instead of glassy. */}
+          {/* Left rail: cover art + hosts — mirrors the member page's left
+              rail, flat instead of glassy. */}
           <div className="space-y-4">
             <div className="aspect-square w-full max-w-[15rem] overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-muted to-primary/20 shadow-lg shadow-black/5">
               {coverUrl ? (
@@ -194,30 +201,26 @@ export default async function AdminEventDetailPage({
                 </ul>
               </section>
             ) : null}
-
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users size={15} strokeWidth={1.75} aria-hidden />
-              {goingCount ?? 0} going
-              {ev.waitlist_enabled && (waitlistedCount ?? 0) > 0
-                ? ` · ${waitlistedCount} waitlisted`
-                : ""}
-            </p>
           </div>
 
           {/* Right column: title, when/where, description — the "what a
               member sees" summary. Admin controls (publish/cancel/etc.) stay
               inside the Details tab below; this is read-only context. */}
           <div className="min-w-0 space-y-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="order-2 space-y-1 sm:order-1">
-                <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-                  {ev.title}
-                </h1>
+            <div className="space-y-1">
+              <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+                {ev.title}
+              </h1>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <StatusText status={ev.status} />
-              </div>
-              <div className="order-1 flex shrink-0 items-center gap-2 sm:order-2">
-                <ScanQrButton eventId={ev.id} />
-                <CheckInInfoPopover />
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Users size={13} strokeWidth={1.75} aria-hidden />
+                  {goingCount ?? 0} going
+                  {ev.waitlist_enabled && (waitlistedCount ?? 0) > 0
+                    ? ` · ${waitlistedCount} waitlisted`
+                    : ""}
+                </span>
               </div>
             </div>
 
