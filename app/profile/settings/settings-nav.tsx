@@ -32,7 +32,7 @@ export function SettingsNav({ showVisibility }: { showVisibility: boolean }) {
   return (
     <nav aria-label="Settings sections" className="lg:sticky lg:top-20">
       {/* Horizontal and scrollable on small screens, a rail on large ones. */}
-      <ul className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+      <ul className="-mx-4 flex gap-1 overflow-x-auto overflow-y-hidden px-4 pb-2 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
         {items.map(({ href, label, icon: Icon }) => {
           // Exact match for the index so it isn't active on every child route.
           const active =

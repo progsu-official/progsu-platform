@@ -12,7 +12,7 @@ export function TabNav({
   eventId: string;
 }) {
   return (
-    <nav className="flex gap-1 overflow-x-auto border-b text-sm">
+    <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b text-sm">
       {tabs.map((t) => {
         const isActive = t.key === active;
         return (

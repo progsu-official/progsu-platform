@@ -43,7 +43,7 @@ export function AdminNav({
     <nav
       className={
         horizontal
-          ? "flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scroll-fade-x"
+          ? "flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overflow-y-hidden scroll-fade-x"
           : "flex-1 space-y-0.5 px-3 py-3"
       }
     >
