@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Eye } from "lucide-react";
 
 import { SiteNav } from "./site-nav";
 import { UserMenu } from "./user-menu";
@@ -45,21 +44,12 @@ export function MemberHeader({
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {isAdmin ? (
-            <Link
-              href="/admin"
-              title="Admin"
-              className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:px-3 sm:py-1 sm:text-xs sm:font-medium"
-            >
-              <Eye size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
-              <span className="hidden sm:inline">Admin</span>
-            </Link>
-          ) : null}
           {displayName ? (
             <UserMenu
               displayName={displayName}
               email={email ?? null}
               avatarUrl={avatarUrl}
+              isAdmin={isAdmin}
             />
           ) : (
             <Link

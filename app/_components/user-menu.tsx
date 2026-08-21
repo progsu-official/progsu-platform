@@ -29,10 +29,12 @@ export function UserMenu({
   displayName,
   email,
   avatarUrl,
+  isAdmin,
 }: {
   displayName: string;
   email: string | null;
   avatarUrl: string | null;
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,10 +45,16 @@ export function UserMenu({
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
+  // Admin sits right above Sign out — the one action here that leaves this
+  // surface entirely, same spot the equivalent "Member" switch lives in the
+  // admin header's own menu.
   const items: MenuItem[] = [
     { kind: "link", label: "View profile", href: "/profile" },
     { kind: "link", label: "Settings", href: "/profile/settings" },
     { kind: "theme", label: "Dark mode" },
+    ...(isAdmin
+      ? [{ kind: "link" as const, label: "Admin", href: "/admin" }]
+      : []),
     { kind: "signout", label: "Sign out" },
   ];
 

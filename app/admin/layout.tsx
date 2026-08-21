@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Eye } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import { signOut } from "@/lib/actions/session";
 import {
   loadOnboardingState,
   onboardingPathFor,
 } from "@/lib/auth/onboarding";
-import { Avatar } from "@/app/_components/avatar";
 
 import { AdminNav } from "./_components/admin-nav";
+import { AdminAvatarMenu } from "./_components/avatar-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -63,33 +61,10 @@ export default async function AdminLayout({
 
           <AdminNav showEvents={env.FEATURE_EVENTS} />
 
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-            {/* Same recipe as the member header's "Admin" switch-link
-                (app/_components/member-header.tsx): icon only below sm,
-                text only at sm+, never both. */}
-            <Link
-              href="/profile"
-              title="View as member"
-              className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:px-3 sm:py-1 sm:text-xs sm:font-medium"
-            >
-              <Eye size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
-              <span className="hidden sm:inline">Member</span>
-            </Link>
-
-            <Avatar
-              src={profile.avatar_url ?? null}
-              name={displayName}
-              className="h-8 w-8 rounded-full"
-            />
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-full px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
+          <AdminAvatarMenu
+            displayName={displayName}
+            avatarUrl={profile.avatar_url ?? null}
+          />
         </div>
       </header>
 
