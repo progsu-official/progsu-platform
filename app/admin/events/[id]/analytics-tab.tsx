@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { FoldSection } from "./_components/fold-section";
+
 type AnalyticsData = {
   event?: {
     title?: string;
@@ -115,10 +117,13 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
         />
       </div>
 
-      <section className="rounded-2xl border border-border/70 bg-card p-5">
-        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          RSVP breakdown
-        </h3>
+      <FoldSection
+        summary={
+          <h3 className="text-sm font-semibold text-foreground">
+            RSVP breakdown
+          </h3>
+        }
+      >
         <div className="divide-y divide-border/60">
           <Row label="Going" value={rsvp.going ?? 0} />
           <Row label="Waitlisted" value={rsvp.waitlisted ?? 0} />
@@ -131,12 +136,13 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
           />
           <Row label="Walk-ins" value={attendance.walk_ins ?? 0} muted />
         </div>
-      </section>
+      </FoldSection>
 
-      <section className="rounded-2xl border border-border/70 bg-card p-5">
-        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Timing
-        </h3>
+      <FoldSection
+        summary={
+          <h3 className="text-sm font-semibold text-foreground">Timing</h3>
+        }
+      >
         <div className="divide-y divide-border/60">
           <TimeRow label="Created" at={event.created_at} />
           <TimeRow label="Published" at={event.published_at ?? null} />
@@ -176,14 +182,17 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
           ) : null}
           <TimeRow label="Archived" at={event.archived_at ?? null} />
         </div>
-      </section>
+      </FoldSection>
 
-      <section className="rounded-2xl border border-border/70 bg-card p-5">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Notifications
-        </h3>
+      <FoldSection
+        summary={
+          <h3 className="text-sm font-semibold text-foreground">
+            Notifications
+          </h3>
+        }
+      >
         <NotificationsMatrix entries={notifications} />
-      </section>
+      </FoldSection>
     </div>
   );
 }
