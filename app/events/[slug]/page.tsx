@@ -227,8 +227,8 @@ export default async function MemberEventDetailPage({
   // button that will 400.
   const rsvpOpen = event.status === "published" && startMs > nowMs;
 
-  // D12: the personal ticket is the check-in entry — staff scan its QR from
-  // /admin/events/[id]/check-in (roster search there is the manual fallback).
+  // D12: the personal ticket is the check-in entry — staff scan its QR
+  // inline from /admin/events/[id] (the Members tab is the manual fallback).
   // Shown from the moment the RSVP lands on `going`; redemption is admin-only
   // server-side, so early visibility is safe.
   const holder = holderRaw as {

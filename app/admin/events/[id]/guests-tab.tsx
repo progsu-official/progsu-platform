@@ -2,17 +2,252 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Mail, UserPlus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   adminCheckIn,
   correctAttendance,
+  inviteMemberByEmail,
   promoteWaitlistedMember,
+  revokeInvite,
 } from "@/lib/actions/events";
 
-import type { RosterRow } from "./types";
+import type { EventRecord, RosterRow } from "./types";
+
+type InviteRow = {
+  user_id: string;
+  invited_by: string | null;
+  invited_at: string;
+  revoked_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+};
+
+function initialsAvatar(label: string) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold uppercase text-primary"
+    >
+      {label.charAt(0) || "?"}
+    </span>
+  );
+}
 
 export function GuestsTab({
+  eventId,
+  event,
+  rows,
+  invites,
+}: {
+  eventId: string;
+  event: EventRecord;
+  rows: RosterRow[];
+  invites: InviteRow[];
+}) {
+  return (
+    <div className="space-y-6">
+      <InviteSection eventId={eventId} event={event} invites={invites} />
+      <RosterSection eventId={eventId} rows={rows} />
+    </div>
+  );
+}
+
+// Folded in from the removed Access tab — invite-by-email only gates
+// anything for private_invite events; for members-visibility events this
+// just pre-lists people, same non-restrictive behavior the old tab had.
+function InviteSection({
+  eventId,
+  event,
+  invites,
+}: {
+  eventId: string;
+  event: EventRecord;
+  invites: InviteRow[];
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function onInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+    const addr = email.trim();
+    if (!addr) {
+      setError("Enter an email address.");
+      return;
+    }
+    startTransition(async () => {
+      const r = await inviteMemberByEmail(eventId, addr);
+      if (!r.ok) {
+        setError(r.error.message);
+        return;
+      }
+      setEmail("");
+      setNotice(`Invited ${r.data.email}.`);
+      router.refresh();
+    });
+  }
+
+  function onRevoke(targetUserId: string) {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const r = await revokeInvite(eventId, targetUserId);
+      if (!r.ok) {
+        setError(r.error.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  const active = invites.filter((i) => !i.revoked_at);
+  const revoked = invites.filter((i) => i.revoked_at);
+
+  return (
+    <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">
+            Invites
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {event.visibility === "members"
+              ? "Any fully-onboarded member can already see and RSVP — invites below just pre-list members."
+              : "Only invited members can view or RSVP. Revoke to remove access immediately."}
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={onInvite}
+        className="flex flex-wrap items-end gap-3 rounded-xl border border-border/70 bg-muted/20 p-4"
+      >
+        <div className="min-w-64 flex-1 space-y-1.5">
+          <label
+            htmlFor="invite-email"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Invite by email
+          </label>
+          <div className="relative">
+            <Mail
+              size={15}
+              strokeWidth={1.75}
+              aria-hidden
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="member@gsu.edu"
+              disabled={pending}
+              className="rounded-xl pl-9"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Matches the member&apos;s Google or student email. They must have
+            signed in at least once to appear.
+          </p>
+        </div>
+        <Button type="submit" size="sm" disabled={pending} className="gap-1.5">
+          <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+          {pending ? "Inviting…" : "Invite"}
+        </Button>
+      </form>
+
+      {notice ? (
+        <div
+          role="status"
+          className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground"
+        >
+          {notice}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {error}
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Active invites ({active.length})
+        </h3>
+        {active.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No active invites.</p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border/70">
+            {active.map((i) => {
+              const name =
+                `${i.first_name ?? ""} ${i.last_name ?? ""}`.trim() ||
+                i.user_id.slice(0, 8);
+              return (
+                <div
+                  key={i.user_id}
+                  className="flex items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0"
+                >
+                  {initialsAvatar(name)}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] text-foreground">
+                      {name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {i.email ?? "—"} · invited{" "}
+                      {new Date(i.invited_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRevoke(i.user_id)}
+                    disabled={pending}
+                  >
+                    Revoke
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {revoked.length > 0 ? (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Revoked ({revoked.length})
+          </h3>
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            {revoked.map((i) => (
+              <li key={`rev-${i.user_id}`}>
+                {i.first_name ?? i.user_id.slice(0, 8)} — revoked{" "}
+                {i.revoked_at
+                  ? new Date(i.revoked_at).toLocaleDateString()
+                  : "—"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function RosterSection({
   eventId,
   rows,
 }: {
@@ -35,57 +270,69 @@ export function GuestsTab({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          Roster ({rows.length})
-        </h2>
+    <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Users size={18} strokeWidth={1.75} className="text-muted-foreground" aria-hidden />
+          <h2 className="text-base font-semibold text-foreground">
+            Roster ({rows.length})
+          </h2>
+        </div>
         <p className="text-xs text-muted-foreground">
-          Includes RSVP&apos;d, invited, and already-attended members.
+          RSVP&apos;d, invited, and already-attended members.
         </p>
       </div>
 
       {error ? (
         <div
           role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           {error}
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-border/70">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-left text-xs uppercase text-muted-foreground">
+          <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Email</th>
-              <th className="px-3 py-2 font-medium">RSVP</th>
-              <th className="px-3 py-2 font-medium">Waitlist #</th>
-              <th className="px-3 py-2 font-medium">Attended</th>
-              <th className="px-3 py-2 font-medium">Invited</th>
-              <th className="px-3 py-2 font-medium">Actions</th>
+              <th className="px-4 py-3 font-semibold">Name</th>
+              <th className="px-4 py-3 font-semibold">RSVP</th>
+              <th className="px-4 py-3 font-semibold">Waitlist #</th>
+              <th className="px-4 py-3 font-semibold">Attended</th>
+              <th className="px-4 py-3 font-semibold">Check-in</th>
+              <th className="px-4 py-3 font-semibold">Invited</th>
+              <th className="px-4 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-border/60">
             {rows.map((r) => {
               const name =
                 `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
                 r.user_id.slice(0, 8);
               const email = r.student_email ?? r.google_email ?? "—";
               return (
-                <tr key={r.user_id}>
-                  <td className="px-3 py-2">{name}</td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {email}
+                <tr key={r.user_id} className="transition-colors hover:bg-muted/20">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {initialsAvatar(name)}
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] text-foreground">
+                          {name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {email}
+                        </p>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <RsvpBadge status={r.rsvp_status} />
                   </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                  <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
                     {r.waitlist_position ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="px-4 py-3 text-xs">
                     {r.attended ? (
                       <span className="text-emerald-700 dark:text-emerald-400">
                         Yes ·{" "}
@@ -94,14 +341,21 @@ export function GuestsTab({
                           : ""}
                       </span>
                     ) : (
-                      "—"
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {r.attendance_method === "qr_token"
+                      ? "QR scan"
+                      : r.attendance_method === "admin_click"
+                        ? "Manual"
+                        : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
                     {r.invited ? "Yes" : "—"}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1">
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
                       {r.rsvp_status === "waitlisted" ? (
                         <Button
                           type="button"
@@ -154,7 +408,7 @@ export function GuestsTab({
             })}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
                   No one on the roster yet.
                 </td>
               </tr>
@@ -162,7 +416,7 @@ export function GuestsTab({
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -184,7 +438,7 @@ function RsvpBadge({
           : "bg-destructive/10 text-destructive";
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${tone}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}
     >
       {status}
     </span>

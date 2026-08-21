@@ -456,7 +456,15 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
                 disabled={pending}
               />
             </OptionRow>
-            <OptionRow icon={BellRing} label="Reminder email">
+            <OptionRow
+              icon={BellRing}
+              label="Reminder email"
+              hint={
+                event?.reminder_sent_at
+                  ? `Last sent ${new Date(event.reminder_sent_at).toLocaleString()}`
+                  : undefined
+              }
+            >
               <Switch
                 label="Reminder email"
                 checked={reminderEmail}

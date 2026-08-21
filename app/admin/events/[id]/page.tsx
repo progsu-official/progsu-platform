@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, QrCode, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { formatTimeRange } from "@/app/events/_components/event-date";
 import { EventDescription } from "@/app/events/[slug]/_components/event-description";
+import { CheckInInfoPopover } from "./_components/checkin-info-popover";
+import { ScanQrButton } from "./_components/scan-qr-button";
 
 import { DetailsTab } from "./details-tab";
-import { AccessTab } from "./access-tab";
 import { GuestsTab } from "./guests-tab";
-import { NotificationsTab } from "./notifications-tab";
 import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
 import { TabNav } from "./tab-nav";
@@ -28,21 +28,17 @@ const monthShortFormatter = new Intl.DateTimeFormat(undefined, {
 
 export const dynamic = "force-dynamic";
 
-// Day-of check-in itself (QR scan + roster search) lives at its own route,
-// /admin/events/[id]/check-in, linked from the header below, not a tab here.
-type TabKey =
-  | "details"
-  | "access"
-  | "guests"
-  | "notifications"
-  | "analytics"
-  | "activity";
+// QR scanning opens inline via ScanQrButton below, not a separate route —
+// the Attendees tab (key "guests" internally) already has the manual
+// check-in/roster search a standalone check-in page would have duplicated.
+// Access (invite-by-email) and Notifications (email toggles) were folded in
+// here and into the Details composer respectively — see guests-tab.tsx and
+// event-form.tsx.
+type TabKey = "details" | "guests" | "analytics" | "activity";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "details", label: "Details" },
-  { key: "access", label: "Access" },
-  { key: "guests", label: "Guests" },
-  { key: "notifications", label: "Notifications" },
+  { key: "guests", label: "Attendees" },
   { key: "analytics", label: "Analytics" },
   { key: "activity", label: "Activity" },
 ];
@@ -223,13 +219,10 @@ export default async function AdminEventDetailPage({
                   {ev.title}
                 </h1>
               </div>
-              <Link
-                href={`/admin/events/${ev.id}/check-in`}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-input px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent/10"
-              >
-                <QrCode size={14} strokeWidth={1.75} aria-hidden />
-                Day-of check-in
-              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                <ScanQrButton eventId={ev.id} />
+                <CheckInInfoPopover />
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -295,9 +288,7 @@ export default async function AdminEventDetailPage({
           {tab === "details" ? (
             <DetailsTab event={ev} coverUrl={coverUrl} />
           ) : null}
-          {tab === "access" ? <AccessTabServer eventId={ev.id} event={ev} /> : null}
-          {tab === "guests" ? <GuestsTabServer eventId={ev.id} /> : null}
-          {tab === "notifications" ? <NotificationsTab event={ev} /> : null}
+          {tab === "guests" ? <GuestsTabServer eventId={ev.id} event={ev} /> : null}
           {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
           {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
         </section>
@@ -313,15 +304,16 @@ function StatusText({ status }: { status: string }) {
       : status === "cancelled"
         ? "text-destructive"
         : "text-muted-foreground";
+  // Same "published" -> "active" display mapping as the events list page.
+  const label = status === "published" ? "active" : status;
   return (
     <span className={`font-medium uppercase tracking-wide ${tone}`}>
-      {status}
+      {label}
     </span>
   );
 }
 
-// Access tab loads invite list before rendering the client body.
-async function AccessTabServer({
+async function GuestsTabServer({
   eventId,
   event,
 }: {
@@ -329,47 +321,21 @@ async function AccessTabServer({
   event: EventRecord;
 }) {
   const admin = createAdminClient();
-  const { data: invites } = await admin
-    .from("event_invites")
-    .select(
-      "user_id, invited_by, invited_at, revoked_at, profiles!event_invites_user_id_fkey(first_name, last_name, google_email, student_email)"
-    )
-    .eq("event_id", eventId)
-    .order("invited_at", { ascending: false });
-
-  type ProfileRef = {
-    first_name: string | null;
-    last_name: string | null;
-    google_email: string | null;
-    student_email: string | null;
-  };
-  const rows = (invites ?? []).map((i) => {
-    // Supabase types the embedded relationship as an array; flatten it.
-    const rel = i.profiles as ProfileRef | ProfileRef[] | null | undefined;
-    const p: ProfileRef | null = Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
-    return {
-      user_id: i.user_id as string,
-      invited_by: (i.invited_by as string | null) ?? null,
-      invited_at: i.invited_at as string,
-      revoked_at: (i.revoked_at as string | null) ?? null,
-      first_name: p?.first_name ?? null,
-      last_name: p?.last_name ?? null,
-      email: p?.student_email ?? p?.google_email ?? null,
-    };
-  });
-
-  return <AccessTab event={event} invites={rows} />;
-}
-
-async function GuestsTabServer({ eventId }: { eventId: string }) {
   // Must use the user-context client because admin_event_roster_for()
   // checks public.is_admin(auth.uid()) server-side. Service-role has no
   // auth.uid() and the RPC would raise "admin only". The parent layout
   // has already gated on is_admin so the caller here is guaranteed admin.
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_event_roster_for", {
-    p_event_id: eventId,
-  });
+  const [{ data, error }, { data: invites }] = await Promise.all([
+    supabase.rpc("admin_event_roster_for", { p_event_id: eventId }),
+    admin
+      .from("event_invites")
+      .select(
+        "user_id, invited_by, invited_at, revoked_at, profiles!event_invites_user_id_fkey(first_name, last_name, google_email, student_email)"
+      )
+      .eq("event_id", eventId)
+      .order("invited_at", { ascending: false }),
+  ]);
   if (error) {
     return (
       <p className="text-sm text-destructive">
@@ -400,7 +366,35 @@ async function GuestsTabServer({ eventId }: { eventId: string }) {
     invited_at: (r.invited_at as string | null) ?? null,
   }));
 
-  return <GuestsTab eventId={eventId} rows={rows} />;
+  type ProfileRef = {
+    first_name: string | null;
+    last_name: string | null;
+    google_email: string | null;
+    student_email: string | null;
+  };
+  const inviteRows = (invites ?? []).map((i) => {
+    // Supabase types the embedded relationship as an array; flatten it.
+    const rel = i.profiles as ProfileRef | ProfileRef[] | null | undefined;
+    const p: ProfileRef | null = Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
+    return {
+      user_id: i.user_id as string,
+      invited_by: (i.invited_by as string | null) ?? null,
+      invited_at: i.invited_at as string,
+      revoked_at: (i.revoked_at as string | null) ?? null,
+      first_name: p?.first_name ?? null,
+      last_name: p?.last_name ?? null,
+      email: p?.student_email ?? p?.google_email ?? null,
+    };
+  });
+
+  return (
+    <GuestsTab
+      eventId={eventId}
+      event={event}
+      rows={rows}
+      invites={inviteRows}
+    />
+  );
 }
 
 async function AnalyticsTabServer({ eventId }: { eventId: string }) {

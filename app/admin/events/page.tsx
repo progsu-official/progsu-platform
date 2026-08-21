@@ -9,9 +9,12 @@ export const dynamic = "force-dynamic";
 
 type TabKey = "draft" | "published" | "past" | "cancelled" | "archived";
 
+// "published" stays the DB status/TabKey value (matches public.event_status_t
+// and every existing filter/default below) — only the displayed label reads
+// "Active", and this array's order drives the nav pill order too.
 const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "published", label: "Active" },
   { key: "draft", label: "Draft" },
-  { key: "published", label: "Published" },
   { key: "past", label: "Past" },
   { key: "cancelled", label: "Cancelled" },
   { key: "archived", label: "Archived" },
@@ -237,11 +240,14 @@ function StatusBadge({ status }: { status: string }) {
         : status === "cancelled"
           ? "bg-destructive/10 text-destructive"
           : "bg-muted text-muted-foreground";
+  // "published" displays as "active" everywhere on this page — same status
+  // value underneath, matches the tab nav's "Active" label above.
+  const label = status === "published" ? "active" : status;
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}
     >
-      {status}
+      {label}
     </span>
   );
 }
