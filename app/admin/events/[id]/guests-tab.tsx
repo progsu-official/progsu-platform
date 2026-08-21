@@ -318,7 +318,10 @@ function RosterSection({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-border/70">
+      {/* Full table is unreadable below sm (7 columns don't fit without
+          horizontal scroll) — a compact stacked card carries the same data
+          on phones instead of forcing a scroll to see it. */}
+      <div className="hidden overflow-x-auto rounded-xl border border-border/70 sm:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -381,53 +384,12 @@ function RosterSection({
                     {r.invited ? "Yes" : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {r.rsvp_status === "waitlisted" ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            run(() =>
-                              promoteWaitlistedMember(eventId, r.user_id)
-                            )
-                          }
-                          disabled={pending}
-                        >
-                          Promote
-                        </Button>
-                      ) : null}
-                      {!r.attended ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() =>
-                            run(() => adminCheckIn(eventId, r.user_id))
-                          }
-                          disabled={pending}
-                        >
-                          Check in
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            run(() =>
-                              correctAttendance(
-                                eventId,
-                                r.user_id,
-                                "remove"
-                              )
-                            )
-                          }
-                          disabled={pending}
-                        >
-                          Remove attendance
-                        </Button>
-                      )}
-                    </div>
+                    <RosterRowActions
+                      eventId={eventId}
+                      row={r}
+                      pending={pending}
+                      run={run}
+                    />
                   </td>
                 </tr>
               );
@@ -441,6 +403,69 @@ function RosterSection({
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="divide-y divide-border/60 rounded-xl border border-border/70 sm:hidden">
+        {rows.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+            No one on the roster yet.
+          </p>
+        ) : (
+          rows.map((r) => {
+            const name =
+              `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
+              r.user_id.slice(0, 8);
+            const email = r.student_email ?? r.google_email ?? "—";
+            const meta = [
+              r.waitlist_position != null ? `Waitlist #${r.waitlist_position}` : null,
+              r.attended
+                ? [
+                    "Checked in",
+                    r.checked_in_at
+                      ? new Date(r.checked_in_at).toLocaleTimeString()
+                      : null,
+                    r.attendance_method === "qr_token"
+                      ? "(QR)"
+                      : r.attendance_method === "admin_click"
+                        ? "(manual)"
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : null,
+              r.invited ? "Invited" : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <div key={r.user_id} className="space-y-2 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {initialsAvatar(name)}
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] text-foreground">
+                        {name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {email}
+                      </p>
+                    </div>
+                  </div>
+                  <RsvpBadge status={r.rsvp_status} />
+                </div>
+                {meta ? (
+                  <p className="text-xs text-muted-foreground">{meta}</p>
+                ) : null}
+                <RosterRowActions
+                  eventId={eventId}
+                  row={r}
+                  pending={pending}
+                  run={run}
+                />
+              </div>
+            );
+          })
+        )}
       </div>
     </FoldSection>
   );
@@ -468,5 +493,58 @@ function RsvpBadge({
     >
       {status}
     </span>
+  );
+}
+
+/** Shared between the desktop table's Actions column and the mobile card. */
+function RosterRowActions({
+  eventId,
+  row,
+  pending,
+  run,
+}: {
+  eventId: string;
+  row: RosterRow;
+  pending: boolean;
+  run: (
+    fn: () => Promise<{ ok: true } | { ok: false; error: { message: string } }>
+  ) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {row.rsvp_status === "waitlisted" ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => run(() => promoteWaitlistedMember(eventId, row.user_id))}
+          disabled={pending}
+        >
+          Promote
+        </Button>
+      ) : null}
+      {!row.attended ? (
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => run(() => adminCheckIn(eventId, row.user_id))}
+          disabled={pending}
+        >
+          Check in
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            run(() => correctAttendance(eventId, row.user_id, "remove"))
+          }
+          disabled={pending}
+        >
+          Remove attendance
+        </Button>
+      )}
+    </div>
   );
 }
