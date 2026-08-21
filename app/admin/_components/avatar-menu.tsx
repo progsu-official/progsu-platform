@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { Eye } from "lucide-react";
 
 import { signOut } from "@/lib/actions/session";
 import { Avatar } from "@/app/_components/avatar";
@@ -71,7 +70,6 @@ export function AdminAvatarMenu({
             onClick={() => setOpen(false)}
             className={itemClass}
           >
-            <Eye size={15} strokeWidth={1.75} aria-hidden />
             Member
           </Link>
           <form action={signOut}>
