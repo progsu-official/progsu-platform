@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Globe } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -51,6 +51,9 @@ export default async function MemberProfilePage({
     data: { user },
   } = await supabase.auth.getUser();
   const isSelf = user?.id === card.user_id;
+  // Your own slug is the public card peers see, not the editable dashboard —
+  // send you to the real thing instead of a read-only mirror of yourself.
+  if (isSelf) redirect("/profile");
 
   // Shared-events section: only when flag is on AND viewing a peer (not self).
   // Action wrapper handles the flag; this is a belt-and-suspenders check so we
@@ -142,23 +145,6 @@ export default async function MemberProfilePage({
           All members
         </Link>
       </nav>
-
-      {isSelf ? (
-        <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm">
-          <p className="font-medium">This is your public card.</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Other members see what&apos;s shown here when your directory
-            visibility is on.{" "}
-            <Link
-              href="/profile/settings/visibility"
-              className="underline underline-offset-4"
-            >
-              Manage visibility
-            </Link>
-            .
-          </p>
-        </div>
-      ) : null}
 
       <div>
         <StaticBanner bannerUrl={card.banner_url} />
