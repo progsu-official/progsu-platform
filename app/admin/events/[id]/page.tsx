@@ -34,11 +34,11 @@ export const dynamic = "force-dynamic";
 // Access (invite-by-email) and Notifications (email toggles) were folded in
 // here and into the Details composer respectively — see guests-tab.tsx and
 // event-form.tsx.
-type TabKey = "details" | "guests" | "analytics" | "activity";
+type TabKey = "details" | "attendees" | "analytics" | "activity";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "details", label: "Details" },
-  { key: "guests", label: "Attendees" },
+  { key: "attendees", label: "Attendees" },
   { key: "analytics", label: "Analytics" },
   { key: "activity", label: "Activity" },
 ];
@@ -287,7 +287,7 @@ export default async function AdminEventDetailPage({
           {tab === "details" ? (
             <DetailsTab event={ev} coverUrl={coverUrl} />
           ) : null}
-          {tab === "guests" ? <GuestsTabServer eventId={ev.id} event={ev} /> : null}
+          {tab === "attendees" ? <GuestsTabServer eventId={ev.id} event={ev} /> : null}
           {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
           {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
         </section>

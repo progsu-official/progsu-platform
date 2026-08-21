@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Mail, UserPlus, Users } from "lucide-react";
+import { ChevronDown, Mail, UserPlus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,9 +50,35 @@ export function GuestsTab({
 }) {
   return (
     <div className="space-y-6">
-      <InviteSection eventId={eventId} event={event} invites={invites} />
       <RosterSection eventId={eventId} rows={rows} />
+      <InviteSection eventId={eventId} event={event} invites={invites} />
     </div>
+  );
+}
+
+/** Native disclosure: collapsed to just the summary row until clicked, no
+ * JS state needed. `[&::-webkit-details-marker]:hidden` drops the default
+ * triangle so the chevron (rotated via `group-open:`) is the only marker. */
+function FoldSection({
+  summary,
+  children,
+}: {
+  summary: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-2xl border border-border/70 bg-card [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
+        {summary}
+        <ChevronDown
+          size={16}
+          strokeWidth={1.75}
+          aria-hidden
+          className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="space-y-4 px-5 pb-5">{children}</div>
+    </details>
   );
 }
 
@@ -112,19 +138,18 @@ function InviteSection({
   const revoked = invites.filter((i) => i.revoked_at);
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">
-            Invites
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {event.visibility === "members"
-              ? "Any fully-onboarded member can already see and RSVP — invites below just pre-list members."
-              : "Only invited members can view or RSVP. Revoke to remove access immediately."}
-          </p>
-        </div>
-      </div>
+    <FoldSection
+      summary={
+        <h2 className="text-base font-semibold text-foreground">
+          Invites ({active.length})
+        </h2>
+      }
+    >
+      <p className="text-sm text-muted-foreground">
+        {event.visibility === "members"
+          ? "Any fully-onboarded member can already see and RSVP — invites below just pre-list members."
+          : "Only invited members can view or RSVP. Revoke to remove access immediately."}
+      </p>
 
       <form
         onSubmit={onInvite}
@@ -243,7 +268,7 @@ function InviteSection({
           </ul>
         </div>
       ) : null}
-    </section>
+    </FoldSection>
   );
 }
 
@@ -270,18 +295,19 @@ function RosterSection({
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-5">
-      <div className="flex items-center justify-between gap-3">
+    <FoldSection
+      summary={
         <div className="flex items-center gap-2">
           <Users size={18} strokeWidth={1.75} className="text-muted-foreground" aria-hidden />
           <h2 className="text-base font-semibold text-foreground">
             Roster ({rows.length})
           </h2>
         </div>
-        <p className="text-xs text-muted-foreground">
-          RSVP&apos;d, invited, and already-attended members.
-        </p>
-      </div>
+      }
+    >
+      <p className="text-xs text-muted-foreground">
+        RSVP&apos;d, invited, and already-attended members.
+      </p>
 
       {error ? (
         <div
@@ -416,7 +442,7 @@ function RosterSection({
           </tbody>
         </table>
       </div>
-    </section>
+    </FoldSection>
   );
 }
 
