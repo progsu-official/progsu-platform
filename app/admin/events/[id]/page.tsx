@@ -220,7 +220,13 @@ export default async function AdminEventDetailPage({
                     : ""}
                 </span>
                 <span aria-hidden>·</span>
-                <StatusText status={ev.status} />
+                <StatusText
+                  status={ev.status}
+                  past={
+                    ev.status === "published" &&
+                    new Date(ev.ends_at) < new Date()
+                  }
+                />
               </div>
             </div>
 
@@ -296,15 +302,21 @@ export default async function AdminEventDetailPage({
   );
 }
 
-function StatusText({ status }: { status: string }) {
+function StatusText({
+  status,
+  past,
+}: {
+  status: string;
+  past?: boolean;
+}) {
   const tone =
-    status === "published"
+    status === "published" && !past
       ? "text-primary"
       : status === "cancelled"
         ? "text-destructive"
         : "text-muted-foreground";
-  // Same "published" -> "active" display mapping as the events list page.
-  const label = status === "published" ? "active" : status;
+  // Same "published" -> "active"/"past" display mapping as the events list page.
+  const label = status === "published" ? (past ? "past" : "active") : status;
   return (
     <span className={`text-xs font-medium uppercase tracking-wide ${tone}`}>
       {label}

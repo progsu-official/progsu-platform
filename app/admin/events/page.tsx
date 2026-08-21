@@ -187,7 +187,13 @@ export default async function AdminEventsPage({
                         ? ` · ${counts.waitlisted} waitlisted`
                         : ""}
                     </span>
-                    <StatusBadge status={r.status as string} />
+                    <StatusBadge
+                      status={r.status as string}
+                      past={
+                        r.status === "published" &&
+                        new Date(r.ends_at as string) < new Date()
+                      }
+                    />
                     {r.visibility === "private_invite" ? (
                       <span className="text-muted-foreground">· Invite-only</span>
                     ) : null}
@@ -204,18 +210,30 @@ export default async function AdminEventsPage({
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({
+  status,
+  past,
+}: {
+  status: string;
+  past?: boolean;
+}) {
   const tone =
     status === "published"
-      ? "bg-primary/10 text-primary"
+      ? past
+        ? "bg-muted text-muted-foreground"
+        : "bg-primary/10 text-primary"
       : status === "draft"
         ? "bg-muted text-muted-foreground"
         : status === "cancelled"
           ? "bg-destructive/10 text-destructive"
           : "bg-muted text-muted-foreground";
   // "published" displays as "active" everywhere on this page — same status
-  // value underneath, matches the tab nav's "Active" label above.
-  const label = status === "published" ? "active" : status;
+  // value underneath, matches the tab nav's "Active" label above. A
+  // published event whose end time has passed reads "past" instead: the
+  // status column never actually flips to a "past" DB value, ends_at just
+  // moves behind now(), so the badge has to compute it the same way the
+  // tab filter above does.
+  const label = status === "published" ? (past ? "past" : "active") : status;
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}
