@@ -17,54 +17,32 @@ const ITEMS: Item[] = [
   { href: "/admin/members", label: "Members", icon: Users },
 ];
 
-// horizontal: the same items as a scrollable icon-only strip, for the mobile
-// top bar — the sidebar above is `md:flex` only, so phones get no nav at all
-// without this.
-export function AdminNav({
-  showEvents,
-  horizontal,
-}: {
-  showEvents: boolean;
-  horizontal?: boolean;
-}) {
+// One horizontal strip for every screen size, top bar only (no more sidebar)
+// — icon-only below sm where it scrolls if it ever needs to, icon+label
+// above, same convention SiteNav uses on the member side.
+export function AdminNav({ showEvents }: { showEvents: boolean }) {
   const pathname = usePathname() ?? "";
   const items = ITEMS.filter((i) => showEvents || i.href !== "/admin/events");
 
   return (
-    <nav
-      className={
-        horizontal
-          ? "flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overflow-y-hidden scroll-fade-x"
-          : "flex-1 space-y-0.5 px-3 py-3"
-      }
-    >
+    <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden scroll-fade-x sm:gap-2">
       {items.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
-            title={horizontal ? label : undefined}
+            title={label}
             aria-current={active ? "page" : undefined}
             className={
-              horizontal
-                ? "flex shrink-0 items-center rounded-lg p-2.5 transition-colors " +
-                  (active
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground/70 hover:bg-muted/60 hover:text-foreground")
-                : "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors " +
-                  (active
-                    ? "bg-primary/15 font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")
+              "flex shrink-0 items-center gap-1.5 rounded-lg p-2.5 text-sm transition-colors sm:px-3 " +
+              (active
+                ? "bg-primary/15 font-medium text-primary"
+                : "text-muted-foreground/70 hover:bg-muted/60 hover:text-foreground")
             }
           >
-            <Icon
-              size={15}
-              strokeWidth={1.75}
-              aria-hidden
-              className={horizontal ? undefined : active ? "text-primary" : "text-muted-foreground/70"}
-            />
-            {horizontal ? null : label}
+            <Icon size={15} strokeWidth={1.75} aria-hidden />
+            <span className="hidden sm:inline">{label}</span>
           </Link>
         );
       })}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowUpRight, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
@@ -9,6 +9,7 @@ import {
   loadOnboardingState,
   onboardingPathFor,
 } from "@/lib/auth/onboarding";
+import { Avatar } from "@/app/_components/avatar";
 
 import { AdminNav } from "./_components/admin-nav";
 
@@ -27,7 +28,7 @@ export default async function AdminLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("is_admin, first_name")
+    .select("is_admin, first_name, avatar_url")
     .eq("id", user.id)
     .single();
 
@@ -46,110 +47,74 @@ export default async function AdminLayout({
 
   return (
     <div className="dark min-h-screen bg-background text-foreground antialiased">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-60 flex-col border-r border-border/60 bg-card/30 md:flex">
-          <div className="px-5 pb-2 pt-5">
-            <Link href="/admin" className="flex items-baseline gap-2">
-              <span className="text-[15px] font-bold tracking-tight text-foreground">
-                progsu
-              </span>
-              <span className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary">
-                admin
-              </span>
-            </Link>
-          </div>
+      {/* One top bar for every screen size, same idea as the member header
+          (app/_components/member-header.tsx): logo, nav, account cluster on
+          the right — no sidebar. */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-card/80 backdrop-blur">
+        <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-4">
+          <Link href="/admin" className="flex shrink-0 items-baseline gap-1.5">
+            <span className="text-[15px] font-bold tracking-tight text-foreground">
+              progsu
+            </span>
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary">
+              admin
+            </span>
+          </Link>
 
           <AdminNav showEvents={env.FEATURE_EVENTS} />
 
-          {/* Deliberately louder than the nav: switching surfaces is the one
-              action here that leaves the admin, so it reads as a button, not
-              a nav row. */}
-          <div className="px-3 pb-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+            {/* Same recipe as the member header's "Admin" switch-link
+                (app/_components/member-header.tsx): icon only below sm,
+                text only at sm+, never both. */}
             <Link
               href="/profile"
-              className="group flex items-center justify-between gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-3 text-sm font-medium text-primary transition-colors hover:border-primary/60 hover:bg-primary/20"
+              title="View as member"
+              className="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground sm:px-3 sm:py-1 sm:text-xs sm:font-medium"
             >
-              <span className="flex items-center gap-2.5">
-                <Eye size={15} strokeWidth={1.75} aria-hidden />
-                View as member
-              </span>
-              <ArrowUpRight
-                size={14}
-                strokeWidth={2}
-                aria-hidden
-                className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-              />
+              <Eye size={15} strokeWidth={1.75} aria-hidden className="sm:hidden" />
+              <span className="hidden sm:inline">View as member</span>
             </Link>
-          </div>
 
-          <div className="flex items-center gap-2.5 border-t border-border/60 px-4 py-3.5">
-            <span
-              aria-hidden
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold uppercase text-primary"
-            >
-              {displayName.charAt(0)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-foreground">
-                {displayName}
-              </p>
-              <p className="text-[10px] text-muted-foreground">Signed in</p>
-            </div>
+            <Avatar
+              src={profile.avatar_url ?? null}
+              name={displayName}
+              className="h-8 w-8 rounded-full"
+            />
             <form action={signOut}>
               <button
                 type="submit"
-                className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                className="rounded-full px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
               >
                 Sign out
               </button>
             </form>
           </div>
-        </aside>
+        </div>
+      </header>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-border/60 bg-card/80 px-3 py-2.5 backdrop-blur md:hidden">
-            <Link href="/admin" className="flex items-baseline gap-1.5 pl-1">
-              <span className="text-[13px] font-bold tracking-tight text-foreground">
-                progsu
-              </span>
-              <span className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary">
-                admin
-              </span>
-            </Link>
-            <AdminNav showEvents={env.FEATURE_EVENTS} horizontal />
+      <main className="p-6 lg:p-8">
+        {!onboarding.fullyOnboarded ? (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3">
+            <div className="text-sm">
+              <p className="font-medium text-amber-200">
+                Your member profile isn&apos;t set up yet.
+              </p>
+              <p className="text-amber-200/70">
+                Admin access works without it, but events, the member
+                directory, and recruiter exports need a completed profile.
+              </p>
+            </div>
             <Link
-              href="/profile"
-              title="View as member"
-              className="ml-auto shrink-0 rounded-full border border-primary/40 bg-primary/10 p-2.5 text-primary"
+              href={onboardingHref}
+              className="shrink-0 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-300"
             >
-              <Eye size={15} strokeWidth={1.75} aria-hidden />
+              Finish setup
             </Link>
           </div>
-
-          <main className="min-w-0 flex-1 p-6 lg:p-8">
-          {!onboarding.fullyOnboarded ? (
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3">
-              <div className="text-sm">
-                <p className="font-medium text-amber-200">
-                  Your member profile isn&apos;t set up yet.
-                </p>
-                <p className="text-amber-200/70">
-                  Admin access works without it, but events, the member
-                  directory, and recruiter exports need a completed profile.
-                </p>
-              </div>
-              <Link
-                href={onboardingHref}
-                className="shrink-0 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-300"
-              >
-                Finish setup
-              </Link>
-            </div>
-          ) : null}
-          {children}
-          </main>
-        </div>
-      </div>
+        ) : null}
+        {children}
+      </main>
     </div>
   );
 }
