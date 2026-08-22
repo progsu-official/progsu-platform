@@ -124,6 +124,26 @@ export async function setProfileSlug(
   return ok({ slug });
 }
 
+// Rotates the caller's personal check-in QR (profiles.checkin_code) — e.g.
+// after a leak/screenshot. No input: the RPC always targets auth.uid()'s own
+// row, so there's nothing to validate.
+export async function regenerateCheckinCode(): Promise<ActionResult<{ code: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+
+  const { data, error } = await supabase.rpc("regenerate_checkin_code");
+  if (error) return mapPgError(error);
+
+  const code = typeof data === "string" ? data : null;
+  if (!code) return err("INTERNAL", "Code regenerated but response missing.");
+
+  revalidatePath("/profile");
+  return ok({ code });
+}
+
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
