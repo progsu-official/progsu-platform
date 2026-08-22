@@ -83,7 +83,7 @@ export default async function LoginPage({
         ) : null}
 
         <div className="space-y-5">
-          <GoogleSignInButton next={params.next} />
+          <GoogleSignInButton next={params.next} autoStart={!errorMessage} />
 
           <p className="text-center text-sm text-white/40">
             You&apos;ll verify your student email in the next step.

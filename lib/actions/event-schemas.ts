@@ -184,6 +184,21 @@ export const rsvpToEventSchema = z.object({
 
 export type RsvpToEventInput = z.input<typeof rsvpToEventSchema>;
 
+// Account-free guest RSVP (2026-08-21 decision). Phone regex matches the
+// onboarding profile form's (lib/actions/profile-schemas.ts).
+export const guestRsvpToEventSchema = z.object({
+  eventId: z.string().uuid("Invalid event id."),
+  name: z.string().trim().min(1, "Name required").max(100, "Name is too long"),
+  email: z.string().trim().email("Enter a valid email").max(255),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Phone number is required")
+    .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+});
+
+export type GuestRsvpToEventInput = z.input<typeof guestRsvpToEventSchema>;
+
 // Cover-image upload. Limit of 5 MB mirrors the DB's event-covers bucket
 // `file_size_limit`. Allowed MIME types match the bucket's `allowed_mime_types`.
 export const MAX_EVENT_COVER_BYTES = 5 * 1024 * 1024;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { HeaderSignInButton } from "./header-sign-in-button";
 import { SiteNav } from "./site-nav";
 import { UserMenu } from "./user-menu";
 
@@ -40,7 +41,11 @@ export function MemberHeader({
         </Link>
 
         <nav>
-          <SiteNav showMembers={showMembers} showEvents={showEvents} />
+          <SiteNav
+            showMembers={showMembers}
+            showEvents={showEvents}
+            signedIn={!!displayName}
+          />
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5">
@@ -52,12 +57,7 @@ export function MemberHeader({
               isAdmin={isAdmin}
             />
           ) : (
-            <Link
-              href="/login"
-              className="rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50"
-            >
-              Sign in
-            </Link>
+            <HeaderSignInButton />
           )}
         </div>
       </div>

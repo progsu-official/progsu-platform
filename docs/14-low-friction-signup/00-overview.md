@@ -54,11 +54,13 @@ Result: the forced signup journey drops from "OAuth → verify (skippable) → 1
 
 ## 3. What we are NOT changing
 
-- Events platform (R1/R2/R3): untouched. The new minimal profile still satisfies `fullyOnboarded` required by event RSVP gates — the events layer reads the same contract.
+- Events platform (R1/R2/R3): **superseded 2026-08-21** — see note below. The new minimal profile still satisfies `fullyOnboarded` required by event RSVP gates for signed-in members — the member-side events layer reads the same contract.
 - Consent ledger: still append-only, still 5 types, still versioned. Do not add a new `consent_type_t` value (CLAUDE.md rule #8).
-- Auth model: Google OAuth only; Supabase SSR session refresh; no magic links.
+- Auth model for members: Google OAuth only; Supabase SSR session refresh; no magic links. **Unchanged for members** — see superseding note below for the separate guest path.
 - Admin onboarding bypass: admins still skip the member funnel.
 - `recruiter_eligible_members` view: same RLS posture, still the single source of recruiter visibility, just with three new required columns in the join condition.
+
+> **Superseded 2026-08-21:** event RSVP no longer requires any account or Google sign-in. A visitor can now RSVP with just name/email/phone via a new account-free guest path (`public.event_guest_rsvps` table, `guest_rsvp_to_event()` RPC), running in parallel with the member path described in this doc. This overrides "Events platform: untouched" and the auth-model bullet above insofar as it applies to guests, not members — the Google-OAuth-only member funnel this doc describes is otherwise unchanged. See `supabase/migrations/20260821010000_guest_event_rsvp.sql` for the implementation and its own header comment for the full rationale.
 
 ---
 

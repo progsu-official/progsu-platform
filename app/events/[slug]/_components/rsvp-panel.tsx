@@ -6,6 +6,9 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { rsvpToEvent } from "@/lib/actions/events";
+import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
+
+import { GuestRsvpModal } from "./guest-rsvp-modal";
 
 type CurrentRsvp = {
   status: "going" | "waitlisted" | "declined" | "cancelled" | null;
@@ -40,6 +43,9 @@ export function RsvpPanel({
   const [current, setCurrent] = useState<CurrentRsvp>(initial);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [guestModalOpen, setGuestModalOpen] = useState(false);
+  const { pending: googlePending, signIn: signInWithGoogle } =
+    useGoogleSignIn(eventPath);
 
   const capacityReached = capacity !== null && goingCount >= capacity;
 
@@ -77,19 +83,47 @@ export function RsvpPanel({
 
   if (!signedIn) {
     return (
-      <section className="space-y-3 rounded-2xl glass p-5">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Sign in to RSVP — takes a Google sign-in and a phone number.
-          </p>
-        </div>
-        <Button asChild className="h-11 w-full rounded-full text-[15px]">
-          <Link href={`/login?next=${encodeURIComponent(eventPath)}`}>
-            Sign in with Google to RSVP
-          </Link>
-        </Button>
-      </section>
+      <>
+        <section className="space-y-3 rounded-2xl glass p-5">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Register with your name, email, and phone number — no account
+              needed.
+            </p>
+          </div>
+          {/* Same reason as the modal's submit: this card follows the page
+              theme, so the white pill from /login (which is fixed dark) can't
+              be copied here — it disappears on the light theme. */}
+          <Button
+            type="button"
+            onClick={() => setGuestModalOpen(true)}
+            className="h-11 w-full rounded-full bg-foreground text-[15px] text-background hover:bg-foreground/90"
+          >
+            {capacityReached && waitlistEnabled ? "Join waitlist" : "Register"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => signInWithGoogle()}
+            disabled={googlePending}
+            className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-60"
+          >
+            {googlePending
+              ? "Redirecting…"
+              : "Already a member? Sign in with Google"}
+          </button>
+        </section>
+
+        {guestModalOpen ? (
+          <GuestRsvpModal
+            eventId={eventId}
+            capacityReached={capacityReached}
+            waitlistEnabled={waitlistEnabled}
+            onClose={() => setGuestModalOpen(false)}
+            onSuccess={() => router.refresh()}
+          />
+        ) : null}
+      </>
     );
   }
 

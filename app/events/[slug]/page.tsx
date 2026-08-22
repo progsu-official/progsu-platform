@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MapPin, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
@@ -149,6 +149,7 @@ export default async function MemberEventDetailPage({
       { count: going },
       { count: waitlisted },
       { data: holder },
+      { data: guestCountsRaw },
     ] = await Promise.all([
       supabase
         .from("event_hosts")
@@ -182,6 +183,10 @@ export default async function MemberEventDetailPage({
         .select("preferred_name, first_name, last_name")
         .eq("id", user.id)
         .maybeSingle(),
+      // Capacity is one shared pool across members + guests (2026-08-21
+      // guest-RSVP decision); event_guest_rsvps has no client RLS access, so
+      // this SECURITY DEFINER RPC is the only way to fold guest counts in.
+      supabase.rpc("event_guest_counts", { p_event_id: event.id }).maybeSingle(),
     ]);
 
     hosts = ((hostsRaw ?? []) as HostRow[]).map((h) => ({
@@ -190,8 +195,12 @@ export default async function MemberEventDetailPage({
     }));
     rsvp = (rsvpRaw as RsvpRow | null) ?? null;
     attendance = (attendanceRaw as AttendanceRow | null) ?? null;
-    goingCount = going;
-    waitlistedCount = waitlisted;
+    const guestCounts = guestCountsRaw as {
+      going_count: number;
+      waitlisted_count: number;
+    } | null;
+    goingCount = (going ?? 0) + (guestCounts?.going_count ?? 0);
+    waitlistedCount = (waitlisted ?? 0) + (guestCounts?.waitlisted_count ?? 0);
     holderRaw = holder as Record<string, unknown> | null;
   }
 
@@ -256,10 +265,15 @@ export default async function MemberEventDetailPage({
     <div className="relative">
       {/* Partiful-style ambience: the cover art itself, blown up and blurred,
           washes color behind the whole page. Falls back to a primary glow
-          when the event has no cover. */}
+          when the event has no cover.
+          top-0, not a negative offset: this layout can insert nudge banners
+          (verify-email, resume) above {children} — a negative offset here
+          bled this blur up into that translucent banner space and muddied
+          its color. Starting flush with the page's own top edge means it
+          never reaches content this page doesn't control the height of. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[-5.5rem] -z-10 h-[34rem] w-screen -translate-x-1/2 overflow-hidden"
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[34rem] w-screen -translate-x-1/2 overflow-hidden"
       >
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -426,8 +440,11 @@ export default async function MemberEventDetailPage({
                 inCheckInWindow={inCheckInWindow}
               />
             ) : attendance ? (
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-                <span aria-hidden>✓</span> Checked in at{" "}
+              <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+                {/* Drawn, not the "✓" character — a typed glyph inherits the
+                    text font and renders differently per platform. */}
+                <CheckCircle2 size={16} strokeWidth={1.75} aria-hidden />
+                Checked in at{" "}
                 {new Date(attendance.checked_in_at).toLocaleString()}.
               </div>
             ) : null}

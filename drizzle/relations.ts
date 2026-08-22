@@ -1,8 +1,15 @@
 import { relations } from "drizzle-orm/relations";
-import { profiles, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, events, eventNotificationJobs, profileVisibilitySettings, domainRequests, legacyMembers, eventHosts, eventInvites, eventAttendances, eventRsvps } from "./schema";
+import { profiles, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, domainRequests, events, eventNotificationJobs, profileVisibilitySettings, legacyMembers, eventGuestRsvps, historicalEventAttendances, eventHosts, eventInvites, eventGuestAttendances, eventAttendances, eventRsvps } from "./schema";
 
 // auth.users relation intentionally omitted — auth schema is filtered out of
-// introspection. profiles.id still FK's to auth.users in Postgres.
+// introspection. FKs to auth.users.id still live in Postgres.
+
+export const emailVerificationCodesRelations = relations(emailVerificationCodes, ({one}) => ({
+	profile: one(profiles, {
+		fields: [emailVerificationCodes.userId],
+		references: [profiles.id]
+	}),
+}));
 
 export const profilesRelations = relations(profiles, ({many}) => ({
 	emailVerificationCodes: many(emailVerificationCodes),
@@ -20,16 +27,16 @@ export const profilesRelations = relations(profiles, ({many}) => ({
 	accountDeletionRequests_userId: many(accountDeletionRequests, {
 		relationName: "accountDeletionRequests_userId_profiles_id"
 	}),
+	domainRequests: many(domainRequests),
 	eventNotificationJobs: many(eventNotificationJobs),
 	profileVisibilitySettings: many(profileVisibilitySettings),
-	domainRequests: many(domainRequests),
+	legacyMembers: many(legacyMembers),
 	events_createdBy: many(events, {
 		relationName: "events_createdBy_profiles_id"
 	}),
 	events_updatedBy: many(events, {
 		relationName: "events_updatedBy_profiles_id"
 	}),
-	legacyMembers: many(legacyMembers),
 	eventHosts: many(eventHosts),
 	eventInvites_invitedBy: many(eventInvites, {
 		relationName: "eventInvites_invitedBy_profiles_id"
@@ -44,13 +51,6 @@ export const profilesRelations = relations(profiles, ({many}) => ({
 		relationName: "eventAttendances_userId_profiles_id"
 	}),
 	eventRsvps: many(eventRsvps),
-}));
-
-export const emailVerificationCodesRelations = relations(emailVerificationCodes, ({one}) => ({
-	profile: one(profiles, {
-		fields: [emailVerificationCodes.userId],
-		references: [profiles.id]
-	}),
 }));
 
 export const resumesRelations = relations(resumes, ({one}) => ({
@@ -93,6 +93,13 @@ export const accountDeletionRequestsRelations = relations(accountDeletionRequest
 	}),
 }));
 
+export const domainRequestsRelations = relations(domainRequests, ({one}) => ({
+	profile: one(profiles, {
+		fields: [domainRequests.userId],
+		references: [profiles.id]
+	}),
+}));
+
 export const eventNotificationJobsRelations = relations(eventNotificationJobs, ({one}) => ({
 	event: one(events, {
 		fields: [eventNotificationJobs.eventId],
@@ -116,8 +123,11 @@ export const eventsRelations = relations(events, ({one, many}) => ({
 		references: [profiles.id],
 		relationName: "events_updatedBy_profiles_id"
 	}),
+	eventGuestRsvps: many(eventGuestRsvps),
+	historicalEventAttendances: many(historicalEventAttendances),
 	eventHosts: many(eventHosts),
 	eventInvites: many(eventInvites),
+	eventGuestAttendances: many(eventGuestAttendances),
 	eventAttendances: many(eventAttendances),
 	eventRsvps: many(eventRsvps),
 }));
@@ -129,17 +139,30 @@ export const profileVisibilitySettingsRelations = relations(profileVisibilitySet
 	}),
 }));
 
-export const domainRequestsRelations = relations(domainRequests, ({one}) => ({
-	profile: one(profiles, {
-		fields: [domainRequests.userId],
-		references: [profiles.id]
-	}),
-}));
-
-export const legacyMembersRelations = relations(legacyMembers, ({one}) => ({
+export const legacyMembersRelations = relations(legacyMembers, ({one, many}) => ({
 	profile: one(profiles, {
 		fields: [legacyMembers.claimedProfileId],
 		references: [profiles.id]
+	}),
+	historicalEventAttendances: many(historicalEventAttendances),
+}));
+
+export const eventGuestRsvpsRelations = relations(eventGuestRsvps, ({one, many}) => ({
+	event: one(events, {
+		fields: [eventGuestRsvps.eventId],
+		references: [events.id]
+	}),
+	eventGuestAttendances: many(eventGuestAttendances),
+}));
+
+export const historicalEventAttendancesRelations = relations(historicalEventAttendances, ({one}) => ({
+	event: one(events, {
+		fields: [historicalEventAttendances.eventId],
+		references: [events.id]
+	}),
+	legacyMember: one(legacyMembers, {
+		fields: [historicalEventAttendances.legacyMemberId],
+		references: [legacyMembers.id]
 	}),
 }));
 
@@ -168,6 +191,17 @@ export const eventInvitesRelations = relations(eventInvites, ({one}) => ({
 		fields: [eventInvites.userId],
 		references: [profiles.id],
 		relationName: "eventInvites_userId_profiles_id"
+	}),
+}));
+
+export const eventGuestAttendancesRelations = relations(eventGuestAttendances, ({one}) => ({
+	event: one(events, {
+		fields: [eventGuestAttendances.eventId],
+		references: [events.id]
+	}),
+	eventGuestRsvp: one(eventGuestRsvps, {
+		fields: [eventGuestAttendances.guestRsvpId],
+		references: [eventGuestRsvps.id]
 	}),
 }));
 

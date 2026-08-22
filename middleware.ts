@@ -8,7 +8,20 @@ import {
 
 // Route classification. Keep these in sync with the canonical route map in
 // docs/07-implementation-plan.md §1.1. Admins bypass member onboarding (D8).
-const PUBLIC_PREFIXES = ["/", "/login", "/privacy", "/terms", "/auth/callback"];
+// /tickets/[token] is public by design (2026-08-21 guest-ticket decision): the
+// opaque per-registration token in the path IS the credential, and the holder
+// is an account-free guest opening an email link at a door. Bouncing them to
+// Google sign-in would make the ticket unusable by exactly the people it was
+// built for. Access control lives in guest_ticket_by_token(), which only ever
+// returns the row matching the token presented.
+const PUBLIC_PREFIXES = [
+  "/",
+  "/login",
+  "/privacy",
+  "/terms",
+  "/auth/callback",
+  "/tickets",
+];
 const ADMIN_PREFIXES = ["/admin"];
 const ONBOARDING_PREFIX = "/onboarding";
 const MEMBER_PREFIXES = ["/profile", "/events", "/members"];
