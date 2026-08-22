@@ -90,7 +90,7 @@ export function QrScanner({ eventId }: { eventId: string }) {
     busyRef.current = true;
     lastTokenRef.current = token;
     setStatus({ kind: "checking" });
-    const r = await adminCheckInByToken(token);
+    const r = await adminCheckInByToken(token, eventId);
     busyRef.current = false;
     if (r.ok) {
       setStatus({ kind: "success" });

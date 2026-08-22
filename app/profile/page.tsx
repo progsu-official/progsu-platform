@@ -17,6 +17,7 @@ import { AvatarButton } from "./avatar-button";
 import { ProfileBanner } from "./profile-banner";
 import { NoteBubble } from "./note-bubble";
 import { SchoolLogo } from "./school-logo";
+import { MyCheckinQr } from "./my-checkin-qr";
 import { LinkedInMark, GitHubMark } from "@/app/_components/brand-marks";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +51,15 @@ export default async function DashboardHome() {
   // not to "no profile".
   const { data: decorations } = await supabase
     .from("profiles")
-    .select("note, banner_url")
+    .select("note, banner_url, checkin_code")
     .eq("id", user.id)
     .maybeSingle();
   const note = (decorations as { note?: string | null } | null)?.note ?? null;
   const bannerUrl =
     (decorations as { banner_url?: string | null } | null)?.banner_url ?? null;
+  const checkinCode =
+    (decorations as { checkin_code?: string | null } | null)?.checkin_code ??
+    null;
 
   const { data: currentResume } = await supabase
     .from("resumes")
@@ -432,6 +436,8 @@ export default async function DashboardHome() {
           )}
           </div>
       </div>
+
+      {checkinCode ? <MyCheckinQr code={checkinCode} /> : null}
     </div>
   );
 }

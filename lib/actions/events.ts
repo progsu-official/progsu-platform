@@ -403,6 +403,7 @@ export async function adminCheckIn(
 
 const adminCheckInByTokenSchema = z.object({
   token: z.string().uuid(),
+  eventId: z.string().uuid(),
   note: z.string().trim().max(500).optional().nullable(),
 });
 
@@ -411,17 +412,20 @@ const adminCheckInByTokenSchema = z.object({
 // the same event_attendances insert path as adminCheckIn above, just via
 // admin_check_in_by_token instead of admin_check_in_member.
 //
-// One token space covers members and guests (2026-08-21 guest-ticket
-// decision): the RPC falls back to event_guest_rsvps when the token isn't a
-// member's, writing to event_guest_attendances and returning a NULL
-// out_user_id. So userId is nullable here — a guest check-in has no auth
-// identity to name, and treating a null as failure would report a successful
-// scan as an error.
+// One token space covers members, guests, and personal profile codes
+// (2026-08-21 guest-ticket decision, widened 2026-08-22 for the personal
+// code): the RPC falls back from event_rsvps to event_guest_rsvps to
+// profiles.checkin_code. Only the last of those has no event of its own, so
+// eventId is always passed through from the scanner's current page — it's
+// used for the personal-code branch and ignored otherwise. userId stays
+// nullable: a guest check-in has no auth identity to name, and treating a
+// null as failure would report a successful scan as an error.
 export async function adminCheckInByToken(
   token: string,
+  eventId: string,
   note?: string | null
 ): Promise<ActionResult<{ eventId: string; userId: string | null }>> {
-  const parsed = adminCheckInByTokenSchema.safeParse({ token, note });
+  const parsed = adminCheckInByTokenSchema.safeParse({ token, eventId, note });
   if (!parsed.success) {
     return err("INVALID_INPUT", "That doesn't look like a valid QR code.");
   }
@@ -433,16 +437,17 @@ export async function adminCheckInByToken(
   const { data, error } = await supabase.rpc("admin_check_in_by_token", {
     p_token: parsed.data.token,
     p_note: parsed.data.note ?? null,
+    p_event_id: parsed.data.eventId,
   });
   if (error) return mapPgError(error);
 
   const row = Array.isArray(data) ? data[0] : data;
-  const eventId = row?.out_event_id as string | undefined;
+  const outEventId = row?.out_event_id as string | undefined;
   const userId = (row?.out_user_id as string | null | undefined) ?? null;
-  if (!eventId) return err("INTERNAL", "Check-in did not return a result.");
+  if (!outEventId) return err("INTERNAL", "Check-in did not return a result.");
 
-  revalidateEventPaths(eventId);
-  return ok({ eventId, userId });
+  revalidateEventPaths(outEventId);
+  return ok({ eventId: outEventId, userId });
 }
 
 const correctAttendanceSchema = z.object({
