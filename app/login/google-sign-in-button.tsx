@@ -1,50 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/browser";
+import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
 
-export function GoogleSignInButton({ next }: { next?: string }) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function GoogleSignInButton({
+  next,
+  autoStart = false,
+}: {
+  next?: string;
+  autoStart?: boolean;
+}) {
+  const { pending, error, signIn } = useGoogleSignIn(next);
+  const firedRef = useRef(false);
 
-  async function onClick() {
-    setPending(true);
-    setError(null);
-    const supabase = createClient();
-
-    // Build the callback URL. Keep `next` as a query param so the callback can honor it
-    // after a successful OAuth exchange.
-    const redirectTo = new URL(
-      "/auth/callback",
-      window.location.origin
-    );
-    if (next && next.startsWith("/")) {
-      redirectTo.searchParams.set("next", next);
+  // Every route that lands on /login (middleware bouncing a signed-out
+  // visitor off a protected page, a stray Link to /login, etc.) should skip
+  // straight to Google instead of waiting for a second click here. Only
+  // skip the auto-fire when arriving via an error (e.g. the user just
+  // cancelled) — auto-retrying that would loop straight back to Google.
+  //
+  // firedRef guards against React Strict Mode's dev-only double-invoke of
+  // effects: without it this fires signInWithOAuth twice on one page load,
+  // generating two competing PKCE attempts — which is exactly what produces
+  // a "state has already been used" error from Supabase.
+  useEffect(() => {
+    if (autoStart && !firedRef.current) {
+      firedRef.current = true;
+      signIn();
     }
-
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: redirectTo.toString(),
-        queryParams: { access_type: "offline", prompt: "select_account" },
-      },
-    });
-
-    if (authError) {
-      setPending(false);
-      setError(authError.message);
-      return;
-    }
-    // On success Supabase redirects the browser; no further work here.
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   return (
     <div className="space-y-2">
       <Button
         type="button"
-        onClick={onClick}
+        onClick={() => signIn()}
         disabled={pending}
         size="lg"
         className="h-[46px] w-full rounded-full bg-white text-base font-medium text-[#151515] shadow-[0_3px_3px_rgba(0,0,0,0.1),0_8px_7px_rgba(0,0,0,0.13)] hover:bg-white/90 active:scale-[0.99]"

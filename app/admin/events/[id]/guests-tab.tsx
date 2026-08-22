@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   adminCheckIn,
+  adminCheckInByToken,
   correctAttendance,
   inviteMemberByEmail,
   promoteWaitlistedMember,
@@ -60,10 +61,26 @@ export function GuestsTab({
   );
 }
 
-// Account-free guest RSVPs (2026-08-21 decision). Read-only for now: no
-// check-in/promote actions since guests have no checkin_token/attendance
-// wiring yet.
+// Account-free guest RSVPs (2026-08-21 decision). Guests now carry their own
+// checkin_token, so check-in runs through adminCheckInByToken — literally the
+// same server action + RPC the QR scanner uses, since the door has one token
+// space regardless of whether the ticket belongs to a member or a guest. No
+// promote action yet: waitlist promotion is still member-only (promote_
+// waitlisted_member takes a user_id).
 function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function onCheckIn(token: string) {
+    setError(null);
+    startTransition(async () => {
+      const r = await adminCheckInByToken(token);
+      if (!r.ok) setError(r.error.message);
+      else router.refresh();
+    });
+  }
+
   return (
     <FoldSection
       summary={
@@ -76,6 +93,15 @@ function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
         Signed-out visitors who registered without a member account.
       </p>
 
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {error}
+        </div>
+      ) : null}
+
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No guest RSVPs yet.</p>
       ) : (
@@ -83,7 +109,7 @@ function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
           {rows.map((r) => (
             <div
               key={r.id}
-              className="flex items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/60 px-4 py-3 last:border-b-0"
             >
               {initialsAvatar(r.name)}
               <div className="min-w-0 flex-1">
@@ -92,7 +118,29 @@ function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
                   {r.email} · {r.phone}
                 </p>
               </div>
+              <p className="text-xs">
+                {r.checked_in_at ? (
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    Yes ·{" "}
+                    {new Date(r.checked_in_at).toLocaleTimeString()}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </p>
               <RsvpBadge status={r.status} />
+              {/* Token is null unless the guest is 'going'; a waitlisted or
+                  cancelled guest has no ticket to redeem. */}
+              {r.checkin_token && !r.checked_in_at ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => onCheckIn(r.checkin_token as string)}
+                  disabled={pending}
+                >
+                  Check in
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>

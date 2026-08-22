@@ -13,16 +13,19 @@ import {
   enqueueEventCancellation,
   enqueueEventReminder,
   sendEventRsvpConfirmation,
+  sendGuestRsvpConfirmation,
 } from "@/lib/email/events";
 import { type ActionResult, err, ok } from "./result";
 import {
   cancelEventSchema,
   createEventCoverUploadUrlSchema,
   createEventSchema,
+  guestRsvpToEventSchema,
   rsvpToEventSchema,
   updateEventSchema,
   type CreateEventCoverUploadUrlInput,
   type CreateEventInput,
+  type GuestRsvpToEventInput,
   type RsvpDesired,
   type UpdateEventInput,
 } from "./event-schemas";
@@ -407,10 +410,17 @@ const adminCheckInByTokenSchema = z.object({
 // token string; this resolves it to (event_id, user_id) and writes through
 // the same event_attendances insert path as adminCheckIn above, just via
 // admin_check_in_by_token instead of admin_check_in_member.
+//
+// One token space covers members and guests (2026-08-21 guest-ticket
+// decision): the RPC falls back to event_guest_rsvps when the token isn't a
+// member's, writing to event_guest_attendances and returning a NULL
+// out_user_id. So userId is nullable here — a guest check-in has no auth
+// identity to name, and treating a null as failure would report a successful
+// scan as an error.
 export async function adminCheckInByToken(
   token: string,
   note?: string | null
-): Promise<ActionResult<{ eventId: string; userId: string }>> {
+): Promise<ActionResult<{ eventId: string; userId: string | null }>> {
   const parsed = adminCheckInByTokenSchema.safeParse({ token, note });
   if (!parsed.success) {
     return err("INVALID_INPUT", "That doesn't look like a valid QR code.");
@@ -428,8 +438,8 @@ export async function adminCheckInByToken(
 
   const row = Array.isArray(data) ? data[0] : data;
   const eventId = row?.out_event_id as string | undefined;
-  const userId = row?.out_user_id as string | undefined;
-  if (!eventId || !userId) return err("INTERNAL", "Check-in did not return a result.");
+  const userId = (row?.out_user_id as string | null | undefined) ?? null;
+  if (!eventId) return err("INTERNAL", "Check-in did not return a result.");
 
   revalidateEventPaths(eventId);
   return ok({ eventId, userId });
@@ -568,6 +578,56 @@ export async function rsvpToEvent(
   // We don't have the slug here (RPC only returns status); revalidate the
   // /events list + dashboard unconditionally and let the detail page
   // revalidate via its own server render on the next visit.
+  revalidateMemberEventPaths();
+  return ok({ effectiveStatus: status });
+}
+
+// ---------------------------------------------------------------------------
+// Guest RSVP (2026-08-21 decision) — no Google sign-in, no profiles row.
+// Deliberately does not call requireAuthenticatedContext(): this is the one
+// event write path meant to work with zero session.
+// ---------------------------------------------------------------------------
+
+export async function guestRsvpToEvent(
+  rawInput: GuestRsvpToEventInput
+): Promise<ActionResult<{ effectiveStatus: EffectiveRsvpStatus }>> {
+  const parsed = guestRsvpToEventSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
+      field: first?.path.join("."),
+    });
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("guest_rsvp_to_event", {
+    p_event_id: parsed.data.eventId,
+    p_name: parsed.data.name,
+    p_email: parsed.data.email,
+    p_phone: parsed.data.phone,
+  });
+  if (error) return mapPgError(error);
+
+  const status = typeof data === "string" ? (data as EffectiveRsvpStatus) : null;
+  if (!status) {
+    return err("INTERNAL", "RSVP saved but effective status missing.");
+  }
+
+  // Same fire-and-forget contract as the member path: never awaited, so the
+  // guest sees "you're in" without waiting on delivery. Unlike the member
+  // path, the event's send_rsvp_email check lives inside the helper: an anon
+  // caller can't read `events` (RLS is authenticated-only) and the helper
+  // already fetches the row on the service-role client. Repeat submits are
+  // deduped by sendEmail's idempotencyKey rather than a prior-status read.
+  if (status === "going") {
+    void sendGuestRsvpConfirmation({
+      eventId: parsed.data.eventId,
+      guestEmail: parsed.data.email,
+    }).catch((e) => {
+      console.error("[events] guest rsvp confirmation send failed:", e);
+    });
+  }
+
   revalidateMemberEventPaths();
   return ok({ effectiveStatus: status });
 }

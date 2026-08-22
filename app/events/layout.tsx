@@ -8,7 +8,6 @@ import {
 } from "@/lib/auth/request-cache";
 import { env } from "@/lib/env";
 import { readTheme } from "@/lib/theme";
-import { Button } from "@/components/ui/button";
 
 import { MemberHeader } from "@/app/_components/member-header";
 import { ThemeShell } from "@/app/_components/theme-shell";
@@ -55,6 +54,8 @@ export default async function EventsLayout({
     (profile?.pending_domain_name as string | null | undefined) ?? null;
 
   const theme = await readTheme();
+  const showStudentNudge = !!state && !state.studentEmailVerified;
+  const showResumeNudge = !!state && !state.isAdmin && !state.hasCurrentResume;
 
   return (
     <ThemeShell initialTheme={theme}>
@@ -66,21 +67,27 @@ export default async function EventsLayout({
         showMembers={env.FEATURE_MEMBER_DIRECTORY}
         showEvents={env.FEATURE_EVENTS}
       />
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        {state && !state.studentEmailVerified ? (
-          <StudentEmailNudge pendingDomainName={pendingDomainName} />
-        ) : null}
-        {state && !state.isAdmin && !state.hasCurrentResume ? (
-          <ResumeNudge />
-        ) : null}
-        {children}
-      </main>
+      {/* Sticky right under the header (h-14 = top-14), not an inline card in
+          the page's own content flow — a soft "you can still RSVP" nudge
+          shouldn't read as its own content section competing with the page
+          for space. One sticky wrapper so up to two bars stack via normal
+          flow inside it, instead of each needing its own hand-computed
+          sticky offset. */}
+      {showStudentNudge || showResumeNudge ? (
+        <div className="sticky top-14 z-30">
+          {showStudentNudge ? (
+            <StudentEmailNudge pendingDomainName={pendingDomainName} />
+          ) : null}
+          {showResumeNudge ? <ResumeNudge /> : null}
+        </div>
+      ) : null}
+      <main className="mx-auto max-w-5xl px-4 pb-8">{children}</main>
     </ThemeShell>
   );
 }
 
-// Matches the dashboard nudge copy + styling. Kept inline instead of
-// importing from /profile to avoid a cross-surface dependency.
+// Matches the dashboard nudge copy. Kept inline instead of importing from
+// /profile to avoid a cross-surface dependency.
 function StudentEmailNudge({
   pendingDomainName,
 }: {
@@ -88,56 +95,61 @@ function StudentEmailNudge({
 }) {
   if (pendingDomainName) {
     return (
-      <section className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-        <div>
-          <p className="font-medium text-foreground">
-            {pendingDomainName} is coming soon
-          </p>
-          <p className="mt-1 text-muted-foreground">
-            Your school isn&apos;t on our verification list yet. You can still
-            RSVP to events, but you won&apos;t appear as a verified student to
-            hosts until we add it.
-          </p>
-        </div>
-        <Button asChild size="sm" variant="outline">
-          <Link href="/onboarding/verify-email">Change email</Link>
-        </Button>
-      </section>
+      <NudgeBar
+        headline={`${pendingDomainName} is coming soon`}
+        detail="Your school isn't on our verification list yet. You can still RSVP to events, but you won't appear as a verified student to hosts until we add it."
+        href="/onboarding/verify-email"
+        cta="Change email"
+      />
     );
   }
   return (
-    <section className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-      <div>
-        <p className="font-medium text-foreground">
-          Verify your student email to fully participate in events
-        </p>
-        <p className="mt-1 text-muted-foreground">
-          You can RSVP without verification, but hosts rely on verified student
-          status for school-gated events.
-        </p>
-      </div>
-      <Button asChild size="sm">
-        <Link href="/onboarding/verify-email">Verify now</Link>
-      </Button>
-    </section>
+    <NudgeBar
+      headline="Verify your student email to fully participate in events"
+      detail="You can RSVP without verification, but hosts rely on verified student status for school-gated events."
+      href="/onboarding/verify-email"
+      cta="Verify now"
+    />
   );
 }
 
 function ResumeNudge() {
   return (
-    <section className="mb-6 flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-      <div>
-        <p className="font-medium text-foreground">
-          Add your resume so recruiters can find you
-        </p>
-        <p className="mt-1 text-muted-foreground">
-          Recruiters only see profiles with a resume on file. You can still
-          RSVP without one.
-        </p>
+    <NudgeBar
+      headline="Add your resume so recruiters can find you"
+      detail="Recruiters only see profiles with a resume on file — you can still RSVP without one."
+      href="/profile/settings/resume"
+      cta="Upload resume"
+    />
+  );
+}
+
+// Headline + CTA share the top line (matches the old card's title-plus-button
+// layout); the explanatory sentence sits below it, dimmer — two lines, not
+// one crammed run-on sentence.
+function NudgeBar({
+  headline,
+  detail,
+  href,
+  cta,
+}: {
+  headline: string;
+  detail: string;
+  href: string;
+  cta: string;
+}) {
+  return (
+    <div className="border-b border-amber-500/30 bg-amber-500/20 px-4 py-1.5 text-center text-xs sm:text-sm">
+      <div className="flex flex-wrap items-center justify-center gap-x-2">
+        <span className="font-medium text-foreground">{headline}</span>
+        <Link
+          href={href}
+          className="font-semibold text-amber-700 underline-offset-2 hover:underline dark:text-amber-300"
+        >
+          {cta} →
+        </Link>
       </div>
-      <Button asChild size="sm">
-        <Link href="/profile/settings/resume">Upload resume</Link>
-      </Button>
-    </section>
+      <p className="mt-0.5 text-muted-foreground">{detail}</p>
+    </div>
   );
 }

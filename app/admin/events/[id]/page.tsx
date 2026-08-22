@@ -117,6 +117,7 @@ export default async function AdminEventDetailPage({
     { count: liveGoingCount },
     { count: waitlistedCount },
     { count: historicalGoingCount },
+    { count: guestGoingCount },
   ] = await Promise.all([
     resolveCoverUrl(admin, ev.cover_image_path),
     admin
@@ -134,8 +135,18 @@ export default async function AdminEventDetailPage({
       .select("*", { count: "exact", head: true })
       .eq("event_id", ev.id)
       .ilike("approval_status", "approved"),
+    // Capacity is one shared pool across members + guests (2026-08-21
+    // guest-RSVP decision), so the header count has to include guests or an
+    // officer reads "0 going" on an event that already has registrations.
+    // Direct table read is fine here: this is the service-role client.
+    admin
+      .from("event_guest_rsvps")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .eq("status", "going"),
   ]);
-  const goingCount = (liveGoingCount ?? 0) + (historicalGoingCount ?? 0);
+  const goingCount =
+    (liveGoingCount ?? 0) + (historicalGoingCount ?? 0) + (guestGoingCount ?? 0);
 
   const startDate = new Date(ev.starts_at);
 
@@ -431,6 +442,8 @@ async function GuestsTabServer({
     status: r.status as GuestRsvpRow["status"],
     waitlisted_at: (r.waitlisted_at as string | null) ?? null,
     created_at: r.created_at as string,
+    checkin_token: (r.checkin_token as string | null) ?? null,
+    checked_in_at: (r.checked_in_at as string | null) ?? null,
   }));
 
   return (

@@ -7,6 +7,7 @@ import { CalendarDays, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
 
 // Shared member-area nav (Events/Members). Previously each of
 // app/profile, app/members, app/events hand-rolled its own header and
@@ -21,19 +22,26 @@ import { cn } from "@/lib/utils";
 export function SiteNav({
   showMembers,
   showEvents,
+  signedIn,
 }: {
   showMembers: boolean;
   showEvents: boolean;
+  signedIn: boolean;
 }) {
   const pathname = usePathname() ?? "";
+  const { signIn: signInWithGoogle } = useGoogleSignIn();
 
-  type Item = { href: string; label: string; icon: LucideIcon };
+  // /members requires a session (middleware bounces signed-out visitors to
+  // /login); /events doesn't — the bare list is public. A gated item, when
+  // signed out, fires Google directly instead of navigating into that
+  // redirect chain, same as the header's Sign in button.
+  type Item = { href: string; label: string; icon: LucideIcon; gated: boolean };
   const items: Item[] = [];
   if (showEvents) {
-    items.push({ href: "/events", label: "Events", icon: CalendarDays });
+    items.push({ href: "/events", label: "Events", icon: CalendarDays, gated: false });
   }
   if (showMembers) {
-    items.push({ href: "/members", label: "Members", icon: Users });
+    items.push({ href: "/members", label: "Members", icon: Users, gated: true });
   }
 
   const routeHref =
@@ -104,8 +112,30 @@ export function SiteNav({
         />
       ) : null}
 
-      {items.map(({ href, label, icon: Icon }) => {
+      {items.map(({ href, label, icon: Icon, gated }) => {
         const active = activeHref === href;
+        const itemClassName = cn(
+          "relative z-10 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm transition-colors sm:px-3",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          active
+            ? "font-medium text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        );
+
+        if (gated && !signedIn) {
+          return (
+            <button
+              key={href}
+              type="button"
+              onClick={() => signInWithGoogle(href)}
+              className={itemClassName}
+            >
+              <Icon size={15} strokeWidth={1.75} aria-hidden />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          );
+        }
+
         return (
           <Link
             key={href}
@@ -116,13 +146,7 @@ export function SiteNav({
             }}
             onClick={() => setPendingHref(href)}
             aria-current={pathname.startsWith(href) ? "page" : undefined}
-            className={cn(
-              "relative z-10 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm transition-colors sm:px-3",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              active
-                ? "font-medium text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
+            className={itemClassName}
           >
             <Icon size={15} strokeWidth={1.75} aria-hidden />
             <span className="hidden sm:inline">{label}</span>

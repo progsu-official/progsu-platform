@@ -11,6 +11,9 @@ import EventReminderEmail, {
 import EventRsvpConfirmationEmail, {
   eventRsvpConfirmationPlainText,
 } from "@/emails/EventRsvpConfirmationEmail";
+import GuestRsvpConfirmationEmail, {
+  guestRsvpConfirmationPlainText,
+} from "@/emails/GuestRsvpConfirmationEmail";
 import { env } from "@/lib/env";
 import { sendEmail, type SendEmailResult } from "@/lib/email/resend";
 import { log } from "@/lib/log";
@@ -41,6 +44,7 @@ type EventRow = {
   location_url: string | null;
   status: string;
   cancellation_reason: string | null;
+  send_rsvp_email: boolean;
 };
 
 type ProfileRow = {
@@ -67,6 +71,11 @@ function eventUrlFor(slug: string): string {
   return `${base}/events/${slug}`;
 }
 
+export function guestTicketUrlFor(token: string): string {
+  const base = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  return `${base}/tickets/${token}`;
+}
+
 function memberNameFor(profile: ProfileRow): string {
   const name =
     profile.preferred_name?.trim() || profile.first_name?.trim() || null;
@@ -80,7 +89,7 @@ async function fetchEvent(
   const { data, error } = await admin
     .from("events")
     .select(
-      "id, slug, title, starts_at, ends_at, location_text, location_url, status, cancellation_reason"
+      "id, slug, title, starts_at, ends_at, location_text, location_url, status, cancellation_reason, send_rsvp_email"
     )
     .eq("id", eventId)
     .maybeSingle<EventRow>();
@@ -300,6 +309,129 @@ export async function sendEventRsvpConfirmation({
     action: "send_event_rsvp_confirmation",
     event_id: eventId,
     user_id: userId,
+    ok: sendResult.ok,
+    transport: sendResult.ok ? sendResult.transport : undefined,
+    error_code: !sendResult.ok ? sendResult.code : undefined,
+  });
+
+  return sendResult;
+}
+
+// ---------------------------------------------------------------------------
+// sendGuestRsvpConfirmation — inline send for an account-free guest
+// registration (2026-08-21 guest-ticket decision).
+//
+// Takes only (eventId, guestEmail): the guest's display name and check-in
+// token are read from event_guest_rsvps here rather than passed in, so the
+// email can never disagree with the row the RPC just wrote.
+//
+// Durable record goes to audit_log, not event_notification_jobs — that table's
+// user_id FKs auth.users and a guest has no auth identity, so an enqueued
+// guest job would be a row the worker can only ever mark failed.
+// ---------------------------------------------------------------------------
+export async function sendGuestRsvpConfirmation({
+  eventId,
+  guestEmail,
+}: {
+  eventId: string;
+  guestEmail: string;
+}): Promise<SendEmailResult> {
+  const admin = createAdminClient();
+
+  type GuestRow = { name: string; checkin_token: string | null };
+  const [event, guestRes] = await Promise.all([
+    fetchEvent(admin, eventId),
+    admin
+      .from("event_guest_rsvps")
+      .select("name, checkin_token")
+      .eq("event_id", eventId)
+      .eq("email", guestEmail)
+      .maybeSingle<GuestRow>(),
+  ]);
+
+  if (!event) {
+    return {
+      ok: false,
+      code: "CONFIG_ERROR",
+      message: `event ${eventId} not found`,
+    };
+  }
+  if (guestRes.error || !guestRes.data) {
+    return {
+      ok: false,
+      code: "CONFIG_ERROR",
+      message: `guest rsvp not found for event ${eventId}: ${guestRes.error?.message ?? "no row"}`,
+    };
+  }
+  // The caller is an anon server action and can't read `events` itself, so the
+  // opt-out flag is enforced here instead of at the call site (the member path
+  // checks it in rsvpToEvent, where a user-context read is available).
+  if (!event.send_rsvp_email) {
+    return {
+      ok: false,
+      code: "CONFIG_ERROR",
+      message: `event ${eventId} has send_rsvp_email = false`,
+    };
+  }
+  const guest = guestRes.data;
+  if (!guest.checkin_token) {
+    // Only a 'going' row carries a token. A waitlisted guest has no ticket to
+    // link to yet, so there is no confirmation to send.
+    return {
+      ok: false,
+      code: "CONFIG_ERROR",
+      message: `guest rsvp for event ${eventId} has no checkin_token`,
+    };
+  }
+
+  const eventUrl = eventUrlFor(event.slug);
+  const ticketUrl = guestTicketUrlFor(guest.checkin_token);
+  const props = {
+    guestName: guest.name,
+    eventTitle: event.title,
+    startsAt: new Date(event.starts_at),
+    endsAt: new Date(event.ends_at),
+    location: event.location_text,
+    eventUrl,
+    ticketUrl,
+    siteUrl: env.NEXT_PUBLIC_SITE_URL,
+  };
+
+  const sendResult = await sendEmail({
+    to: guestEmail,
+    subject: `You're registered: ${event.title}`,
+    react: GuestRsvpConfirmationEmail(props),
+    text: guestRsvpConfirmationPlainText(props),
+    idempotencyKey: `guest-rsvp-confirm:${eventId}:${guestEmail}`,
+    tags: { kind: "guest_rsvp_confirmation", event_id: eventId },
+  });
+
+  // Best-effort audit. A failed audit write must not turn a delivered email
+  // into a reported failure, so the result is logged and dropped.
+  const { error: auditErr } = await admin.rpc("write_audit", {
+    p_action: "event.guest_confirmation_email",
+    p_actor: null,
+    p_target: null,
+    p_metadata: {
+      event_id: eventId,
+      email: guestEmail,
+      event_url: eventUrl,
+      ticket_url: ticketUrl,
+      ok: sendResult.ok,
+      error_code: sendResult.ok ? null : sendResult.code,
+    },
+  });
+  if (auditErr) {
+    log.warn("guest confirmation: audit write failed", {
+      action: "send_guest_rsvp_confirmation",
+      event_id: eventId,
+      error_message: auditErr.message,
+    });
+  }
+
+  log.info("guest rsvp confirmation send", {
+    action: "send_guest_rsvp_confirmation",
+    event_id: eventId,
     ok: sendResult.ok,
     transport: sendResult.ok ? sendResult.transport : undefined,
     error_code: !sendResult.ok ? sendResult.code : undefined,

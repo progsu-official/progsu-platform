@@ -60,6 +60,11 @@ export type GuestRsvpRow = {
   status: GuestRsvpStatus;
   waitlisted_at: string | null;
   created_at: string;
+  // Present only while status is 'going' — the DB clears it on
+  // cancel/waitlist. Drives the per-row check-in through the same
+  // admin_check_in_by_token path staff's QR scanner uses.
+  checkin_token: string | null;
+  checked_in_at: string | null;
 };
 
 export type RosterRow = {
