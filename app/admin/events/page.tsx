@@ -85,22 +85,37 @@ export default async function AdminEventsPage({
   const rsvpCountByEvent = new Map<string, { going: number; waitlisted: number }>();
   const hostsByEvent = new Map<string, Array<{ display_name: string; sort_order: number }>>();
   if (ids.length > 0) {
-    const [{ data: rsvps }, { data: hosts }] = await Promise.all([
-      admin
-        .from("event_rsvps")
-        .select("event_id, status")
-        .in("event_id", ids)
-        .in("status", ["going", "waitlisted"]),
-      admin
-        .from("event_hosts")
-        .select("event_id, display_name, sort_order")
-        .in("event_id", ids),
-    ]);
+    const [{ data: rsvps }, { data: hosts }, { data: historicalAttendances }] =
+      await Promise.all([
+        admin
+          .from("event_rsvps")
+          .select("event_id, status")
+          .in("event_id", ids)
+          .in("status", ["going", "waitlisted"]),
+        admin
+          .from("event_hosts")
+          .select("event_id, display_name, sort_order")
+          .in("event_id", ids),
+        // Historical (pre-platform) events have no event_rsvps rows at all —
+        // approval_status='approved' is the historical equivalent of "going"
+        // (see supabase/migrations/20260821030000_*).
+        admin
+          .from("historical_event_attendances")
+          .select("event_id, approval_status")
+          .in("event_id", ids),
+      ]);
     for (const r of rsvps ?? []) {
       const id = r.event_id as string;
       const entry = rsvpCountByEvent.get(id) ?? { going: 0, waitlisted: 0 };
       if (r.status === "going") entry.going += 1;
       else if (r.status === "waitlisted") entry.waitlisted += 1;
+      rsvpCountByEvent.set(id, entry);
+    }
+    for (const a of historicalAttendances ?? []) {
+      if ((a.approval_status as string | null)?.toLowerCase() !== "approved") continue;
+      const id = a.event_id as string;
+      const entry = rsvpCountByEvent.get(id) ?? { going: 0, waitlisted: 0 };
+      entry.going += 1;
       rsvpCountByEvent.set(id, entry);
     }
     for (const h of hosts ?? []) {

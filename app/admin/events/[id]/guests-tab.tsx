@@ -15,7 +15,7 @@ import {
 } from "@/lib/actions/events";
 
 import { FoldSection } from "./_components/fold-section";
-import type { EventRecord, RosterRow } from "./types";
+import type { EventRecord, GuestRsvpRow, RosterRow } from "./types";
 
 type InviteRow = {
   user_id: string;
@@ -43,17 +43,61 @@ export function GuestsTab({
   event,
   rows,
   invites,
+  guestRsvps,
 }: {
   eventId: string;
   event: EventRecord;
   rows: RosterRow[];
   invites: InviteRow[];
+  guestRsvps: GuestRsvpRow[];
 }) {
   return (
     <div className="space-y-6">
       <RosterSection eventId={eventId} rows={rows} />
+      <GuestRsvpSection rows={guestRsvps} />
       <InviteSection eventId={eventId} event={event} invites={invites} />
     </div>
+  );
+}
+
+// Account-free guest RSVPs (2026-08-21 decision). Read-only for now: no
+// check-in/promote actions since guests have no checkin_token/attendance
+// wiring yet.
+function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
+  return (
+    <FoldSection
+      summary={
+        <h2 className="text-base font-semibold text-foreground">
+          Guest RSVPs ({rows.length})
+        </h2>
+      }
+    >
+      <p className="text-xs text-muted-foreground">
+        Signed-out visitors who registered without a member account.
+      </p>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No guest RSVPs yet.</p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border/70">
+          {rows.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0"
+            >
+              {initialsAvatar(r.name)}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] text-foreground">{r.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {r.email} · {r.phone}
+                </p>
+              </div>
+              <RsvpBadge status={r.status} />
+            </div>
+          ))}
+        </div>
+      )}
+    </FoldSection>
   );
 }
 
@@ -313,10 +357,13 @@ function RosterSection({
             {rows.map((r) => {
               const name =
                 `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
-                r.user_id.slice(0, 8);
-              const email = r.student_email ?? r.google_email ?? "—";
+                (r.user_id ?? r.legacy_member_id ?? "").slice(0, 8);
+              const email = r.student_email ?? r.google_email ?? r.legacy_email ?? "—";
               return (
-                <tr key={r.user_id} className="transition-colors hover:bg-muted/20">
+                <tr
+                  key={r.user_id ?? r.legacy_member_id}
+                  className="transition-colors hover:bg-muted/20"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {initialsAvatar(name)}
@@ -389,10 +436,10 @@ function RosterSection({
           rows.map((r) => {
             const name =
               `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
-              r.user_id.slice(0, 8);
-            const email = r.student_email ?? r.google_email ?? "—";
+              (r.user_id ?? r.legacy_member_id ?? "").slice(0, 8);
+            const email = r.student_email ?? r.google_email ?? r.legacy_email ?? "—";
             return (
-              <div key={r.user_id} className="space-y-2 p-3">
+              <div key={r.user_id ?? r.legacy_member_id} className="space-y-2 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
                     {initialsAvatar(name)}
@@ -447,10 +494,10 @@ function RosterSection({
   );
 }
 
-function RsvpBadge({
+export function RsvpBadge({
   status,
 }: {
-  status: RosterRow["rsvp_status"];
+  status: RosterRow["rsvp_status"] | GuestRsvpRow["status"];
 }) {
   if (!status) {
     return <span className="text-xs text-muted-foreground">—</span>;
@@ -486,6 +533,14 @@ function RosterRowActions({
     fn: () => Promise<{ ok: true } | { ok: false; error: { message: string } }>
   ) => void;
 }) {
+  const userId = row.user_id;
+  if (row.is_historical || !userId) {
+    return (
+      <span className="text-xs text-muted-foreground" title="Imported from a pre-platform source; no live account to act on.">
+        Imported
+      </span>
+    );
+  }
   return (
     <div className="flex flex-wrap gap-1.5">
       {row.rsvp_status === "waitlisted" ? (
@@ -493,7 +548,7 @@ function RosterRowActions({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => run(() => promoteWaitlistedMember(eventId, row.user_id))}
+          onClick={() => run(() => promoteWaitlistedMember(eventId, userId))}
           disabled={pending}
         >
           Promote
@@ -503,7 +558,7 @@ function RosterRowActions({
         <Button
           type="button"
           size="sm"
-          onClick={() => run(() => adminCheckIn(eventId, row.user_id))}
+          onClick={() => run(() => adminCheckIn(eventId, userId))}
           disabled={pending}
         >
           Check in
@@ -514,7 +569,7 @@ function RosterRowActions({
           size="sm"
           variant="outline"
           onClick={() =>
-            run(() => correctAttendance(eventId, row.user_id, "remove"))
+            run(() => correctAttendance(eventId, userId, "remove"))
           }
           disabled={pending}
         >

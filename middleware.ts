@@ -13,7 +13,10 @@ const ADMIN_PREFIXES = ["/admin"];
 const ONBOARDING_PREFIX = "/onboarding";
 const MEMBER_PREFIXES = ["/profile", "/events", "/members"];
 
-function isPublicPath(pathname: string): boolean {
+// Exported for reuse by lib/actions/session.ts: logout needs the same
+// "does this path have a signed-out view" classification so it can land the
+// user back where they were instead of always bouncing to /login.
+export function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;
   return PUBLIC_PREFIXES.some(
     (p) => p !== "/" && (pathname === p || pathname.startsWith(p + "/"))

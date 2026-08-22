@@ -27,6 +27,7 @@ type AnalyticsData = {
     cancellation_reason?: string | null;
     reminder_sent_at?: string | null;
     archived_at?: string | null;
+    import_source?: string | null;
   };
   rsvp?: {
     going?: number;
@@ -68,6 +69,12 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
 
   return (
     <div className="space-y-6">
+      {event.import_source ? (
+        <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Imported from a pre-platform source. This event never had a live RSVP flow — Going
+          reflects the historical registration list, not a real-time RSVP count.
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatTile
           icon={Users}

@@ -15,7 +15,7 @@ import { GuestsTab } from "./guests-tab";
 import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
 import { TabNav } from "./tab-nav";
-import type { EventRecord, RosterRow } from "./types";
+import type { EventRecord, GuestRsvpRow, RosterRow } from "./types";
 
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
   timeZone: EVENT_TIME_ZONE,
@@ -68,7 +68,7 @@ export default async function AdminEventDetailPage({
   const { data: event } = await admin
     .from("events")
     .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at"
+      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source"
     )
     .eq("id", id)
     .maybeSingle();
@@ -104,6 +104,7 @@ export default async function AdminEventDetailPage({
     archived_at: (event.archived_at as string | null) ?? null,
     created_at: event.created_at as string,
     updated_at: event.updated_at as string,
+    import_source: (event.import_source as string | null) ?? null,
     hosts: (hosts ?? []).map((h) => ({
       display_name: h.display_name as string,
       profile_id: (h.profile_id as string | null) ?? null,
@@ -111,20 +112,30 @@ export default async function AdminEventDetailPage({
     })),
   };
 
-  const [coverUrl, { count: goingCount }, { count: waitlistedCount }] =
-    await Promise.all([
-      resolveCoverUrl(admin, ev.cover_image_path),
-      admin
-        .from("event_rsvps")
-        .select("*", { count: "exact", head: true })
-        .eq("event_id", ev.id)
-        .eq("status", "going"),
-      admin
-        .from("event_rsvps")
-        .select("*", { count: "exact", head: true })
-        .eq("event_id", ev.id)
-        .eq("status", "waitlisted"),
-    ]);
+  const [
+    coverUrl,
+    { count: liveGoingCount },
+    { count: waitlistedCount },
+    { count: historicalGoingCount },
+  ] = await Promise.all([
+    resolveCoverUrl(admin, ev.cover_image_path),
+    admin
+      .from("event_rsvps")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .eq("status", "going"),
+    admin
+      .from("event_rsvps")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .eq("status", "waitlisted"),
+    admin
+      .from("historical_event_attendances")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .ilike("approval_status", "approved"),
+  ]);
+  const goingCount = (liveGoingCount ?? 0) + (historicalGoingCount ?? 0);
 
   const startDate = new Date(ev.starts_at);
 
@@ -343,16 +354,19 @@ async function GuestsTabServer({
   // auth.uid() and the RPC would raise "admin only". The parent layout
   // has already gated on is_admin so the caller here is guaranteed admin.
   const supabase = await createClient();
-  const [{ data, error }, { data: invites }] = await Promise.all([
-    supabase.rpc("admin_event_roster_for", { p_event_id: eventId }),
-    admin
-      .from("event_invites")
-      .select(
-        "user_id, invited_by, invited_at, revoked_at, profiles!event_invites_user_id_fkey(first_name, last_name, google_email, student_email)"
-      )
-      .eq("event_id", eventId)
-      .order("invited_at", { ascending: false }),
-  ]);
+  const [{ data, error }, { data: invites }, { data: guestRsvpData }] =
+    await Promise.all([
+      supabase.rpc("admin_event_roster_for", { p_event_id: eventId }),
+      admin
+        .from("event_invites")
+        .select(
+          "user_id, invited_by, invited_at, revoked_at, profiles!event_invites_user_id_fkey(first_name, last_name, google_email, student_email)"
+        )
+        .eq("event_id", eventId)
+        .order("invited_at", { ascending: false }),
+      // Same admin-only RPC pattern as admin_event_roster_for above.
+      supabase.rpc("admin_event_guest_rsvps_for", { p_event_id: eventId }),
+    ]);
   if (error) {
     return (
       <p className="text-sm text-destructive">
@@ -363,7 +377,7 @@ async function GuestsTabServer({
   // RPC return isn't typed in the generated Database types, so coerce.
   const raw = (data ?? []) as Array<Record<string, unknown>>;
   const rows: RosterRow[] = raw.map((r) => ({
-    user_id: r.user_id as string,
+    user_id: (r.user_id as string | null) ?? null,
     first_name: (r.first_name as string | null) ?? null,
     last_name: (r.last_name as string | null) ?? null,
     preferred_name: (r.preferred_name as string | null) ?? null,
@@ -381,6 +395,9 @@ async function GuestsTabServer({
     invited: !!r.invited,
     invited_by: (r.invited_by as string | null) ?? null,
     invited_at: (r.invited_at as string | null) ?? null,
+    is_historical: !!r.is_historical,
+    legacy_member_id: (r.legacy_member_id as string | null) ?? null,
+    legacy_email: (r.legacy_email as string | null) ?? null,
   }));
 
   type ProfileRef = {
@@ -404,12 +421,25 @@ async function GuestsTabServer({
     };
   });
 
+  const guestRsvpRows = (
+    (guestRsvpData ?? []) as Array<Record<string, unknown>>
+  ).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    email: r.email as string,
+    phone: r.phone as string,
+    status: r.status as GuestRsvpRow["status"],
+    waitlisted_at: (r.waitlisted_at as string | null) ?? null,
+    created_at: r.created_at as string,
+  }));
+
   return (
     <GuestsTab
       eventId={eventId}
       event={event}
       rows={rows}
       invites={inviteRows}
+      guestRsvps={guestRsvpRows}
     />
   );
 }
