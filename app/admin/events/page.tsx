@@ -62,7 +62,12 @@ export default async function AdminEventsPage({
     .order("starts_at", { ascending: false });
 
   const nowIso = new Date().toISOString();
-  if (tab === "past") {
+  if (tab === "all") {
+    // "All" reads as "everything you'd actually manage" — archived events
+    // already have their own tab, so surfacing them here too just buries
+    // active/draft/past events under old ones. (2026-08-22, per John)
+    query = query.neq("status", "archived");
+  } else if (tab === "past") {
     query = query.eq("status", "published").lt("ends_at", nowIso);
   } else if (tab === "published") {
     query = query.eq("status", "published").gte("ends_at", nowIso);
@@ -85,7 +90,7 @@ export default async function AdminEventsPage({
   const rsvpCountByEvent = new Map<string, { going: number; waitlisted: number }>();
   const hostsByEvent = new Map<string, Array<{ display_name: string; sort_order: number }>>();
   if (ids.length > 0) {
-    const [{ data: rsvps }, { data: hosts }, { data: historicalAttendances }] =
+    const [{ data: rsvps }, { data: hosts }, { data: historicalCounts }] =
       await Promise.all([
         admin
           .from("event_rsvps")
@@ -98,11 +103,12 @@ export default async function AdminEventsPage({
           .in("event_id", ids),
         // Historical (pre-platform) events have no event_rsvps rows at all —
         // approval_status='approved' is the historical equivalent of "going"
-        // (see supabase/migrations/20260821030000_*).
-        admin
-          .from("historical_event_attendances")
-          .select("event_id, approval_status")
-          .in("event_id", ids),
+        // (see supabase/migrations/20260821030000_*). Aggregated in Postgres
+        // (not fetched raw + counted in JS): historical_event_attendances can
+        // run into the thousands of rows, well past PostgREST's default
+        // response cap, which was silently truncating the raw fetch and
+        // undercounting well-attended historical events.
+        admin.rpc("historical_attendance_counts", { p_event_ids: ids }),
       ]);
     for (const r of rsvps ?? []) {
       const id = r.event_id as string;
@@ -111,11 +117,10 @@ export default async function AdminEventsPage({
       else if (r.status === "waitlisted") entry.waitlisted += 1;
       rsvpCountByEvent.set(id, entry);
     }
-    for (const a of historicalAttendances ?? []) {
-      if ((a.approval_status as string | null)?.toLowerCase() !== "approved") continue;
-      const id = a.event_id as string;
+    for (const c of historicalCounts ?? []) {
+      const id = c.event_id as string;
       const entry = rsvpCountByEvent.get(id) ?? { going: 0, waitlisted: 0 };
-      entry.going += 1;
+      entry.going += c.going_count as number;
       rsvpCountByEvent.set(id, entry);
     }
     for (const h of hosts ?? []) {
