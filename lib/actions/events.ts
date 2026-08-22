@@ -487,6 +487,34 @@ export async function correctAttendance(
   return ok({ corrected: true });
 }
 
+const removeRsvpSchema = z.object({
+  eventId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
+
+// Removes a member's RSVP outright — distinct from correctAttendance's
+// "remove" action, which only clears a check-in and leaves the RSVP intact.
+export async function removeRsvp(
+  eventId: string,
+  userId: string
+): Promise<ActionResult<{ removed: true }>> {
+  const parsed = removeRsvpSchema.safeParse({ eventId, userId });
+  if (!parsed.success) return err("INVALID_INPUT", "Invalid ids.");
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  const { error } = await supabase.rpc("admin_remove_rsvp", {
+    p_event_id: parsed.data.eventId,
+    p_user_id: parsed.data.userId,
+  });
+  if (error) return mapPgError(error);
+
+  revalidateEventPaths(parsed.data.eventId);
+  return ok({ removed: true });
+}
+
 // =====================================================================
 // Member actions (below the admin set). These share mapPgError above
 // and intentionally use the user-context `createClient()` — never the

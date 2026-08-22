@@ -10,6 +10,7 @@ import {
   adminCheckIn,
   adminCheckInByToken,
   correctAttendance,
+  removeRsvp,
   inviteMemberByEmail,
   promoteWaitlistedMember,
   revokeInvite,
@@ -624,6 +625,19 @@ function RosterRowActions({
           Remove attendance
         </Button>
       )}
+      <Button
+        type="button"
+        size="sm"
+        variant="destructive"
+        onClick={() => {
+          if (!window.confirm("Remove this RSVP? This can't be undone."))
+            return;
+          run(() => removeRsvp(eventId, userId));
+        }}
+        disabled={pending}
+      >
+        Remove RSVP
+      </Button>
     </div>
   );
 }
