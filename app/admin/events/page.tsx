@@ -62,7 +62,12 @@ export default async function AdminEventsPage({
     .order("starts_at", { ascending: false });
 
   const nowIso = new Date().toISOString();
-  if (tab === "past") {
+  if (tab === "all") {
+    // "All" reads as "everything you'd actually manage" — archived events
+    // already have their own tab, so surfacing them here too just buries
+    // active/draft/past events under old ones. (2026-08-22, per John)
+    query = query.neq("status", "archived");
+  } else if (tab === "past") {
     query = query.eq("status", "published").lt("ends_at", nowIso);
   } else if (tab === "published") {
     query = query.eq("status", "published").gte("ends_at", nowIso);
