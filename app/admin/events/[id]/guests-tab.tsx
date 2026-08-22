@@ -55,7 +55,7 @@ export function GuestsTab({
   return (
     <div className="space-y-6">
       <RosterSection eventId={eventId} rows={rows} />
-      <GuestRsvpSection rows={guestRsvps} />
+      <GuestRsvpSection eventId={eventId} rows={guestRsvps} />
       <InviteSection eventId={eventId} event={event} invites={invites} />
     </div>
   );
@@ -67,7 +67,13 @@ export function GuestsTab({
 // space regardless of whether the ticket belongs to a member or a guest. No
 // promote action yet: waitlist promotion is still member-only (promote_
 // waitlisted_member takes a user_id).
-function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
+function GuestRsvpSection({
+  eventId,
+  rows,
+}: {
+  eventId: string;
+  rows: GuestRsvpRow[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +81,7 @@ function GuestRsvpSection({ rows }: { rows: GuestRsvpRow[] }) {
   function onCheckIn(token: string) {
     setError(null);
     startTransition(async () => {
-      const r = await adminCheckInByToken(token);
+      const r = await adminCheckInByToken(token, eventId);
       if (!r.ok) setError(r.error.message);
       else router.refresh();
     });
