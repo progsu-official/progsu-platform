@@ -110,8 +110,14 @@ async function main() {
   const iEmail = idx("email");
   const iPhone = idx("phone_number");
   const iStatus = idx("approval_status");
-  const iGsuEmail = idx("GSU Email");
-  const iSms = header.findIndex((h) => h.startsWith("By checking this box"));
+  // Custom registration questions, not standard Luma columns — different
+  // events ask different questions (or none at all: $500 AI Ideathon and the
+  // Mercedes internship exports have no campus-email question, and
+  // "progirls: loop & lounge" phrases it "enter your GSU email" instead of
+  // "GSU Email"). Match loosely and tolerate absence rather than requiring
+  // one exact header string across every event's export.
+  const iGsuEmail = header.findIndex((h) => /gsu/i.test(h) && /email/i.test(h));
+  const iSms = header.findIndex((h) => /checking this box/i.test(h));
 
   const rows: LumaRow[] = lines.slice(1).map((line) => {
     const f = parseCsvLine(line);
@@ -120,7 +126,7 @@ async function main() {
       first_name: normText(f[iFirst]),
       last_name: normText(f[iLast]),
       personal_email: normEmail(f[iEmail]),
-      campus_email: fixCampusEmailTypo(normEmail(f[iGsuEmail])),
+      campus_email: iGsuEmail >= 0 ? fixCampusEmailTypo(normEmail(f[iGsuEmail])) : null,
       phone_number: normText(f[iPhone]),
       sms_interest: iSms >= 0 ? normText(f[iSms]) === "Yes" : null,
       approval_status: (f[iStatus] ?? "").trim(),
