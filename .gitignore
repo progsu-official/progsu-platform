@@ -51,3 +51,6 @@ next-env.d.ts
 /supabase/.env
 .claude/
 pnpm-workspace.yaml
+
+# service account keys
+.secrets/

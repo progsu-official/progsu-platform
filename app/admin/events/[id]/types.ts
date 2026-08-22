@@ -37,6 +37,9 @@ export type EventRecord = {
   created_at: string;
   updated_at: string;
   hosts: EventHost[];
+  // Null for live/platform-created events. Set for events backfilled from
+  // pre-platform data sources (see historical_event_attendances).
+  import_source: string | null;
 };
 
 export type RosterRsvpStatus =
@@ -46,8 +49,21 @@ export type RosterRsvpStatus =
   | "cancelled"
   | null;
 
+// Guest RSVP (2026-08-21 decision) — account-free, no user_id/profile.
+export type GuestRsvpStatus = "going" | "waitlisted" | "cancelled";
+
+export type GuestRsvpRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: GuestRsvpStatus;
+  waitlisted_at: string | null;
+  created_at: string;
+};
+
 export type RosterRow = {
-  user_id: string;
+  user_id: string | null;
   first_name: string | null;
   last_name: string | null;
   preferred_name: string | null;
@@ -65,4 +81,10 @@ export type RosterRow = {
   invited: boolean;
   invited_by: string | null;
   invited_at: string | null;
+  // Imported from a pre-platform source (see historical_event_attendances),
+  // identified by legacy_members instead of a profiles row. Promote/check-in/
+  // remove actions don't apply — those RPCs FK into profiles.
+  is_historical: boolean;
+  legacy_member_id: string | null;
+  legacy_email: string | null;
 };
