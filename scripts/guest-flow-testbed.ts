@@ -111,7 +111,7 @@ async function main() {
     console.log(`guest RSVPs (${guests?.length ?? 0}):`);
     for (const g of (guests ?? []) as Array<Record<string, unknown>>) {
       console.log(`  ${g.email}  ${g.status}`);
-      console.log(`    welcome page: ${site}/welcome/${g.claim_token}`);
+      console.log(`    welcome page: ${site}/joined/${g.claim_token}`);
     }
     console.log(`\nstaged identities (${staged?.length ?? 0}):`);
     for (const s of (staged ?? []) as Array<Record<string, unknown>>) {
@@ -144,7 +144,7 @@ function printPlaybook(site: string) {
   console.log(`Try these in order at ${site}/events/${SLUG}\n`);
   console.log("  1. NEW GUEST — Register with a school email and a phone that");
   console.log("     are not already on a member profile. Expect: redirect to");
-  console.log("     /welcome/<token> showing what is already on file, and one");
+  console.log("     /joined/<token> showing what is already on file, and one");
   console.log("     button to create the account.\n");
   console.log("  2. THE CLAIM — Press that button. On a local build it skips");
   console.log("     Google and signs in a throwaway account, but runs the real");

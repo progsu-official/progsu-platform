@@ -733,7 +733,7 @@ export type GuestClaimContext = {
   smsOptedIn: boolean;
 };
 
-// Read for /welcome/[token]. The token IS the credential — same posture as the
+// Read for /joined/[token]. The token IS the credential — same posture as the
 // guest ticket page. Returns null for an unknown token so the route can 404
 // without distinguishing "never existed" from "wrong".
 export async function getGuestClaimContext(

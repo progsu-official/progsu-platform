@@ -95,7 +95,7 @@ test("guest loop: register → confirmation email → ticket QR → staff check-
 
     // Since docs/16-guest-conversion the modal no longer shows a success card
     // — a successful RSVP redirects to the token-keyed /welcome page.
-    await guestPage.waitForURL(/\/welcome\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await guestPage.waitForURL(/\/joined\/[0-9a-f-]{36}$/, { timeout: 15_000 });
     await expect(
       guestPage.getByRole("button", { name: /create your account with google/i })
     ).toBeVisible({ timeout: 15_000 });

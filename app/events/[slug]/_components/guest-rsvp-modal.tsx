@@ -103,7 +103,7 @@ export function GuestRsvpModal({
     onSuccess(status);
     // Deliberately keeps `pending` true: the modal stays in its spinner state
     // until the navigation commits, rather than flashing an idle form.
-    router.push(`/welcome/${res.data.claimToken}`);
+    router.push(`/joined/${res.data.claimToken}`);
   }
 
   return createPortal(

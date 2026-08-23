@@ -71,7 +71,7 @@ they were choices, not defaults.
   an existing profile                   │
         │                               │
   no guest row created          guest row created
-  modal → "You already have      redirect → /welcome/[claim_token]
+  modal → "You already have      redirect → /joined/[claim_token]
   an account, sign in"                    │
                                    3 questions, one per step
                                    (major → graduation → looking for)
@@ -91,7 +91,7 @@ identity we intend to throw away.
 
 ### 3.2 The welcome page
 
-Route: `/welcome/[token]`. Sessionless, token-keyed, `force-dynamic`,
+Route: `/joined/[token]`. Sessionless, token-keyed, `force-dynamic`,
 `robots: { index: false, follow: false }` — the same posture as
 `app/tickets/[token]/page.tsx`, which is the existing precedent for a
 bearer-token page with no session.
@@ -403,7 +403,7 @@ Migrations, in order:
 | `20260823150600_lock_down_service_role_helpers.sql` | see below |
 | `20260823150700_guest_rsvp_backcompat.sql` | 4-arg shim so the schema is safe ahead of the deploy — see below |
 
-App: `/welcome/[token]` (+ layout), collision and SMS states in the guest RSVP
+App: `/joined/[token]` (+ layout), collision and SMS states in the guest RSVP
 modal, `ACCOUNT_EXISTS` error code, `submitGuestAnswers` /
 `getGuestClaimContext` / `listActiveMajors` actions, `/welcome` added to
 `PUBLIC_PREFIXES`, privacy v6 and terms SMS copy.
