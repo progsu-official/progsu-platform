@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 
+import { AddToWalletButton } from "./add-to-wallet-button";
 import { RegenerateCheckinCodeButton } from "./regenerate-checkin-code-button";
 
 // Personal check-in QR: a stable per-profile code (profiles.checkin_code),
@@ -31,7 +32,8 @@ export async function MyCheckinQr({ code }: { code: string }) {
       <p className="text-center text-xs text-muted-foreground">
         Show this at any event. Staff scan it to check you in, no RSVP needed.
       </p>
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-2">
+        <AddToWalletButton />
         <RegenerateCheckinCodeButton />
       </div>
     </div>
