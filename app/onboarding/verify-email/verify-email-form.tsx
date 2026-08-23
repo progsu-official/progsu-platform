@@ -499,7 +499,7 @@ export function VerifyEmailForm({
                 </p>
               ) : null}
               <p className="mx-auto mt-4 max-w-md text-center text-xs text-muted-foreground">
-                optional — but recruiters only see verified members.
+                Optional, but recruiters only ever see verified members.
               </p>
               {skipRevealed && allowSkip ? (
                 <div className="mt-3 text-center">
@@ -517,9 +517,9 @@ export function VerifyEmailForm({
           ) : (
             <form id="onb-verify-email-code" onSubmit={onVerify}>
               <p className="text-center text-[13.5px] leading-[1.5] text-muted-foreground">
-                we sent a code to{" "}
+                Code sent to{" "}
                 <span className="font-medium text-foreground">{state.email}</span>
-                {" — it expires in "}
+                {" — expires in "}
                 <span className="tabular-nums">{expiryLabel}</span>.
               </p>
               {/* Segmented code cells (Cosmos-style): six discrete boxes, one

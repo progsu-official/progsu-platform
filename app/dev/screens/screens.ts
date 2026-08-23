@@ -28,7 +28,7 @@ export const SCREENS: Screen[] = [
   },
   {
     slug: "joined-ask",
-    label: "Let's get you connected",
+    label: "Almost there",
     group: "Post-RSVP",
     note: "Second beat. The only decision on the page.",
   },

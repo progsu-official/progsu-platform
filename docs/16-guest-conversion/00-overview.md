@@ -473,6 +473,46 @@ internal guard (`is_admin()`, an `auth.uid()` check) already covers it —
 `write_audit()`, for instance, validates the actor itself and is therefore not
 exposed by the loose grant.
 
+## 9b. Looking at the screens
+
+`/dev/screens` renders every screen in this funnel — fifteen of them — from
+fabricated props, with no session and no database. Same components production
+renders; only the props are invented, so a prop-type change breaks the build
+there too rather than letting the gallery drift.
+
+**Keep it current.** Adding a screen or a meaningful state means adding it to
+`app/dev/screens/screens.ts` and the switch in `app/dev/screens/[slug]/page.tsx`.
+A state that cannot be reached in the gallery is a state nobody will look at
+again.
+
+Gated on `NODE_ENV` in its layout and again in `middleware.ts`, so the path
+does not exist in a deployment.
+
+Two production components carry a dev-only prop for it rather than the gallery
+faking them: `WelcomeFlow`'s `freeze` (the live page auto-advances past its
+first beat in 1.5s) and `GuestRsvpModal`'s `forceAccountExists` (that state
+otherwise needs a matching row in the database).
+
+## 9c. Motion
+
+`app/onboarding/onboarding.css` carries a progressive-reveal primitive ported
+from folk-web's `.onb-collapse` (`components/signup/onboarding-soft.css`): a
+`grid-template-rows: 0fr → 1fr` glide with staggered `.onb-cascade-item`
+children, wrapped by `app/onboarding/_components/reveal.tsx`.
+
+Always mounted, so opening is a height glide rather than content teleporting in
+and shoving the page down; `inert` is what keeps a closed block out of the tab
+order, which is the trade for keeping the DOM in place.
+
+Used on the links and consent steps so a step that asks eight things never shows
+more than one group at a time. On consent the submit button additionally stays
+disabled until the reveal has settled (`REVEAL_SETTLE_MS`), so nobody can
+finish before the optional opt-ins have appeared.
+
+Easing is folk's `--onb-ease` (`cubic-bezier(0.32, 0.72, 0, 1)`) and
+deliberately not its `--onb-spring`, whose overshoot is the bounce curve
+DESIGN.md and the impeccable detector both flag as dated.
+
 ## 10. Considered and deferred
 
 - **Members-only QR tickets** — guests check in by name, members skip the line.

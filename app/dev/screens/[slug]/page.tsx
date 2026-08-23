@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { Check } from "lucide-react";
 
 import {
   OnbActionBar,
@@ -159,7 +158,6 @@ function render(slug: string) {
             intro={
               <OnbIntro title="Let’s confirm you’re a student">
                 A verified school email is what puts you in front of recruiters.
-                We’ll send a 6-digit code.
               </OnbIntro>
             }
           />
@@ -187,7 +185,7 @@ function render(slug: string) {
           <ProfileForm
             intro={
               <OnbIntro title="The basics">
-                Five fields. Everything else can wait.
+                Just trying to get to know you. Five fields, everything else can wait.
               </OnbIntro>
             }
             notice={null}
@@ -203,7 +201,7 @@ function render(slug: string) {
           <ProfileForm
             intro={
               <OnbIntro title="The basics">
-                Five fields. Everything else can wait.
+                Just trying to get to know you. Five fields, everything else can wait.
               </OnbIntro>
             }
             notice={
@@ -260,16 +258,10 @@ function render(slug: string) {
         <OnbSection>
           <OnbSurface>
             <div className="flex flex-col items-center gap-5 text-center">
-              <span
-                aria-hidden
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]"
-              >
-                <Check size={26} strokeWidth={2.5} />
+              <span aria-hidden className="text-[56px] leading-none">
+                🥳
               </span>
-              <OnbIntro title="That’s you, done.">
-                You’re on the list, you’ll get the emails, and your profile is
-                live for the rest of the community.
-              </OnbIntro>
+              <OnbIntro title="Let’s gooo">Bringing you to your profile…</OnbIntro>
             </div>
           </OnbSurface>
           <OnbActionBar>

@@ -79,7 +79,7 @@ export default async function OnboardingProfilePage() {
       <ProfileForm
         intro={
           <OnbIntro title="The basics">
-            Five fields. Everything else can wait.
+            Just trying to get to know you. Five fields, everything else can wait.
           </OnbIntro>
         }
         notice={

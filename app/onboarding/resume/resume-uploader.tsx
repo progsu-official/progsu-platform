@@ -152,10 +152,9 @@ export function ResumeUploader({
   return (
     <>
       <OnbSurface>
-        <OnbIntro title="Drop in your resume">
-          it&apos;s what sponsors and recruiters see when they come scouting —
-          without one, you don&apos;t show up for them at all. pdf, up to 10 MB.
-        </OnbIntro>
+        {/* No subtitle: the title already carries the reason, and a paragraph
+            restating it was the third explanation on a screen with one job. */}
+        <OnbIntro title="Add a resume for recruiters to see" />
 
         <div className="mt-2 space-y-4">
           {currentFileName ? (
@@ -169,9 +168,9 @@ export function ResumeUploader({
                 title={currentFileName}
                 body={
                   currentUploadedAt
-                    ? `on file — uploaded ${new Date(
+                    ? `On file since ${new Date(
                         currentUploadedAt,
-                      ).toLocaleDateString()}. a new upload replaces it.`
+                      ).toLocaleDateString()}. A new upload replaces it.`
                     : "on file. A new upload replaces it."
                 }
               />
@@ -216,7 +215,7 @@ export function ResumeUploader({
                   disabled={busy}
                   className="w-full md:w-auto"
                 >
-                  choose a file
+                  Choose a file
                 </OnbSecondaryButton>
               }
             />
@@ -255,7 +254,7 @@ export function ResumeUploader({
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          never posted publicly — and leave your SSN and address off it.
+          Never posted publicly. Leave your SSN and home address off it.
         </p>
       </OnbSurface>
 
@@ -270,7 +269,7 @@ export function ResumeUploader({
               router.push("/onboarding/consent");
             }}
           >
-            skip for now
+            Skip for now
           </OnbSecondaryButton>
           <OnbPrimaryButton
             onClick={onUpload}

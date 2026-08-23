@@ -57,7 +57,7 @@ export default async function VerifyEmailPage() {
             </OnbIntro>
           ) : (
             <OnbIntro title="Let’s confirm you’re a student">
-              A verified school email is what puts you in front of recruiters. We’ll send a 6-digit code.
+              A verified school email is what puts you in front of recruiters.
             </OnbIntro>
           )
         }

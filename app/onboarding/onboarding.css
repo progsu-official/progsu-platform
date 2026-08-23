@@ -1,3 +1,11 @@
+.onb {
+  /* folk-web's onboarding easing (components/signup/onboarding-soft.css).
+     Exponential ease-out: fast start, long settle. Deliberately not folk's
+     --onb-spring, whose 1.56 overshoot is the bounce curve DESIGN.md and the
+     detector both call dated. */
+  --onb-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 /* Onboarding motion grammar, ported from folk's landing-toon.css.
    Everything is scoped under the `.onb` root class (set on the route root in
    app/onboarding/layout.tsx) so none of it leaks to other routes. Keyframe
@@ -136,5 +144,65 @@
   .onb .onboarding-seam-enter-fwd,
   .onb .onboarding-seam-enter-back {
     animation: none !important;
+  }
+}
+
+/* ── progressive reveal ────────────────────────────────────────────
+   Ported from folk-web's .onb-collapse (components/signup/onboarding-soft.css).
+   A grid-rows 0fr→1fr glide rather than mount/unmount, so revealing a block
+   grows the page smoothly instead of teleporting content in and shoving
+   everything below it down a screen. The inner element carries min-height:0
+   and overflow:hidden — without both, the grid refuses to crush to zero.
+
+   Always mounted, so `inert` is what keeps a closed block out of the tab
+   order and away from screen readers. That is the trade for the smooth
+   height: the DOM stays put, which would otherwise let focus land inside a
+   zero-height box. */
+.onb .onb-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s var(--onb-ease);
+}
+
+.onb .onb-reveal--open {
+  grid-template-rows: 1fr;
+}
+
+.onb .onb-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Runway for anything that paints outside its border box — focus rings and
+   the card shadows both do. With the clip box ending exactly at the content
+   edge they get sliced off flat. Lives on the child so it is part of the
+   measured content and collapses away with everything else; as padding on
+   .onb-reveal-inner itself it would be border-box padding the grid cannot
+   crush, leaving a closed block ~10px tall. */
+.onb .onb-reveal-inner > * {
+  padding-bottom: 10px;
+}
+
+/* Children waterfall in behind the glide rather than all arriving at once.
+   The 90ms cap keeps the whole wave under half a second no matter how many
+   items a block has. */
+.onb .onb-cascade-item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.22s ease-out,
+    transform 0.32s var(--onb-ease);
+}
+
+.onb .onb-reveal--open .onb-cascade-item {
+  opacity: 1;
+  transform: none;
+  transition-delay: min(calc(var(--onb-i, 0) * 34ms), 90ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb .onb-reveal,
+  .onb .onb-cascade-item {
+    transition: none !important;
   }
 }

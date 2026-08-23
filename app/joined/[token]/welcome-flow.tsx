@@ -117,10 +117,10 @@ export function WelcomeFlow({
   return (
     <OnbSection>
       <OnbSurface>
-        <OnbIntro title="Let's get you connected.">
+        <OnbIntro title="Almost there!">
           {waitlisted
-            ? "Members get first call on spots that open up — and most of your profile is already filled in."
-            : "Most of your profile is already filled in. Takes one tap."}
+            ? "Finish your profile to get connected with companies & the community — and members get first call on spots that open up."
+            : "Finish your profile to get connected with companies & the community."}
         </OnbIntro>
 
         {googleError ? (

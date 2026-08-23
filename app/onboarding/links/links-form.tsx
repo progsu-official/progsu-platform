@@ -38,6 +38,7 @@ import {
   onbPanelClasses,
 } from "../_components/shell";
 import { Field } from "../_components/field";
+import { CascadeItem, Reveal } from "../_components/reveal";
 
 const FIELD_ERROR_HEADINGS: Record<string, string> = {
   classStanding: "Pick your class standing",
@@ -85,8 +86,15 @@ export function LinksForm({ initial }: { initial: Initial }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [showLinks, setShowLinks] = useState(false);
+
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
   const [state, setState] = useState<Initial>(initial);
+  // Each block earns the next one. Showing all three at once was why this
+  // step read as a wall — it still asks eight things, but never more than one
+  // group at a time.
+  const gradAnswered =
+    !!state.classStanding && !!state.gradTerm && state.gradYear != null;
+  const rolesAnswered = state.interestedRoles.length > 0;
 
   const currentYear = new Date().getFullYear();
   const gradYears = Array.from({ length: 8 }, (_, i) => currentYear - 1 + i);
@@ -143,7 +151,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
     <>
       <OnbSurface className="space-y-6">
         <OnbIntro title="What are you into?">
-          Two questions. This is what decides which opportunities we send you.
+          Just trying to get to know you. This is what decides which opportunities we send your way.
         </OnbIntro>
         <form id={FORM_ID} onSubmit={onSubmit} className="space-y-6">
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-3`}>
@@ -200,7 +208,9 @@ export function LinksForm({ initial }: { initial: Initial }) {
             </Field>
           </div>
 
+          <Reveal open={gradAnswered}>
           <div className={`${onbPanelClasses} space-y-5`}>
+            <CascadeItem index={0}>
             <Field
               label={`What you\u2019re looking for (${state.interestedRoles.length}/6)`}
               required
@@ -234,6 +244,10 @@ export function LinksForm({ initial }: { initial: Initial }) {
                 Shown on your profile once directory visibility is on.
               </p>
             </Field>
+            </CascadeItem>
+
+            <Reveal open={rolesAnswered}>
+            <CascadeItem index={1}>
 
             {/* Four optional fields behind one disclosure. Left inline they
                 made a skippable step look like eight required questions, which
@@ -268,7 +282,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
             <div
               id="onboarding-optional-links"
               hidden={!showLinks}
-              className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+              className="grid grid-cols-1 gap-4"
             >
               <Field label="LinkedIn" htmlFor="onboarding-linkedin">
                 <PrefixedInput
@@ -347,7 +361,10 @@ export function LinksForm({ initial }: { initial: Initial }) {
                 </p>
               </Field>
             </div>
+            </CascadeItem>
+            </Reveal>
           </div>
+          </Reveal>
 
           {error && !FIELD_ERROR_HEADINGS[error.field ?? ""] ? (
             <OnbErrorBox>
