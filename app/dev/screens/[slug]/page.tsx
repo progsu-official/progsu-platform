@@ -189,7 +189,7 @@ function render(slug: string, play: boolean) {
         <OnbSection>
           <ProfileForm
             intro={
-<OnbIntro title="First things first — what should we call you?" />
+<OnbIntro title="First, what should we call you?" />
             }
             notice={null}
             initial={EMPTY_PROFILE}
@@ -203,7 +203,7 @@ function render(slug: string, play: boolean) {
         <OnbSection>
           <ProfileForm
             intro={
-<OnbIntro title="First things first — what should we call you?" />
+<OnbIntro title="First, what should we call you?" />
             }
             notice={
               <div className="rounded-[14px] border border-primary/25 bg-primary/[0.06] px-4 py-3 text-center text-sm text-primary">

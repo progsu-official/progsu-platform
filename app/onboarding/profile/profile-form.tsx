@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,7 @@ export function ProfileForm({
   const router = useRouter();
   const preview = usePreview();
   const { seam, run: runSeam } = useOnbSeam();
+  const lastNameRef = useRef<HTMLInputElement | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
   const [state, setState] = useState<Initial>(initial);
@@ -177,62 +178,90 @@ export function ProfileForm({
               /profile/settings, where someone goes on purpose. */}
           <OnbSeam seam={seam}>
           {phase === "name" ? (
-          /* No panel, no labels, no boxes — the fields ARE the display type,
-             folk's ghost-input treatment. The placeholders ask the question at
-             headline size, so this reads as somewhere to answer rather than a
-             form to fill in. Two fields rather than folk's single "Full Name"
-             because profiles has separate columns and splitting on whitespace
-             mangles "van der Berg"; the ghost styling is what carries the
-             feel, not the field count. */
-          <div className="flex flex-col items-center gap-3 pt-8">
+          <>
+          {/* No panel, no labels, no boxes — the fields ARE the display type,
+              folk's ghost-input treatment. The placeholders ask the question
+              at headline size, so this reads as somewhere to answer rather
+              than a form to fill in. Two fields rather than folk's single
+              "Full Name" because profiles has separate columns and splitting
+              on whitespace mangles "van der Berg"; the ghost styling is what
+              carries the feel, not the field count. */}
+          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-6">
             <label htmlFor="onboarding-first-name" className="sr-only">
               First name
             </label>
+            <span
+              className="onb-ghost-fit"
+              data-value={state.firstName || "First"}
+              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+            >
             <input
               id="onboarding-first-name"
               value={state.firstName}
               onChange={(e) => setField("firstName", e.target.value)}
+              onKeyDown={(e) => {
+                // Space is how people move between two halves of their own
+                // name; without this it lands a stray space in the first
+                // field and the caret never moves.
+                if (e.key === " " && state.firstName.trim()) {
+                  e.preventDefault();
+                  lastNameRef.current?.focus();
+                }
+              }}
               autoComplete="given-name"
               autoCapitalize="words"
               enterKeyHint="next"
-              placeholder="First name"
+              placeholder="First"
+              // Sized to whichever is longer, the value or the placeholder,
+              // so the field never clips what is in it and never leaves a
+              // gap around a short one.
+              // size=1 so the input's own intrinsic width contributes
+              // nothing to the grid column; the hidden sizer decides it.
+              size={1}
               required
               disabled={pending}
               aria-invalid={error?.field === "firstName"}
-              className="onb-ghost-input"
-              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+              className="onb-ghost-input onb-ghost-input--inline"
             />
+            </span>
             <label htmlFor="onboarding-last-name" className="sr-only">
               Last name
             </label>
+            <span
+              className="onb-ghost-fit"
+              data-value={state.lastName || "Last"}
+              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+            >
             <input
+              ref={lastNameRef}
               id="onboarding-last-name"
               value={state.lastName}
               onChange={(e) => setField("lastName", e.target.value)}
               autoComplete="family-name"
               autoCapitalize="words"
               enterKeyHint="go"
-              placeholder="Last name"
+              placeholder="Last"
+              size={1}
               required
               disabled={pending}
               aria-invalid={error?.field === "lastName"}
-              className="onb-ghost-input"
-              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+              className="onb-ghost-input onb-ghost-input--inline"
             />
-            {/* Only nags once they have actually typed something. An inline
-                error on an untouched field reads as broken. */}
-            <p
-              className={`mt-4 text-[13px] leading-[1.5] ${
-                nameStarted && !nameDone
-                  ? "text-destructive"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {nameStarted && !nameDone
-                ? "We need both — it's what your name looks like to everyone else."
-                : "Both, please. It's how you show up to everyone else."}
-            </p>
+            </span>
           </div>
+
+          {/* Only nags once they have actually typed something. An inline
+              error on an untouched field reads as broken. */}
+          <p
+            className={`mt-3 text-center text-[13px] leading-[1.5] ${
+              nameStarted && !nameDone
+                ? "text-destructive"
+                : "text-muted-foreground"
+            }`}
+          >
+            {nameStarted && !nameDone ? "We need both." : "First and last."}
+          </p>
+          </>
           ) : (
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
             <Field

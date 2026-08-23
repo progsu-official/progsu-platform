@@ -312,3 +312,35 @@
 .onb .onb-ghost-input:disabled {
   opacity: 0.5;
 }
+
+/* Inline variant: the two name fields share one line, so each hugs its own
+   content instead of taking the full width. Must stay after the base rule —
+   `width: 100%` there is the same specificity and would otherwise win on
+   source order.
+
+   Width comes from a hidden sizer in the same grid cell, not the `size`
+   attribute. `size` counts average character widths, which at 44px bold
+   overshoots badly and left a gap between the two names that read as a tab
+   rather than a space. `field-sizing: content` would do this natively but
+   Safari has not shipped it. */
+.onb .onb-ghost-fit {
+  display: inline-grid;
+  min-width: 0;
+}
+
+.onb .onb-ghost-fit::after {
+  content: attr(data-value) " ";
+  grid-area: 1 / 1;
+  visibility: hidden;
+  white-space: pre;
+  font: inherit;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.onb .onb-ghost-input--inline {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
