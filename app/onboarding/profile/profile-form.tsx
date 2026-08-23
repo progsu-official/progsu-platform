@@ -98,6 +98,8 @@ export function ProfileForm({
   const [phase, setPhase] = useState<"name" | "details">("name");
   const nameDone =
     state.firstName.trim().length > 0 && state.lastName.trim().length > 0;
+  const nameStarted =
+    state.firstName.trim().length > 0 || state.lastName.trim().length > 0;
 
   const isOther = state.major === "other";
   const isSchoolOther = state.school === SCHOOL_OTHER;
@@ -175,39 +177,61 @@ export function ProfileForm({
               /profile/settings, where someone goes on purpose. */}
           <OnbSeam seam={seam}>
           {phase === "name" ? (
-          <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
-            <Field
-              label="First name"
+          /* No panel, no labels, no boxes — the fields ARE the display type,
+             folk's ghost-input treatment. The placeholders ask the question at
+             headline size, so this reads as somewhere to answer rather than a
+             form to fill in. Two fields rather than folk's single "Full Name"
+             because profiles has separate columns and splitting on whitespace
+             mangles "van der Berg"; the ghost styling is what carries the
+             feel, not the field count. */
+          <div className="flex flex-col items-center gap-3 pt-8">
+            <label htmlFor="onboarding-first-name" className="sr-only">
+              First name
+            </label>
+            <input
+              id="onboarding-first-name"
+              value={state.firstName}
+              onChange={(e) => setField("firstName", e.target.value)}
+              autoComplete="given-name"
+              autoCapitalize="words"
+              enterKeyHint="next"
+              placeholder="First name"
               required
-              htmlFor="onboarding-first-name"
-              error={error?.field === "firstName" ? error.message : null}
-            >
-              <Input
-                id="onboarding-first-name"
-                value={state.firstName}
-                onChange={(e) => setField("firstName", e.target.value)}
-                autoComplete="given-name"
-                required
-                disabled={pending}
-                className={inputClasses}
-              />
-            </Field>
-            <Field
-              label="Last name"
+              disabled={pending}
+              aria-invalid={error?.field === "firstName"}
+              className="onb-ghost-input"
+              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+            />
+            <label htmlFor="onboarding-last-name" className="sr-only">
+              Last name
+            </label>
+            <input
+              id="onboarding-last-name"
+              value={state.lastName}
+              onChange={(e) => setField("lastName", e.target.value)}
+              autoComplete="family-name"
+              autoCapitalize="words"
+              enterKeyHint="go"
+              placeholder="Last name"
               required
-              htmlFor="onboarding-last-name"
-              error={error?.field === "lastName" ? error.message : null}
+              disabled={pending}
+              aria-invalid={error?.field === "lastName"}
+              className="onb-ghost-input"
+              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+            />
+            {/* Only nags once they have actually typed something. An inline
+                error on an untouched field reads as broken. */}
+            <p
+              className={`mt-4 text-[13px] leading-[1.5] ${
+                nameStarted && !nameDone
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
             >
-              <Input
-                id="onboarding-last-name"
-                value={state.lastName}
-                onChange={(e) => setField("lastName", e.target.value)}
-                autoComplete="family-name"
-                required
-                disabled={pending}
-                className={inputClasses}
-              />
-            </Field>
+              {nameStarted && !nameDone
+                ? "We need both — it's what your name looks like to everyone else."
+                : "Both, please. It's how you show up to everyone else."}
+            </p>
           </div>
           ) : (
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
@@ -323,7 +347,15 @@ export function ProfileForm({
       </OnbSurface>
 
       <OnbActionBar>
-        <OnbPrimaryButton type="submit" form={FORM_ID} loading={pending}>
+        {/* Disabled until the name is real, folk's required-cohort rule: the
+            name is the one thing this step exists for, so a live button that
+            bounces off validation is worse than one that waits. */}
+        <OnbPrimaryButton
+          type="submit"
+          form={FORM_ID}
+          loading={pending}
+          disabled={phase === "name" && !nameDone}
+        >
           {pending ? "Saving…" : "Continue"}
         </OnbPrimaryButton>
       </OnbActionBar>

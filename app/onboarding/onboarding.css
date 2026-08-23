@@ -280,3 +280,35 @@
     animation: none !important;
   }
 }
+
+/* ── ghost input ───────────────────────────────────────────────────
+   Ported from folk-web's .onb-ghost-input (components/signup/onboarding-soft.css).
+
+   The field IS the display type: no border, no card, no fill. The placeholder
+   asks the question at headline size, so the screen reads as somewhere to
+   answer rather than a form to complete — which is the whole difference
+   between folk's name step and a labelled text box that happens to be first.
+
+   Weight 750 and the 0.38 placeholder are both load-bearing. Lighter and the
+   empty state reads as missing content rather than a prompt; a normal weight
+   makes it look like body copy someone forgot to style. */
+.onb .onb-ghost-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: hsl(var(--foreground));
+  caret-color: hsl(var(--primary));
+  outline: none;
+}
+
+.onb .onb-ghost-input::placeholder {
+  color: hsl(var(--foreground) / 0.32);
+  font-weight: 750;
+}
+
+.onb .onb-ghost-input:disabled {
+  opacity: 0.5;
+}

@@ -520,6 +520,18 @@ Easing is folk's `--onb-ease` (`cubic-bezier(0.32, 0.72, 0, 1)`) and
 deliberately not its `--onb-spring`, whose overshoot is the bounce curve
 DESIGN.md and the impeccable detector both flag as dated.
 
+`.onb-ghost-input` is the other port from that codebase
+(folk-web `components/signup/onboarding-soft.css`): a borderless, transparent,
+centre-aligned field at display size, weight 750, placeholder at 0.32 alpha.
+The field *is* the type — that is the whole difference between a screen that
+reads as somewhere to answer and a labelled text box that happens to be first.
+Both numbers are load-bearing: lighter and the empty state reads as missing
+content rather than a prompt.
+
+The name step uses two of them rather than folk's single "Full Name", because
+`profiles` has separate columns and splitting on whitespace mangles names like
+"van der Berg". The ghost styling carries the feel, not the field count.
+
 ## 10. Considered and deferred
 
 - **Members-only QR tickets** — guests check in by name, members skip the line.
