@@ -21,12 +21,16 @@ export function GuestRsvpModal({
   waitlistEnabled,
   onClose,
   onSuccess,
+  forceAccountExists = false,
 }: {
   eventId: string;
   capacityReached: boolean;
   waitlistEnabled: boolean;
   onClose: () => void;
   onSuccess: (status: "going" | "waitlisted") => void;
+  // /dev/screens only. This state is normally reached by submitting details
+  // that match a member, which needs a database.
+  forceAccountExists?: boolean;
 }) {
   const [fields, setFields] = useState<GuestFields>({
     name: "",
@@ -40,7 +44,7 @@ export function GuestRsvpModal({
   // Set when the submitted email or phone already belongs to a member. The
   // RSVP is NOT recorded in that case — the only way forward is signing in.
   // See docs/16-guest-conversion §3.1.
-  const [accountExists, setAccountExists] = useState(false);
+  const [accountExists, setAccountExists] = useState(forceAccountExists);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   // ThemeShell owns the .dark class on a wrapper div, not <html> — the

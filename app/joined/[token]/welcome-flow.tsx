@@ -35,15 +35,22 @@ export function WelcomeFlow({
   token,
   context,
   devBypass = false,
+  freeze,
 }: {
   token: string;
   context: GuestClaimContext;
+  // Holds one beat instead of running the timed sequence. Only /dev/screens
+  // passes it: the live page auto-advances after 1.5s, which makes the first
+  // beat impossible to actually look at.
+  freeze?: "landed" | "ask";
   // Local development: swap the Google redirect for /api/dev-login, which
   // mints a blank test account and runs the SAME claim RPC off the SAME
   // cookie. Only the identity provider is faked.
   devBypass?: boolean;
 }) {
-  const [phase, setPhase] = useState<"landed" | "leaving" | "ask">("landed");
+  const [phase, setPhase] = useState<"landed" | "leaving" | "ask">(
+    freeze ?? "landed"
+  );
   const [pending, startPending] = useTransition();
   const { pending: googlePending, error: googleError, signIn } = useGoogleSignIn();
 
@@ -51,13 +58,14 @@ export function WelcomeFlow({
   // run under reduced motion too — the transition is decoration, the sequence
   // is content, and skipping it would drop the confirmation entirely.
   useEffect(() => {
+    if (freeze) return;
     const toLeaving = setTimeout(() => setPhase("leaving"), HOLD_MS);
     const toAsk = setTimeout(() => setPhase("ask"), HOLD_MS + FADE_MS);
     return () => {
       clearTimeout(toLeaving);
       clearTimeout(toAsk);
     };
-  }, []);
+  }, [freeze]);
 
   function createAccount() {
     startPending(async () => {
