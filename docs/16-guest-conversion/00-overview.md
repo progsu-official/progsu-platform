@@ -561,3 +561,28 @@ The name step uses two of them rather than folk's single "Full Name", because
    address belongs to a member. `consume_rate_limit` at 5/60min bounds it. For a
    ~300-person org this reads as proportionate, but it is a real trade being
    accepted knowingly, not a free one.
+
+## 12. Migration timestamp collision (2026-08-23)
+
+Two pairs of migrations share a timestamp prefix, because this branch and
+`feat/past-events-quality-filter` were written the same afternoon and both
+picked the next round number:
+
+```
+20260823150000_phone_e164.sql
+20260823150000_self_event_history_includes_historical.sql
+20260823160000_claim_guest_by_token.sql
+20260823160000_can_view_event_allows_historical_archived.sql
+```
+
+Left as-is. They touch disjoint objects — `profiles`/`normalize_phone_e164` and
+the guest-claim helpers on one side, event-history views and `can_view_event`
+on the other — and both sets are already applied to production, so renaming one
+would break rule #2 (append-only) for no functional gain. Verified after the
+merge that `public_event_by_slug` still folds in guest counts, that
+`guest_rsvp_to_event` still has both overloads, and that `profiles.phone_e164`
+survived: neither set clobbered the other.
+
+The lesson for the next parallel branch: take the timestamp from
+`date +%Y%m%d%H%M%S` rather than rounding to the next hour, and the collision
+cannot happen.
