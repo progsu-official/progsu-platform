@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CalendarDays, Users } from "lucide-react";
+import { CalendarDays, House, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -36,7 +36,9 @@ export function SiteNav({
   // signed out, fires Google directly instead of navigating into that
   // redirect chain, same as the header's Sign in button.
   type Item = { href: string; label: string; icon: LucideIcon; gated: boolean };
-  const items: Item[] = [];
+  const items: Item[] = [
+    { href: "/home", label: "Home", icon: House, gated: false },
+  ];
   if (showEvents) {
     items.push({ href: "/events", label: "Events", icon: CalendarDays, gated: false });
   }

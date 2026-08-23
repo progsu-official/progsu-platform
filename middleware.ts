@@ -16,6 +16,7 @@ import {
 // returns the row matching the token presented.
 const PUBLIC_PREFIXES = [
   "/",
+  "/home",
   "/login",
   "/privacy",
   "/terms",
