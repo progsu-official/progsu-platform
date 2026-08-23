@@ -52,13 +52,13 @@ export const SCREENS: Screen[] = [
   },
   {
     slug: "profile",
-    label: "The basics",
+    label: "What should we call you?",
     group: "Onboarding",
-    note: "The real gate. Five fields.",
+    note: "Name first, on its own. Details follow.",
   },
   {
     slug: "profile-returning",
-    label: "The basics, pre-filled",
+    label: "Name step, pre-filled",
     group: "Onboarding",
     note: "Legacy match banner + carried-over values.",
   },

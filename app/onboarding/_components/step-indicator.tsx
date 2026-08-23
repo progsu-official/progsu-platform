@@ -14,7 +14,7 @@ import type { OnboardingStep } from "@/lib/auth/onboarding";
 // here as a step and simply never blocks.
 const STEPS: Array<{ key: OnboardingStep | "verify"; label: string; path: string }> = [
   { key: "verify", label: "verify email", path: "/onboarding/verify-email" },
-  { key: "profile", label: "the basics", path: "/onboarding/profile" },
+  { key: "profile", label: "your name", path: "/onboarding/profile" },
   { key: "links", label: "what you're into", path: "/onboarding/links" },
   { key: "resume", label: "resume", path: "/onboarding/resume" },
   { key: "consent", label: "consent", path: "/onboarding/consent" },

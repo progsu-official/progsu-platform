@@ -40,7 +40,9 @@ export default function DevScreensLayout({
         </Link>
       </header>
 
-      <main className="relative z-10 min-h-dvh w-full">{children}</main>
+      {/* pb clears the fixed screen-nav pill, which otherwise sits on top of
+          whatever the last control on a tall step is. */}
+      <main className="relative z-10 min-h-dvh w-full pb-24">{children}</main>
 
       <ScreenNav />
     </div>

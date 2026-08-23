@@ -15,6 +15,9 @@ import {
   OnbPrimaryButton,
   OnbSurface,
   onbPanelClasses,
+  OnbSeam,
+  useOnbSeam,
+  OnbIntro,
 } from "../_components/shell";
 import { Field } from "../_components/field";
 import { usePreview } from "../_components/preview";
@@ -83,9 +86,18 @@ export function ProfileForm({
 }) {
   const router = useRouter();
   const preview = usePreview();
+  const { seam, run: runSeam } = useOnbSeam();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
   const [state, setState] = useState<Initial>(initial);
+
+  // Two questions, not one form. Name first on its own, because it is the one
+  // thing we can ask before we have earned anything, and because a screen
+  // that opens with five inputs reads as paperwork. Both halves still submit
+  // together — the split is presentational.
+  const [phase, setPhase] = useState<"name" | "details">("name");
+  const nameDone =
+    state.firstName.trim().length > 0 && state.lastName.trim().length > 0;
 
   const isOther = state.major === "other";
   const isSchoolOther = state.school === SCHOOL_OTHER;
@@ -97,6 +109,21 @@ export function ProfileForm({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (phase === "name") {
+      if (!nameDone) {
+        setError({
+          message: state.firstName.trim()
+            ? "We need your last name too"
+            : "We need your first name",
+          field: state.firstName.trim() ? "lastName" : "firstName",
+        });
+        return;
+      }
+      runSeam(() => setPhase("details"), "fwd");
+      return;
+    }
+
     // /dev/screens: native `required` has already run, so the form behaves
     // normally right up to the point where it would need a database.
     if (preview) return preview.advance("/onboarding/links");
@@ -132,14 +159,22 @@ export function ProfileForm({
   return (
     <>
       <OnbSurface className="space-y-6">
-        {intro}
-        {notice}
+        {phase === "name" ? (
+          intro
+        ) : (
+          <OnbIntro title={`Good to meet you, ${state.firstName.trim()}.`}>
+            Three more and you&apos;re through.
+          </OnbIntro>
+        )}
+        {phase === "name" ? notice : null}
         <form id={FORM_ID} onSubmit={onSubmit} className="space-y-4">
           {/* Exactly the fields is_fully_onboarded() actually gates on.
               Preferred name and minor used to sit here at identical weight,
               which made an optional field look required and turned a
               five-field step into a wall of nine. Both are still editable in
               /profile/settings, where someone goes on purpose. */}
+          <OnbSeam seam={seam}>
+          {phase === "name" ? (
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
             <Field
               label="First name"
@@ -173,6 +208,9 @@ export function ProfileForm({
                 className={inputClasses}
               />
             </Field>
+          </div>
+          ) : (
+          <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
             <Field
               label="Phone"
               required
@@ -269,6 +307,8 @@ export function ProfileForm({
               </div>
             ) : null}
           </div>
+          )}
+          </OnbSeam>
 
           {error ? (
             <OnbErrorBox>

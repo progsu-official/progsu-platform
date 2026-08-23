@@ -54,6 +54,12 @@ export function Select({
   const withSearch = searchable ?? options.length >= SEARCH_THRESHOLD;
 
   const [open, setOpen] = useState(false);
+  // Flip above the trigger when the list would run off the bottom. A major
+  // list is two dozen rows and the field is often the last one on a step, so
+  // dropping down clipped it against the viewport with no way to scroll to
+  // the rest.
+  const [dropUp, setDropUp] = useState(false);
+  const [maxH, setMaxH] = useState(240);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -80,6 +86,17 @@ export function Select({
   // major.
   function openList() {
     if (disabled) return;
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const GAP = 16;
+      const below = window.innerHeight - rect.bottom - GAP;
+      const above = rect.top - GAP;
+      const up = below < 220 && above > below;
+      setDropUp(up);
+      // Never taller than the space it actually has, so the last row is always
+      // reachable instead of sitting past the viewport edge.
+      setMaxH(Math.max(160, Math.min(320, up ? above : below)));
+    }
     setQuery("");
     const at = options.findIndex((o) => o.value === value);
     setHighlight(at >= 0 ? at : 0);
@@ -237,7 +254,11 @@ export function Select({
       {open ? (
         <div
           ref={popoverRef}
-          className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-border bg-popover shadow-lg"
+          style={{ maxHeight: maxH }}
+          className={cn(
+            "absolute z-50 flex w-full flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-lg",
+            dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          )}
         >
           {withSearch ? (
             <div className="flex items-center gap-2 border-b border-border/70 px-3">
@@ -272,7 +293,7 @@ export function Select({
             role="listbox"
             aria-labelledby={buttonId}
             tabIndex={-1}
-            className="max-h-60 overflow-y-auto p-1"
+            className="min-h-0 flex-1 overflow-y-auto p-1"
           >
             {visible.length === 0 ? (
               <li className="px-3 py-6 text-center text-sm text-muted-foreground">

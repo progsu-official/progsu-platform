@@ -78,9 +78,7 @@ export default async function OnboardingProfilePage() {
     <OnbSection>
       <ProfileForm
         intro={
-          <OnbIntro title="The basics">
-            Just trying to get to know you. Five fields, everything else can wait.
-          </OnbIntro>
+          <OnbIntro title="What should we call you?" />
         }
         notice={
           legacyMatch ? (

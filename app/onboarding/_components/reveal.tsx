@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import { cn } from "@/lib/utils";
 
 // Progressive disclosure for a step's later blocks. Ported from folk-web's
@@ -19,8 +21,27 @@ export function Reveal({
   children: React.ReactNode;
   className?: string;
 }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const wasOpen = useRef(open);
+
+  // Answering the last field of a block reveals the next one BELOW the fold,
+  // so without this the reward for finishing is a screen that looks unchanged.
+  // Waits out the 450ms glide first: scrolling to a box that is still growing
+  // lands short of where it ends up.
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      const t = setTimeout(() => {
+        ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 480);
+      wasOpen.current = true;
+      return () => clearTimeout(t);
+    }
+    wasOpen.current = open;
+  }, [open]);
+
   return (
     <div
+      ref={ref}
       className={cn("onb-reveal", open && "onb-reveal--open", className)}
       aria-hidden={!open}
       inert={!open}
