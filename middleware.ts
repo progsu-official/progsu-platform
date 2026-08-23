@@ -21,6 +21,7 @@ const PUBLIC_PREFIXES = [
   "/terms",
   "/auth/callback",
   "/tickets",
+  "/welcome",
 ];
 const ADMIN_PREFIXES = ["/admin"];
 const ONBOARDING_PREFIX = "/onboarding";
