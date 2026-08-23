@@ -208,50 +208,6 @@ export const guestRsvpToEventSchema = z.object({
 
 export type GuestRsvpToEventInput = z.input<typeof guestRsvpToEventSchema>;
 
-// /welcome/[token] answers. Every field is optional: the page lets someone
-// skip a step, and a partial answer is worth more than an abandoned form.
-export const CLASS_STANDINGS = [
-  "freshman",
-  "sophomore",
-  "junior",
-  "senior",
-  "graduate",
-  "phd",
-  "alumni",
-] as const;
-
-export const INTERESTED_ROLES = [
-  "software_engineering",
-  "data_science",
-  "data_engineering",
-  "machine_learning",
-  "product_management",
-  "ui_ux_design",
-  "devops_sre",
-  "cybersecurity",
-  "research",
-  "consulting",
-  "quant_finance",
-  "other",
-] as const;
-
-export const submitGuestAnswersSchema = z.object({
-  token: z.string().uuid("Invalid link."),
-  major: z.string().trim().min(1).max(100).nullable().default(null),
-  majorOtherText: z.string().trim().max(120).nullable().default(null),
-  gradYear: z
-    .number()
-    .int()
-    .min(1950, "Enter a valid year")
-    .max(2100, "Enter a valid year")
-    .nullable()
-    .default(null),
-  classStanding: z.enum(CLASS_STANDINGS).nullable().default(null),
-  interestedRoles: z.array(z.enum(INTERESTED_ROLES)).max(12).default([]),
-  smsOptIn: z.boolean().default(false),
-});
-
-export type SubmitGuestAnswersInput = z.input<typeof submitGuestAnswersSchema>;
 
 // Cover-image upload. Limit of 5 MB mirrors the DB's event-covers bucket
 // `file_size_limit`. Allowed MIME types match the bucket's `allowed_mime_types`.

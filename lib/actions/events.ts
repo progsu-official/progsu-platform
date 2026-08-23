@@ -23,13 +23,11 @@ import {
   createEventSchema,
   guestRsvpToEventSchema,
   rsvpToEventSchema,
-  submitGuestAnswersSchema,
   updateEventSchema,
   type CreateEventCoverUploadUrlInput,
   type CreateEventInput,
   type GuestRsvpToEventInput,
   type RsvpDesired,
-  type SubmitGuestAnswersInput,
   type UpdateEventInput,
 } from "./event-schemas";
 
@@ -766,52 +764,6 @@ export async function getGuestClaimContext(
     answered: !!row.answered,
     smsOptedIn: !!row.sms_opted_in,
   };
-}
-
-export async function submitGuestAnswers(
-  rawInput: SubmitGuestAnswersInput
-): Promise<ActionResult<Record<string, never>>> {
-  const parsed = submitGuestAnswersSchema.safeParse(rawInput);
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
-      field: first?.path.join("."),
-    });
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("submit_guest_answers", {
-    p_token: parsed.data.token,
-    p_major: parsed.data.major,
-    p_major_other_text: parsed.data.majorOtherText,
-    p_grad_year: parsed.data.gradYear,
-    p_class_standing: parsed.data.classStanding,
-    p_interested_roles: parsed.data.interestedRoles,
-    p_sms_opt_in: parsed.data.smsOptIn,
-    p_sms_consent_copy: parsed.data.smsOptIn ? SMS_CONSENT_COPY : null,
-  });
-  if (error) return mapPgError(error);
-
-  return ok({});
-}
-
-// Anon-readable major list for the /welcome dropdown. Members get this through
-// the authenticated policy; the anon policy added in 20260823150300 is what
-// makes it reachable with no session.
-export async function listActiveMajors(): Promise<
-  { slug: string; label: string }[]
-> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("majors")
-    .select("slug, label")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-  if (error) {
-    console.error("[events] listActiveMajors failed:", error.message);
-    return [];
-  }
-  return data ?? [];
 }
 
 // ---------------------------------------------------------------------------

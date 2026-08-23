@@ -186,12 +186,14 @@ export function GuestRsvpModal({
         ) : (
           <form onSubmit={submit} className="space-y-4 px-5 pb-5">
             <div className="space-y-1.5">
-              <Label htmlFor="guest-rsvp-name">Name *</Label>
+              <Label htmlFor="guest-rsvp-name">Full name *</Label>
               <Input
                 id="guest-rsvp-name"
                 ref={nameRef}
                 required
+                autoComplete="name"
                 disabled={pending}
+                placeholder="Ada Lovelace"
                 value={fields.name}
                 onChange={(e) => set("name", e.target.value)}
                 className="rounded-xl"
@@ -199,17 +201,32 @@ export function GuestRsvpModal({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="guest-rsvp-email">Email *</Label>
+              <Label htmlFor="guest-rsvp-email">School email *</Label>
               <Input
                 id="guest-rsvp-email"
                 type="email"
                 required
+                autoComplete="email"
                 disabled={pending}
+                placeholder="you@student.gsu.edu"
                 value={fields.email}
                 onChange={(e) => set("email", e.target.value)}
                 className="rounded-xl"
+                aria-describedby="guest-rsvp-email-hint"
                 aria-invalid={fieldError === "email"}
               />
+              {/* Asked for by name rather than validated to a hard allowlist:
+                  a .edu is what carries onto the profile and unlocks recruiter
+                  exports, but alumni, speakers, and people from other schools
+                  come to these events too, and none of them should be turned
+                  away at the door over an address. */}
+              <p
+                id="guest-rsvp-email-hint"
+                className="text-[11.5px] leading-[1.4] text-muted-foreground"
+              >
+                Use your .edu if you have one — it&apos;s what gets you into the
+                lists we send recruiters. Any email works.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="guest-rsvp-phone">Phone number *</Label>
@@ -217,6 +234,7 @@ export function GuestRsvpModal({
                 id="guest-rsvp-phone"
                 type="tel"
                 required
+                autoComplete="tel"
                 disabled={pending}
                 placeholder="201 555 0123"
                 value={fields.phone}

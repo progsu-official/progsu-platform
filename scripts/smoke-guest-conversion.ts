@@ -13,7 +13,9 @@
 //      (withdrawal is STOP, which lands in sms_suppressions).
 //   5. guest_claim_context is anon-readable for a held token and an empty set
 //      for an unknown one — never an error, same posture as the ticket page.
-//   6. submit_guest_answers persists answers and stamps answered_at.
+//   6. A school email is staged as campus_email, and claim_guest_identity
+//      links it to an account created with a DIFFERENT (Google) address —
+//      the case plain email matching cannot solve.
 //   7. handle_new_user copies those answers onto the fresh profile at first
 //      Google login and stamps claimed_at / claimed_profile_id.
 //   8. sms_suppressions is closed to clients and its writer is idempotent.
@@ -50,6 +52,7 @@ async function main() {
   const memberEmail = `smoke-conv-member-${suffix}@example.com`;
   const guestEmail = `smoke-conv-guest-${suffix}@example.com`;
   const claimEmail = `smoke-conv-claim-${suffix}@example.com`;
+  const googleEmail = `smoke-conv-google-${suffix}@example.com`;
   const password = "testpassword-12345";
   const slug = `smoke-guest-conversion-${suffix}`;
 
@@ -62,6 +65,7 @@ async function main() {
   let adminId: string | null = null;
   let memberId: string | null = null;
   let claimedId: string | null = null;
+  let googleId: string | null = null;
   let eventId: string | null = null;
 
   try {
@@ -264,52 +268,87 @@ async function main() {
     );
     const majorSlug = (majors as Array<{ slug: string }> | null)?.[0]?.slug;
 
-    // --- 6. answers ------------------------------------------------------
-    const { error: answersErr } = await anon.rpc("submit_guest_answers", {
-      p_token: claimToken,
-      p_major: majorSlug,
-      p_grad_year: 2028,
-      p_class_standing: "junior",
-      p_interested_roles: ["software_engineering", "machine_learning"],
+    // --- 6. school email routing + claim by token ------------------------
+    // A .edu on an allowlisted domain goes to campus_email so it does not
+    // occupy personal_email, which Google's address will want later.
+    const eduEmail = `smoke-conv-edu-${suffix}@student.gsu.edu`;
+    const { data: eduRsvp } = await anon.rpc("guest_rsvp_to_event", {
+      p_event_id: eventId,
+      p_name: "Edu Guest",
+      p_email: eduEmail,
+      p_phone: "678 555 0177",
+      p_sms_opt_in: false,
+      p_sms_consent_copy: null,
     });
-    check("submit_guest_answers succeeds for anon", !answersErr, answersErr?.message);
+    const eduToken = (eduRsvp as Array<{ claim_token: string }>)?.[0]?.claim_token;
+    check("school-email guest RSVP accepted", !!eduToken);
 
-    const { data: lm3 } = await admin
+    const { data: eduStaged } = await admin
       .from("legacy_members")
-      .select("major, grad_year, class_standing, interested_roles, answered_at")
-      .eq("personal_email", guestEmail)
+      .select("personal_email, campus_email")
+      .eq("campus_email", eduEmail)
       .single();
-    const answered = lm3 as Record<string, unknown> | null;
-    check("major stored", answered?.major === majorSlug);
-    check("grad_year stored", answered?.grad_year === 2028);
-    check("class_standing stored", answered?.class_standing === "junior");
-    check(
-      "interested_roles stored",
-      Array.isArray(answered?.interested_roles) &&
-        (answered?.interested_roles as string[]).length === 2,
-      answered?.interested_roles
-    );
-    check("answered_at stamped", !!answered?.answered_at);
+    const es = eduStaged as Record<string, unknown> | null;
+    check("allowlisted .edu staged as campus_email", es?.campus_email === eduEmail);
+    check("personal_email left free for the Google address", es?.personal_email === null);
 
-    const { error: badMajorErr } = await anon.rpc("submit_guest_answers", {
-      p_token: claimToken,
-      p_major: "not-a-real-major",
+    // Sign up with a DIFFERENT (personal) address — the case that email
+    // matching cannot solve and the claim token exists for.
+    const { data: gu, error: guErr } = await admin.auth.admin.createUser({
+      email: googleEmail,
+      password,
+      email_confirm: true,
     });
+    if (guErr || !gu.user) throw new Error(`create google user: ${guErr?.message}`);
+    googleId = gu.user.id;
+
+    const { data: beforeClaim } = await admin
+      .from("profiles")
+      .select("student_email")
+      .eq("id", googleId)
+      .single();
     check(
-      "an unknown major slug is rejected",
-      !!badMajorErr && /unknown major/i.test(badMajorErr.message),
-      badMajorErr?.message
+      "email matching alone does NOT link a .edu registration",
+      (beforeClaim as { student_email: string | null })?.student_email === null,
+      beforeClaim
     );
 
-    const { error: badTokenErr } = await anon.rpc("submit_guest_answers", {
+    const asUser = createClient(url, anonKey, noSession);
+    const { error: signInErr } = await asUser.auth.signInWithPassword({
+      email: googleEmail,
+      password,
+    });
+    if (signInErr) throw new Error(`sign in: ${signInErr.message}`);
+
+    const { data: claimed, error: claimErr } = await asUser.rpc(
+      "claim_guest_identity",
+      { p_token: eduToken }
+    );
+    check("claim_guest_identity succeeds for the signed-in user", !claimErr, claimErr?.message);
+    check("claim reports it linked something", claimed === true, claimed);
+
+    const { data: afterClaim } = await admin
+      .from("profiles")
+      .select("first_name, last_name, phone_number, student_email, student_email_verified, school")
+      .eq("id", googleId)
+      .single();
+    const ac = afterClaim as Record<string, unknown> | null;
+    check("claim carried the school email onto the profile", ac?.student_email === eduEmail);
+    check("school email is NOT marked verified", ac?.student_email_verified === false);
+    check("school derived from the domain", ac?.school === "Georgia State University");
+    check("claim carried the phone", ac?.phone_number === "678 555 0177");
+    check("claim carried the name", ac?.first_name === "Edu" && ac?.last_name === "Guest");
+
+    const { data: reclaim } = await asUser.rpc("claim_guest_identity", {
+      p_token: eduToken,
+    });
+    check("re-claiming the same token is a harmless no-op", reclaim === true, reclaim);
+
+    const { data: unknownClaim } = await asUser.rpc("claim_guest_identity", {
       p_token: "00000000-0000-0000-0000-000000000000",
-      p_grad_year: 2030,
     });
-    check(
-      "an unknown token cannot write answers",
-      !!badTokenErr && /unknown token/i.test(badTokenErr.message),
-      badTokenErr?.message
-    );
+    check("an unknown token claims nothing", unknownClaim === false, unknownClaim);
+    await asUser.auth.signOut();
 
     // --- 7. claim on first login -----------------------------------------
     // Stage a second identity, then sign that person up: handle_new_user
@@ -428,6 +467,11 @@ async function main() {
       .delete()
       .eq("personal_email", `injected-${suffix}@example.com`);
     await admin.from("sms_suppressions").delete().eq("phone_e164", "+12015550188");
+    await admin
+      .from("legacy_members")
+      .delete()
+      .eq("campus_email", `smoke-conv-edu-${suffix}@student.gsu.edu`);
+    if (googleId) await admin.auth.admin.deleteUser(googleId);
     if (claimedId) await admin.auth.admin.deleteUser(claimedId);
     if (memberId) await admin.auth.admin.deleteUser(memberId);
     if (adminId) await admin.auth.admin.deleteUser(adminId);

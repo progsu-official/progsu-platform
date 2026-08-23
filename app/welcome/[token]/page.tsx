@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { getGuestClaimContext, listActiveMajors } from "@/lib/actions/events";
+import { getGuestClaimContext } from "@/lib/actions/events";
 
 import { WelcomeFlow } from "./welcome-flow";
 
@@ -21,16 +21,11 @@ export default async function WelcomePage({
 }) {
   const { token } = await params;
 
-  // Both reads are anon-safe and independent, so they overlap rather than
-  // serialize — this page is the first thing a guest sees after submitting.
-  const [context, majors] = await Promise.all([
-    getGuestClaimContext(token),
-    listActiveMajors(),
-  ]);
+  const context = await getGuestClaimContext(token);
 
   // Unknown, malformed, and revoked tokens are indistinguishable to the
   // visitor on purpose.
   if (!context) notFound();
 
-  return <WelcomeFlow token={token} context={context} majors={majors} />;
+  return <WelcomeFlow token={token} context={context} />;
 }
