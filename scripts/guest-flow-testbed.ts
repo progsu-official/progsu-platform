@@ -32,7 +32,12 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const site = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  // NEXT_PUBLIC_SITE_URL points at production on this project, but the point
+  // of this script is usually to click through a local dev server. Print the
+  // local origin by default; pass --prod for the deployed one.
+  const site = process.argv.includes("--prod")
+    ? env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
+    : "http://localhost:3001"; // matches .claude/launch.json
 
   async function findEvent() {
     const { data } = await admin
@@ -82,7 +87,10 @@ async function main() {
     });
     if (error) throw new Error(`insert event: ${error.message}`);
     console.log(`published ${site}/events/${SLUG}`);
-    console.log("(it is on the public /events list until you run `down`)\n");
+    console.log(
+      "(the event row is live in the shared database, so it is on the public" +
+        " /events list — on prod too — until you run `down`)\n"
+    );
     return printPlaybook(site);
   }
 
