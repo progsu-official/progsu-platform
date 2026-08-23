@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Select } from "@/app/_components/select";
+import { PhoneInput } from "@/app/_components/phone-input";
 import { updateMinimalProfile } from "@/lib/actions/profile";
 
 import {
@@ -14,18 +15,22 @@ import {
   OnbPrimaryButton,
   OnbSurface,
   onbPanelClasses,
+  OnbSeam,
+  useOnbSeam,
+  OnbIntro,
 } from "../_components/shell";
 import { Field } from "../_components/field";
+import { usePreview } from "../_components/preview";
 
 // Field-specific headlines so users know WHICH field blocked the save, not just
 // a vague "something went wrong".
 const FIELD_ERROR_HEADINGS: Record<string, string> = {
-  firstName: "first name is required",
-  lastName: "last name is required",
-  school: "pick your school",
-  phoneNumber: "a phone number is required",
-  major: "pick a major",
-  majorOtherText: "tell us your major",
+  firstName: "First name is required",
+  lastName: "Last name is required",
+  school: "Pick your school",
+  phoneNumber: "A phone number is required",
+  major: "Pick a major",
+  majorOtherText: "Which major?",
 };
 
 // The submit button lives in a fixed action bar, so an inline field error
@@ -80,9 +85,22 @@ export function ProfileForm({
   schoolOptions: string[];
 }) {
   const router = useRouter();
+  const preview = usePreview();
+  const { seam, run: runSeam } = useOnbSeam();
+  const lastNameRef = useRef<HTMLInputElement | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
   const [state, setState] = useState<Initial>(initial);
+
+  // Two questions, not one form. Name first on its own, because it is the one
+  // thing we can ask before we have earned anything, and because a screen
+  // that opens with five inputs reads as paperwork. Both halves still submit
+  // together — the split is presentational.
+  const [phase, setPhase] = useState<"name" | "details">("name");
+  const nameDone =
+    state.firstName.trim().length > 0 && state.lastName.trim().length > 0;
+  const nameStarted =
+    state.firstName.trim().length > 0 || state.lastName.trim().length > 0;
 
   const isOther = state.major === "other";
   const isSchoolOther = state.school === SCHOOL_OTHER;
@@ -94,6 +112,24 @@ export function ProfileForm({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (phase === "name") {
+      if (!nameDone) {
+        setError({
+          message: state.firstName.trim()
+            ? "We need your last name too"
+            : "We need your first name",
+          field: state.firstName.trim() ? "lastName" : "firstName",
+        });
+        return;
+      }
+      runSeam(() => setPhase("details"), "fwd");
+      return;
+    }
+
+    // /dev/screens: native `required` has already run, so the form behaves
+    // normally right up to the point where it would need a database.
+    if (preview) return preview.advance("/onboarding/links");
     startTransition(async () => {
       const result = await updateMinimalProfile({
         firstName: state.firstName,
@@ -126,70 +162,125 @@ export function ProfileForm({
   return (
     <>
       <OnbSurface className="space-y-6">
-        {intro}
-        {notice}
+        {phase === "name" ? (
+          intro
+        ) : (
+          <OnbIntro title={`Good to meet you, ${state.firstName.trim()}.`}>
+            Three more and you&apos;re through.
+          </OnbIntro>
+        )}
+        {phase === "name" ? notice : null}
         <form id={FORM_ID} onSubmit={onSubmit} className="space-y-4">
+          {/* Exactly the fields is_fully_onboarded() actually gates on.
+              Preferred name and minor used to sit here at identical weight,
+              which made an optional field look required and turned a
+              five-field step into a wall of nine. Both are still editable in
+              /profile/settings, where someone goes on purpose. */}
+          <OnbSeam seam={seam}>
+          {phase === "name" ? (
+          <>
+          {/* No panel, no labels, no boxes — the fields ARE the display type,
+              folk's ghost-input treatment. The placeholders ask the question
+              at headline size, so this reads as somewhere to answer rather
+              than a form to fill in. Two fields rather than folk's single
+              "Full Name" because profiles has separate columns and splitting
+              on whitespace mangles "van der Berg"; the ghost styling is what
+              carries the feel, not the field count. */}
+          <div className="flex flex-wrap items-baseline justify-center gap-x-1 gap-y-0 pt-6">
+            <label htmlFor="onboarding-first-name" className="sr-only">
+              First name
+            </label>
+            <span
+              className="onb-ghost-fit"
+              data-value={state.firstName || "First"}
+              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+            >
+            <input
+              id="onboarding-first-name"
+              value={state.firstName}
+              onChange={(e) => setField("firstName", e.target.value)}
+              onKeyDown={(e) => {
+                // Space is how people move between two halves of their own
+                // name; without this it lands a stray space in the first
+                // field and the caret never moves.
+                if (e.key === " " && state.firstName.trim()) {
+                  e.preventDefault();
+                  lastNameRef.current?.focus();
+                }
+              }}
+              autoComplete="given-name"
+              autoCapitalize="words"
+              enterKeyHint="next"
+              placeholder="First"
+              // Sized to whichever is longer, the value or the placeholder,
+              // so the field never clips what is in it and never leaves a
+              // gap around a short one.
+              // size=1 so the input's own intrinsic width contributes
+              // nothing to the grid column; the hidden sizer decides it.
+              size={1}
+              required
+              disabled={pending}
+              aria-invalid={error?.field === "firstName"}
+              className="onb-ghost-input onb-ghost-input--inline"
+            />
+            </span>
+            <label htmlFor="onboarding-last-name" className="sr-only">
+              Last name
+            </label>
+            <span
+              className="onb-ghost-fit"
+              data-value={state.lastName || "Last"}
+              style={{ fontSize: "clamp(28px, 6.5vw, 44px)", lineHeight: 1.2 }}
+            >
+            <input
+              ref={lastNameRef}
+              id="onboarding-last-name"
+              value={state.lastName}
+              onChange={(e) => setField("lastName", e.target.value)}
+              autoComplete="family-name"
+              autoCapitalize="words"
+              enterKeyHint="go"
+              placeholder="Last"
+              size={1}
+              required
+              disabled={pending}
+              aria-invalid={error?.field === "lastName"}
+              className="onb-ghost-input onb-ghost-input--inline"
+            />
+            </span>
+          </div>
+
+          {/* Only nags once they have actually typed something. An inline
+              error on an untouched field reads as broken. */}
+          <p
+            className={`mt-3 text-center text-[13px] leading-[1.5] ${
+              nameStarted && !nameDone
+                ? "text-destructive"
+                : "text-muted-foreground"
+            }`}
+          >
+            {nameStarted && !nameDone ? "We need both." : "First and last."}
+          </p>
+          </>
+          ) : (
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
             <Field
-              label="first name"
-              required
-              htmlFor="onboarding-first-name"
-              error={error?.field === "firstName" ? error.message : null}
-            >
-              <Input
-                id="onboarding-first-name"
-                value={state.firstName}
-                onChange={(e) => setField("firstName", e.target.value)}
-                autoComplete="given-name"
-                required
-                disabled={pending}
-                className={inputClasses}
-              />
-            </Field>
-            <Field
-              label="last name"
-              required
-              htmlFor="onboarding-last-name"
-              error={error?.field === "lastName" ? error.message : null}
-            >
-              <Input
-                id="onboarding-last-name"
-                value={state.lastName}
-                onChange={(e) => setField("lastName", e.target.value)}
-                autoComplete="family-name"
-                required
-                disabled={pending}
-                className={inputClasses}
-              />
-            </Field>
-            <Field label="preferred name">
-              <Input
-                value={state.preferredName}
-                onChange={(e) => setField("preferredName", e.target.value)}
-                disabled={pending}
-                className={inputClasses}
-              />
-            </Field>
-            <Field
-              label="phone"
+              label="Phone"
               required
               htmlFor="onboarding-phone"
               error={error?.field === "phoneNumber" ? error.message : null}
             >
-              <Input
+              <PhoneInput
                 id="onboarding-phone"
-                type="tel"
                 value={state.phoneNumber}
-                onChange={(e) => setField("phoneNumber", e.target.value)}
-                autoComplete="tel"
+                onChange={(v) => setField("phoneNumber", v)}
                 required
                 disabled={pending}
-                placeholder="(404) 555-1234"
-                className={inputClasses}
+                invalid={error?.field === "phoneNumber"}
               />
             </Field>
             <Field
-              label="school"
+              label="School"
               required
               htmlFor="onboarding-school"
               error={error?.field === "school" ? error.message : null}
@@ -200,15 +291,15 @@ export function ProfileForm({
                 onChange={(v) => setField("school", v)}
                 options={[
                   ...schoolOptions.map((s) => ({ value: s, label: s })),
-                  { value: SCHOOL_OTHER, label: "other (not listed)" },
+                  { value: SCHOOL_OTHER, label: "Other (not listed)" },
                 ]}
-                placeholder="select your school"
+                placeholder="Pick your school"
                 invalid={error?.field === "school"}
                 disabled={pending}
               />
             </Field>
             <Field
-              label="major"
+              label="Major"
               required
               htmlFor="onboarding-major"
               error={error?.field === "major" ? error.message : null}
@@ -221,24 +312,16 @@ export function ProfileForm({
                   value: m.slug,
                   label: m.label,
                 }))}
-                placeholder="select your major"
+                placeholder="Pick your major"
                 invalid={error?.field === "major"}
                 disabled={pending}
-              />
-            </Field>
-            <Field label="minor">
-              <Input
-                value={state.minor}
-                onChange={(e) => setField("minor", e.target.value)}
-                disabled={pending}
-                className={inputClasses}
               />
             </Field>
 
             {isSchoolOther ? (
               <div className="sm:col-span-2">
                 <Field
-                  label="tell us your school"
+                  label="Which school?"
                   required
                   error={error?.field === "school" ? error.message : null}
                 >
@@ -258,7 +341,7 @@ export function ProfileForm({
             {isOther ? (
               <div className="sm:col-span-2">
                 <Field
-                  label="tell us your major"
+                  label="Which major?"
                   required
                   htmlFor="onboarding-major-other"
                   error={error?.field === "majorOtherText" ? error.message : null}
@@ -277,12 +360,14 @@ export function ProfileForm({
               </div>
             ) : null}
           </div>
+          )}
+          </OnbSeam>
 
           {error ? (
             <OnbErrorBox>
               <p className="font-medium">
                 {FIELD_ERROR_HEADINGS[error.field ?? ""] ??
-                  "couldn't save your profile"}
+                  "We couldn't save that"}
               </p>
               <p className="mt-1">{error.message}</p>
             </OnbErrorBox>
@@ -291,8 +376,16 @@ export function ProfileForm({
       </OnbSurface>
 
       <OnbActionBar>
-        <OnbPrimaryButton type="submit" form={FORM_ID} loading={pending}>
-          {pending ? "saving…" : "continue"}
+        {/* Disabled until the name is real, folk's required-cohort rule: the
+            name is the one thing this step exists for, so a live button that
+            bounces off validation is worse than one that waits. */}
+        <OnbPrimaryButton
+          type="submit"
+          form={FORM_ID}
+          loading={pending}
+          disabled={phase === "name" && !nameDone}
+        >
+          {pending ? "Saving…" : "Continue"}
         </OnbPrimaryButton>
       </OnbActionBar>
     </>

@@ -54,6 +54,16 @@ export default function TermsPage() {
           future exports.
         </p>
 
+        <h2 className="text-lg font-semibold">Text messages</h2>
+        <p>
+          If you opt in to text messages, you agree to receive event-related
+          SMS from Progsu at the number you provided. Message frequency
+          varies. Message and data rates may apply. Reply STOP to cancel or
+          HELP for help. Carriers are not liable for delayed or undelivered
+          messages. Opting out of texts does not affect your membership, your
+          RSVPs, or the emails you receive.
+        </p>
+
         <h2 className="text-lg font-semibold">Service availability</h2>
         <p>
           Progsu is run by volunteers. We&apos;ll do our best to keep it up, but

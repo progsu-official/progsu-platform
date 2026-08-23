@@ -14,6 +14,13 @@ import {
 // Google sign-in would make the ticket unusable by exactly the people it was
 // built for. Access control lives in guest_ticket_by_token(), which only ever
 // returns the row matching the token presented.
+//
+// /joined/[token] is public on the same reasoning (docs/16-guest-conversion
+// §3.2): it is the page a guest lands on immediately after registering, before
+// they have any account at all. Its claim token is the credential and
+// guest_claim_context() only ever returns the row matching it. Bouncing this
+// one to /login would defeat the entire point — the page exists to talk
+// someone into signing up.
 const PUBLIC_PREFIXES = [
   "/",
   "/home",
@@ -22,6 +29,11 @@ const PUBLIC_PREFIXES = [
   "/terms",
   "/auth/callback",
   "/tickets",
+  "/joined",
+  // /dev/screens renders every funnel screen from dummy props with no session.
+  // Gated on NODE_ENV here as well as in its own layout, so the path does not
+  // even exist as a public prefix in a deployment.
+  ...(process.env.NODE_ENV === "production" ? [] : ["/dev"]),
 ];
 const ADMIN_PREFIXES = ["/admin"];
 const ONBOARDING_PREFIX = "/onboarding";

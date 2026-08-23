@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v5
+          Draft · v6
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -47,6 +47,47 @@ export default function PrivacyPage() {
           <li>To operate events you participate in — RSVP confirmations, reminders, and cancellations (see Events below).</li>
           <li>To send marketing event and opportunity emails or text messages, if you opt in separately.</li>
         </ul>
+
+        <h2 className="text-lg font-semibold">
+          If you register for an event without an account
+        </h2>
+        <p>
+          New in v6: you can RSVP to a Progsu event as a guest, without signing
+          up. When you do, we store the name, email, and phone number you enter
+          so we can send you the event details and check you in at the door.
+        </p>
+        <p>
+          After registering you may be asked three optional questions — your
+          major, when you graduate, and what kind of work you are looking for.
+          Answering is entirely optional and skipping costs you nothing; your
+          RSVP is already complete before we ask. If you later sign in with the
+          same email address, those answers are copied onto your member profile
+          so you do not have to type them twice.
+        </p>
+        <p>
+          Guest registrations are visible to Progsu admins running the event.
+          They are not shown to other members, and guests do not appear on the
+          public attendee list on an event page.
+        </p>
+
+        <h2 className="text-lg font-semibold">Text messages</h2>
+        <p>
+          We only text you if you tick the SMS box yourself. It is never
+          pre-ticked, and your RSVP, ticket, and event emails all work exactly
+          the same whether you tick it or not.
+        </p>
+        <p className="font-medium">
+          We do not sell, rent, or share mobile opt-in data or consent with
+          anyone for their own marketing. Your phone number and the fact that
+          you opted in stay with Progsu.
+        </p>
+        <p>
+          Message frequency varies. Message and data rates may apply. Reply
+          STOP to any message to stop receiving them, or HELP for help. A STOP
+          applies to your number permanently and overrides every consent we
+          hold — including one given on a different form or at a different
+          event.
+        </p>
 
         <h2 className="text-lg font-semibold">Events</h2>
         <p>

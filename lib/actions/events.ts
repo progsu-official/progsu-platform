@@ -17,6 +17,7 @@ import {
 } from "@/lib/email/events";
 import { type ActionResult, err, ok } from "./result";
 import {
+  SMS_CONSENT_COPY,
   cancelEventSchema,
   createEventCoverUploadUrlSchema,
   createEventSchema,
@@ -63,6 +64,18 @@ function mapPgError(error: { code?: string | null; message?: string } | null) {
     }
     if (lower.includes("event is full")) {
       return err("CONFLICT", "This event is full.");
+    }
+    // Guest RSVP hit an existing member account. The surface swaps to a
+    // sign-in prompt rather than showing this text, so the message here is
+    // only a fallback — but keep it non-committal about which field matched.
+    if (lower.includes("account exists")) {
+      // Names both fields without saying which one matched. "Those details"
+      // read as a dead end — someone who typed a fresh email had no way to
+      // guess their phone was the match and would just try another email.
+      return err(
+        "ACCOUNT_EXISTS",
+        "That email or phone number is already on a Progsu account. Sign in to RSVP."
+      );
     }
     // Treat admin-only / onboarding / auth-shape / visibility / check-in
     // preconditions as FORBIDDEN so member surfaces can surface the specific
@@ -659,7 +672,9 @@ export async function rsvpToEvent(
 
 export async function guestRsvpToEvent(
   rawInput: GuestRsvpToEventInput
-): Promise<ActionResult<{ effectiveStatus: EffectiveRsvpStatus }>> {
+): Promise<
+  ActionResult<{ effectiveStatus: EffectiveRsvpStatus; claimToken: string }>
+> {
   const parsed = guestRsvpToEventSchema.safeParse(rawInput);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
@@ -674,11 +689,16 @@ export async function guestRsvpToEvent(
     p_name: parsed.data.name,
     p_email: parsed.data.email,
     p_phone: parsed.data.phone,
+    p_sms_opt_in: parsed.data.smsOptIn,
+    p_sms_consent_copy: parsed.data.smsOptIn ? SMS_CONSENT_COPY : null,
   });
   if (error) return mapPgError(error);
 
-  const status = typeof data === "string" ? (data as EffectiveRsvpStatus) : null;
-  if (!status) {
+  // Returns `returns table (...)`, so PostgREST hands back a one-row array.
+  const row = Array.isArray(data) ? data[0] : null;
+  const status = (row?.status as EffectiveRsvpStatus | undefined) ?? null;
+  const claimToken = (row?.claim_token as string | undefined) ?? null;
+  if (!status || !claimToken) {
     return err("INTERNAL", "RSVP saved but effective status missing.");
   }
 
@@ -698,7 +718,55 @@ export async function guestRsvpToEvent(
   }
 
   revalidateMemberEventPaths();
-  return ok({ effectiveStatus: status });
+  return ok({ effectiveStatus: status, claimToken });
+}
+
+// ---------------------------------------------------------------------------
+// Guest → member conversion (docs/16-guest-conversion)
+// ---------------------------------------------------------------------------
+
+export type GuestClaimContext = {
+  firstName: string;
+  email: string;
+  eventTitle: string;
+  eventSlug: string;
+  startsAt: string;
+  rsvpStatus: EffectiveRsvpStatus | "cancelled";
+  answered: boolean;
+  smsOptedIn: boolean;
+};
+
+// Read for /joined/[token]. The token IS the credential — same posture as the
+// guest ticket page. Returns null for an unknown token so the route can 404
+// without distinguishing "never existed" from "wrong".
+export async function getGuestClaimContext(
+  rawToken: string
+): Promise<GuestClaimContext | null> {
+  const parsed = z.string().uuid().safeParse(rawToken);
+  if (!parsed.success) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("guest_claim_context", {
+    p_token: parsed.data,
+  });
+  if (error) {
+    console.error("[events] guest_claim_context failed:", error.message);
+    return null;
+  }
+
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return null;
+
+  return {
+    firstName: row.first_name ?? "",
+    email: row.email ?? "",
+    eventTitle: row.event_title ?? "",
+    eventSlug: row.event_slug ?? "",
+    startsAt: row.starts_at ?? "",
+    rsvpStatus: row.rsvp_status,
+    answered: !!row.answered,
+    smsOptedIn: !!row.sms_opted_in,
+  };
 }
 
 // ---------------------------------------------------------------------------

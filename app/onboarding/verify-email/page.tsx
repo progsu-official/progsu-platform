@@ -51,13 +51,13 @@ export default async function VerifyEmailPage() {
         fullyOnboarded={state.fullyOnboarded}
         intro={
           alreadyVerified ? (
-            <OnbIntro title="you’re verified">
-              {profile?.student_email} is on file. verify a new one below to
+            <OnbIntro title="Your school email is verified">
+              {profile?.student_email} is on file. Verify a different one below to
               swap it.
             </OnbIntro>
           ) : (
-            <OnbIntro title="verify your student email">
-              we’ll send a 6-digit code to confirm it.
+            <OnbIntro title="Let’s confirm you’re a student">
+              A verified school email is what puts you in front of recruiters.
             </OnbIntro>
           )
         }

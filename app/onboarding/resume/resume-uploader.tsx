@@ -20,6 +20,7 @@ import {
   OnbSecondaryButton,
   OnbSurface,
 } from "../_components/shell";
+import { usePreview } from "../_components/preview";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -59,6 +60,7 @@ export function ResumeUploader({
   currentUploadedAt: string | null;
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>({ kind: "idle" });
@@ -70,7 +72,7 @@ export function ResumeUploader({
     if (!f.name.toLowerCase().endsWith(".pdf") && f.type !== "application/pdf") {
       setStatus({
         kind: "error",
-        message: "that isn't a pdf — pick a .pdf file.",
+        message: "That isn't a PDF. Pick a .pdf file.",
       });
       return;
     }
@@ -100,13 +102,15 @@ export function ResumeUploader({
         if (xhr.status >= 200 && xhr.status < 300) resolve();
         else reject(new Error(`upload failed (${xhr.status})`));
       };
-      xhr.onerror = () => reject(new Error("network error during upload"));
+      xhr.onerror = () => reject(new Error("The upload lost connection. Try again."));
       xhr.send(blob);
     });
   }
 
   function onUpload() {
     if (!file) return;
+    // /dev/screens: a real upload needs signed storage URLs.
+    if (preview) return preview.advance("/onboarding/consent");
     setStatus({ kind: "signing" });
     startTransition(async () => {
       const created = await createResumeUploadUrl({
@@ -123,7 +127,7 @@ export function ResumeUploader({
       } catch (e) {
         setStatus({
           kind: "error",
-          message: e instanceof Error ? e.message : "upload failed.",
+          message: e instanceof Error ? e.message : "The upload failed.",
         });
         return;
       }
@@ -152,10 +156,9 @@ export function ResumeUploader({
   return (
     <>
       <OnbSurface>
-        <OnbIntro title="add your resume">
-          it&apos;s what sponsors and recruiters see when they come scouting —
-          without one, you don&apos;t show up for them at all. pdf, up to 10 MB.
-        </OnbIntro>
+        {/* No subtitle: the title already carries the reason, and a paragraph
+            restating it was the third explanation on a screen with one job. */}
+        <OnbIntro title="Add a resume for recruiters to see" />
 
         <div className="mt-2 space-y-4">
           {currentFileName ? (
@@ -169,10 +172,10 @@ export function ResumeUploader({
                 title={currentFileName}
                 body={
                   currentUploadedAt
-                    ? `on file — uploaded ${new Date(
+                    ? `On file since ${new Date(
                         currentUploadedAt,
-                      ).toLocaleDateString()}. a new upload replaces it.`
-                    : "on file — a new upload replaces it."
+                      ).toLocaleDateString()}. A new upload replaces it.`
+                    : "on file. A new upload replaces it."
                 }
               />
               <OnbRowDivider />
@@ -204,11 +207,11 @@ export function ResumeUploader({
                   <DocumentIcon />
                 </OnbIconPlate>
               }
-              title={file ? file.name : "drop your pdf here"}
+              title={file ? file.name : "Drop your PDF here"}
               body={
                 file
                   ? `${(file.size / 1024 / 1024).toFixed(2)} MB — ready when you are.`
-                  : "or drag one in."
+                  : "or drag one in"
               }
               action={
                 <OnbSecondaryButton
@@ -216,7 +219,7 @@ export function ResumeUploader({
                   disabled={busy}
                   className="w-full md:w-auto"
                 >
-                  choose a file
+                  Choose a file
                 </OnbSecondaryButton>
               }
             />
@@ -238,14 +241,14 @@ export function ResumeUploader({
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                uploading… {status.percent}%
+                Uploading… {status.percent}%
               </p>
             </div>
           ) : null}
 
           {status.kind === "signing" || status.kind === "finalizing" ? (
             <p className="text-xs text-muted-foreground">
-              {status.kind === "signing" ? "preparing your upload…" : "finalizing…"}
+              {status.kind === "signing" ? "Preparing your upload…" : "Finalizing…"}
             </p>
           ) : null}
 
@@ -255,7 +258,7 @@ export function ResumeUploader({
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          never posted publicly — and leave your SSN and address off it.
+          Never posted publicly. Leave your SSN and home address off it.
         </p>
       </OnbSurface>
 
@@ -267,10 +270,11 @@ export function ResumeUploader({
             className="w-auto flex-none px-5"
             disabled={busy}
             onClick={() => {
+              if (preview) return preview.advance("/onboarding/consent");
               router.push("/onboarding/consent");
             }}
           >
-            skip for now
+            Skip for now
           </OnbSecondaryButton>
           <OnbPrimaryButton
             onClick={onUpload}
@@ -278,7 +282,7 @@ export function ResumeUploader({
             loading={busy}
             className="flex-1"
           >
-            {busy ? "uploading…" : "upload and continue"}
+            {busy ? "Uploading…" : "Upload and continue"}
           </OnbPrimaryButton>
         </div>
       </OnbActionBar>

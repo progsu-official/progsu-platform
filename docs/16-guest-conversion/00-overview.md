@@ -2,7 +2,7 @@
 
 Owner: Events / onboarding
 Last revised: 2026-08-23
-Status: Spec. No code yet.
+Status: Phase 1 shipped 2026-08-23. Phases 2-3 open.
 
 Supersedes nothing. Extends the guest RSVP path introduced in
 `supabase/migrations/20260821010000_guest_event_rsvp.sql` and the completion-ring
@@ -71,7 +71,7 @@ they were choices, not defaults.
   an existing profile                   │
         │                               │
   no guest row created          guest row created
-  modal → "You already have      redirect → /welcome/[claim_token]
+  modal → "You already have      redirect → /joined/[claim_token]
   an account, sign in"                    │
                                    3 questions, one per step
                                    (major → graduation → looking for)
@@ -91,7 +91,7 @@ identity we intend to throw away.
 
 ### 3.2 The welcome page
 
-Route: `/welcome/[token]`. Sessionless, token-keyed, `force-dynamic`,
+Route: `/joined/[token]`. Sessionless, token-keyed, `force-dynamic`,
 `robots: { index: false, follow: false }` — the same posture as
 `app/tickets/[token]/page.tsx`, which is the existing precedent for a
 bearer-token page with no session.
@@ -388,6 +388,150 @@ data on first application.
 Registration (§7) runs in parallel with Phase 1, starting immediately, since it
 waits on carriers rather than on us.
 
+## 9a. What shipped (2026-08-23)
+
+Migrations, in order:
+
+| File | Contents |
+|---|---|
+| `20260823150000_phone_e164.sql` | `normalize_phone_e164()` + generated `profiles.phone_e164` + index |
+| `20260823150100_legacy_members_guest_answers.sql` | answer/consent columns, table comment correction |
+| `20260823150200_sms_suppressions.sql` | suppression table + `suppress_sms_number()` |
+| `20260823150300_guest_claim.sql` | `claim_token`, anon `majors` read, `upsert_guest_identity()`, `guest_rsvp_to_event()` drop+recreate, `guest_claim_context()`, `submit_guest_answers()` |
+| `20260823150400_handle_new_user_guest_answers.sql` | claim-on-first-login copies the answers |
+| `20260823150500_privacy_policy_v6.sql` | privacy bump (open question 1 resolved: yes) |
+| `20260823150600_lock_down_service_role_helpers.sql` | see below |
+| `20260823150700_guest_rsvp_backcompat.sql` | 4-arg shim so the schema is safe ahead of the deploy — see below |
+
+App: `/joined/[token]` (+ layout), collision and SMS states in the guest RSVP
+modal, `ACCOUNT_EXISTS` error code, `submitGuestAnswers` /
+`getGuestClaimContext` / `listActiveMajors` actions, `/welcome` added to
+`PUBLIC_PREFIXES`, privacy v6 and terms SMS copy.
+
+Verification: `scripts/smoke-guest-conversion.ts` (42 checks, green),
+`smoke-guest-ticket.ts` updated for the new return shape and green,
+`smoke-onboarding-parity.ts` green, typecheck and build clean, e2e scenario 10
+updated for the redirect. `scripts/apply-migration.ts` was added because this
+project has neither `psql` nor the Supabase CLI; `--dry` runs a whole chain in
+one transaction and rolls it back, `--apply` commits file by file.
+
+### Applying schema ahead of the deploy
+
+Migrations here land on the live database while app code ships separately
+through Vercel, so any change to an existing helper's shape has a window where
+deployed code talks to a schema it does not expect. Changing
+`guest_rsvp_to_event()` from a scalar to a one-row table created exactly that:
+old code doing `typeof data === "string"` would write the RSVP and then show
+the visitor an error.
+
+Resolved by overloading on arity rather than by racing the deploy — 4 args
+returns the old scalar, 6 args returns `(status, claim_token)`. PostgREST
+selects on the argument names in the request body, so each caller reaches its
+own function. The 6-arg form had to lose its DEFAULTs for that to be
+unambiguous.
+
+The 4-arg shim is transitional and marked as such in its comment. Drop it once
+the build carrying the `/welcome` redirect is live and no rollback is planned.
+`scripts/smoke-guest-conversion.ts` asserts it while it exists.
+
+**Generalizes past this change:** any migration that alters a helper's return
+type or signature needs the same treatment, because there is no window in which
+schema and code deploy together.
+
+### A collision-check consequence, found by an unrelated smoke
+
+`smoke-event-attendee-faces.ts` seeded a member and a guest with the same
+placeholder phone (`555-555-5555`) and started failing with "account exists" —
+the check working correctly against a fixture that predated it. Fixture fixed.
+
+Worth knowing about the live data: of 203 profiles, 157 have a phone that
+normalizes, 6 have one that does not, and three numbers are shared by two
+accounts each (almost certainly duplicate accounts rather than two people).
+Nothing placeholder-shaped, so the phone branch of the collision check will not
+false-positive real guests. Members with a missing or unparseable phone are
+still caught by the email branch.
+
+### The one thing that was wrong in the spec
+
+`revoke all on function ... from public` does **not** make a function
+service-role-only on Supabase. The project ships default privileges granting
+`EXECUTE` to `anon` and `authenticated` on every new function in `public`, and
+revoking from `PUBLIC` leaves those explicit grants in place. Both new helpers
+were anon-callable on first apply.
+
+`upsert_guest_identity` was the dangerous one: reachable by anon, it let
+anybody write arbitrary `legacy_members` rows — including staging a row against
+a stranger's email with attacker-chosen major, phone, and SMS consent, which
+`handle_new_user()` would then copy onto that person's real profile at first
+sign-in. Closed by `20260823150600` with an explicit
+`revoke execute ... from anon, authenticated`, and both denials are now
+asserted in the smoke.
+
+**Other service-role-only helpers in this schema very likely have the same
+gap.** Not swept as part of this change. Each needs its own look at whether an
+internal guard (`is_admin()`, an `auth.uid()` check) already covers it —
+`write_audit()`, for instance, validates the actor itself and is therefore not
+exposed by the loose grant.
+
+## 9b. Looking at the screens
+
+`/dev/screens` renders every screen in this funnel — fifteen of them — from
+fabricated props, with no session and no database. Same components production
+renders; only the props are invented, so a prop-type change breaks the build
+there too rather than letting the gallery drift.
+
+It is also walkable: fill a form in, press Continue, and it advances through
+the funnel with the real validation, transitions and reveals. Each form skips
+exactly one thing — its server action — via the `usePreview()` context in
+`app/onboarding/_components/preview.tsx`, which is `null` everywhere else.
+`PreviewStage` maps the paths the forms navigate to onto gallery routes.
+
+**Keep it current.** Adding a screen or a meaningful state means adding it to
+`app/dev/screens/screens.ts` and the switch in `app/dev/screens/[slug]/page.tsx`;
+a new navigation target means adding it to `PreviewStage`'s route map, or the
+walkthrough silently dead-ends at the index. A state that cannot be reached in
+the gallery is a state nobody will look at again.
+
+Gated on `NODE_ENV` in its layout and again in `middleware.ts`, so the path
+does not exist in a deployment.
+
+Two production components carry a dev-only prop for it rather than the gallery
+faking them: `WelcomeFlow`'s `freeze` (the live page auto-advances past its
+first beat in 1.5s) and `GuestRsvpModal`'s `forceAccountExists` (that state
+otherwise needs a matching row in the database).
+
+## 9c. Motion
+
+`app/onboarding/onboarding.css` carries a progressive-reveal primitive ported
+from folk-web's `.onb-collapse` (`components/signup/onboarding-soft.css`): a
+`grid-template-rows: 0fr → 1fr` glide with staggered `.onb-cascade-item`
+children, wrapped by `app/onboarding/_components/reveal.tsx`.
+
+Always mounted, so opening is a height glide rather than content teleporting in
+and shoving the page down; `inert` is what keeps a closed block out of the tab
+order, which is the trade for keeping the DOM in place.
+
+Used on the links and consent steps so a step that asks eight things never shows
+more than one group at a time. On consent the submit button additionally stays
+disabled until the reveal has settled (`REVEAL_SETTLE_MS`), so nobody can
+finish before the optional opt-ins have appeared.
+
+Easing is folk's `--onb-ease` (`cubic-bezier(0.32, 0.72, 0, 1)`) and
+deliberately not its `--onb-spring`, whose overshoot is the bounce curve
+DESIGN.md and the impeccable detector both flag as dated.
+
+`.onb-ghost-input` is the other port from that codebase
+(folk-web `components/signup/onboarding-soft.css`): a borderless, transparent,
+centre-aligned field at display size, weight 750, placeholder at 0.32 alpha.
+The field *is* the type — that is the whole difference between a screen that
+reads as somewhere to answer and a labelled text box that happens to be first.
+Both numbers are load-bearing: lighter and the empty state reads as missing
+content rather than a prompt.
+
+The name step uses two of them rather than folk's single "Full Name", because
+`profiles` has separate columns and splitting on whitespace mangles names like
+"van der Berg". The ghost styling carries the feel, not the field count.
+
 ## 10. Considered and deferred
 
 - **Members-only QR tickets** — guests check in by name, members skip the line.
@@ -405,8 +549,9 @@ waits on carriers rather than on us.
 
 ## 11. Open questions
 
-1. **Privacy version bump?** §6.3. Not strictly required by rule #8; recommended
-   anyway. Owner's call, and it gates the migration ordering.
+1. ~~**Privacy version bump?**~~ Resolved: bumped to v6 in
+   `20260823150500_privacy_policy_v6.sql`. Members will be routed to
+   `/onboarding/consent` on their next page load.
 2. **EIN status.** §7.1. Determines brand type and the registration timeline.
    Everything else in Phase 3 waits on this answer.
 3. **Does the collision check include `student_email`?** Currently specified as

@@ -1,3 +1,11 @@
+.onb {
+  /* folk-web's onboarding easing (components/signup/onboarding-soft.css).
+     Exponential ease-out: fast start, long settle. Deliberately not folk's
+     --onb-spring, whose 1.56 overshoot is the bounce curve DESIGN.md and the
+     detector both call dated. */
+  --onb-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 /* Onboarding motion grammar, ported from folk's landing-toon.css.
    Everything is scoped under the `.onb` root class (set on the route root in
    app/onboarding/layout.tsx) so none of it leaks to other routes. Keyframe
@@ -137,4 +145,202 @@
   .onb .onboarding-seam-enter-back {
     animation: none !important;
   }
+}
+
+/* ── progressive reveal ────────────────────────────────────────────
+   Ported from folk-web's .onb-collapse (components/signup/onboarding-soft.css).
+   A grid-rows 0fr→1fr glide rather than mount/unmount, so revealing a block
+   grows the page smoothly instead of teleporting content in and shoving
+   everything below it down a screen. The inner element carries min-height:0
+   and overflow:hidden — without both, the grid refuses to crush to zero.
+
+   Always mounted, so `inert` is what keeps a closed block out of the tab
+   order and away from screen readers. That is the trade for the smooth
+   height: the DOM stays put, which would otherwise let focus land inside a
+   zero-height box. */
+.onb .onb-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s var(--onb-ease);
+}
+
+.onb .onb-reveal--open {
+  grid-template-rows: 1fr;
+}
+
+.onb .onb-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Runway for anything that paints outside its border box — focus rings and
+   the card shadows both do. With the clip box ending exactly at the content
+   edge they get sliced off flat. Lives on the child so it is part of the
+   measured content and collapses away with everything else; as padding on
+   .onb-reveal-inner itself it would be border-box padding the grid cannot
+   crush, leaving a closed block ~10px tall. */
+.onb .onb-reveal-inner > * {
+  padding-bottom: 10px;
+}
+
+/* Children waterfall in behind the glide rather than all arriving at once.
+   The 90ms cap keeps the whole wave under half a second no matter how many
+   items a block has. */
+.onb .onb-cascade-item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.22s ease-out,
+    transform 0.32s var(--onb-ease);
+}
+
+.onb .onb-reveal--open .onb-cascade-item {
+  opacity: 1;
+  transform: none;
+  transition-delay: min(calc(var(--onb-i, 0) * 34ms), 90ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb .onb-reveal,
+  .onb .onb-cascade-item {
+    transition: none !important;
+  }
+}
+
+/* ── the last beat ─────────────────────────────────────────────────
+   The done screen has no button any more: it plays, then leaves. Three
+   staggered arrivals and one exit, all on --onb-ease. No overshoot anywhere
+   — a celebration that springs reads as a toy, and DESIGN.md and the
+   detector both rule out bounce curves. */
+.onb .onb-done-pop {
+  animation: onb-done-pop 620ms var(--onb-ease) both;
+}
+
+.onb .onb-done-rise {
+  animation: onb-done-rise 520ms var(--onb-ease) both;
+  animation-delay: 180ms;
+}
+
+.onb .onb-done-rise-late {
+  animation: onb-done-rise 520ms var(--onb-ease) both;
+  animation-delay: 300ms;
+}
+
+/* The exit is what makes it read as a handoff rather than a page that
+   vanished: the whole group lifts, shrinks a touch and blurs out, so the
+   navigation that follows feels like the same motion continuing. */
+.onb .onb-done-leaving {
+  animation: onb-done-out 460ms var(--onb-ease) both;
+}
+
+@keyframes onb-done-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72) translateY(8px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes onb-done-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes onb-done-out {
+  from {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.97);
+    filter: blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb .onb-done-pop,
+  .onb .onb-done-rise,
+  .onb .onb-done-rise-late,
+  .onb .onb-done-leaving {
+    animation: none !important;
+  }
+}
+
+/* ── ghost input ───────────────────────────────────────────────────
+   Ported from folk-web's .onb-ghost-input (components/signup/onboarding-soft.css).
+
+   The field IS the display type: no border, no card, no fill. The placeholder
+   asks the question at headline size, so the screen reads as somewhere to
+   answer rather than a form to complete — which is the whole difference
+   between folk's name step and a labelled text box that happens to be first.
+
+   Weight 750 and the 0.38 placeholder are both load-bearing. Lighter and the
+   empty state reads as missing content rather than a prompt; a normal weight
+   makes it look like body copy someone forgot to style. */
+.onb .onb-ghost-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: hsl(var(--foreground));
+  caret-color: hsl(var(--primary));
+  outline: none;
+}
+
+.onb .onb-ghost-input::placeholder {
+  color: hsl(var(--foreground) / 0.32);
+  font-weight: 750;
+}
+
+.onb .onb-ghost-input:disabled {
+  opacity: 0.5;
+}
+
+/* Inline variant: the two name fields share one line, so each hugs its own
+   content instead of taking the full width. Must stay after the base rule —
+   `width: 100%` there is the same specificity and would otherwise win on
+   source order.
+
+   Width comes from a hidden sizer in the same grid cell, not the `size`
+   attribute. `size` counts average character widths, which at 44px bold
+   overshoots badly and left a gap between the two names that read as a tab
+   rather than a space. `field-sizing: content` would do this natively but
+   Safari has not shipped it. */
+.onb .onb-ghost-fit {
+  display: inline-grid;
+  min-width: 0;
+}
+
+.onb .onb-ghost-fit::after {
+  content: attr(data-value) " ";
+  grid-area: 1 / 1;
+  visibility: hidden;
+  white-space: pre;
+  font: inherit;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.onb .onb-ghost-input--inline {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
 }

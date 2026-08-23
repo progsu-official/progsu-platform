@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Globe } from "lucide-react";
+import { ChevronDown, Globe } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Select } from "@/app/_components/select";
@@ -38,16 +38,18 @@ import {
   onbPanelClasses,
 } from "../_components/shell";
 import { Field } from "../_components/field";
+import { usePreview } from "../_components/preview";
+import { CascadeItem, Reveal } from "../_components/reveal";
 
 const FIELD_ERROR_HEADINGS: Record<string, string> = {
-  classStanding: "select your class standing",
-  gradYear: "select your graduation year",
-  gradTerm: "select your graduation term",
-  interestedRoles: "pick at least one role",
-  linkedinUrl: "that linkedin url doesn't look right",
-  githubUrl: "that github url doesn't look right",
-  portfolioUrl: "that portfolio url doesn't look right",
-  bio: "keep the bio to one line, 220 characters or fewer",
+  classStanding: "Pick your class standing",
+  gradYear: "Pick your graduation year",
+  gradTerm: "Pick your graduation term",
+  interestedRoles: "Pick at least one",
+  linkedinUrl: "That LinkedIn link doesn't look right",
+  githubUrl: "That GitHub link doesn't look right",
+  portfolioUrl: "That link doesn't look right",
+  bio: "Keep it to one line, 220 characters or fewer",
 };
 
 // The submit button lives in a fixed action bar, so a field error rendered
@@ -83,9 +85,18 @@ const inputClasses =
 
 export function LinksForm({ initial }: { initial: Initial }) {
   const router = useRouter();
+  const preview = usePreview();
   const [pending, startTransition] = useTransition();
+  const [showLinks, setShowLinks] = useState(false);
+
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
   const [state, setState] = useState<Initial>(initial);
+  // Each block earns the next one. Showing all three at once was why this
+  // step read as a wall — it still asks eight things, but never more than one
+  // group at a time.
+  const gradAnswered =
+    !!state.classStanding && !!state.gradTerm && state.gradYear != null;
+  const rolesAnswered = state.interestedRoles.length > 0;
 
   const currentYear = new Date().getFullYear();
   const gradYears = Array.from({ length: 8 }, (_, i) => currentYear - 1 + i);
@@ -108,6 +119,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (preview) return preview.advance("/onboarding/resume");
     startTransition(async () => {
       const result = await updateOnboardingLinks({
         classStanding: state.classStanding as ClassStanding,
@@ -141,13 +153,13 @@ export function LinksForm({ initial }: { initial: Initial }) {
   return (
     <>
       <OnbSurface className="space-y-6">
-        <OnbIntro title="roles & links">
-          who you are, what you&apos;re into, and where to find your work.
+        <OnbIntro title="What are you into?">
+          Just trying to get to know you. This is what decides which opportunities we send your way.
         </OnbIntro>
         <form id={FORM_ID} onSubmit={onSubmit} className="space-y-6">
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-3`}>
             <Field
-              label="class standing"
+              label="Class standing"
               required
               htmlFor="onboarding-class-standing"
               error={error?.field === "classStanding" ? error.message : null}
@@ -160,13 +172,13 @@ export function LinksForm({ initial }: { initial: Initial }) {
                   value: c,
                   label: CLASS_STANDING_LABELS[c],
                 }))}
-                placeholder="select…"
+                placeholder="Pick one"
                 invalid={error?.field === "classStanding"}
                 disabled={pending}
               />
             </Field>
             <Field
-              label="grad term"
+              label="Graduating term"
               required
               htmlFor="onboarding-grad-term"
               error={error?.field === "gradTerm" ? error.message : null}
@@ -176,13 +188,13 @@ export function LinksForm({ initial }: { initial: Initial }) {
                 value={state.gradTerm}
                 onChange={(v) => setField("gradTerm", v)}
                 options={GRAD_TERMS.map((t) => ({ value: t, label: t }))}
-                placeholder="term…"
+                placeholder="Term"
                 invalid={error?.field === "gradTerm"}
                 disabled={pending}
               />
             </Field>
             <Field
-              label="grad year"
+              label="Graduating year"
               required
               htmlFor="onboarding-grad-year"
               error={error?.field === "gradYear" ? error.message : null}
@@ -192,16 +204,18 @@ export function LinksForm({ initial }: { initial: Initial }) {
                 value={state.gradYear != null ? String(state.gradYear) : ""}
                 onChange={(v) => setField("gradYear", v ? Number(v) : null)}
                 options={gradYears.map((y) => ({ value: String(y), label: String(y) }))}
-                placeholder="year…"
+                placeholder="Year"
                 invalid={error?.field === "gradYear"}
                 disabled={pending}
               />
             </Field>
           </div>
 
+          <Reveal open={gradAnswered}>
           <div className={`${onbPanelClasses} space-y-5`}>
+            <CascadeItem index={0}>
             <Field
-              label={`interested roles (${state.interestedRoles.length}/6)`}
+              label={`What you\u2019re looking for (${state.interestedRoles.length}/6)`}
               required
               error={error?.field === "interestedRoles" ? error.message : null}
             >
@@ -230,12 +244,50 @@ export function LinksForm({ initial }: { initial: Initial }) {
                 })}
               </div>
               <p className="pt-1 text-xs text-muted-foreground">
-                shown as icons on your profile once directory visibility is on.
+                Shown on your profile once directory visibility is on.
               </p>
             </Field>
+            </CascadeItem>
 
-            <div className="grid grid-cols-1 gap-4 border-t border-border/60 pt-5 sm:grid-cols-3">
-              <Field label="linkedin" htmlFor="onboarding-linkedin">
+            <Reveal open={rolesAnswered}>
+            <CascadeItem index={1}>
+
+            {/* Four optional fields behind one disclosure. Left inline they
+                made a skippable step look like eight required questions, which
+                is the single reason people bounced off it. Anyone who wants
+                them opens it; anyone who does not never sees them. */}
+            <div className="border-t border-border/60 pt-5">
+              <button
+                type="button"
+                onClick={() => setShowLinks((v) => !v)}
+                aria-expanded={showLinks}
+                aria-controls="onboarding-optional-links"
+                className="flex w-full items-center justify-between gap-3 rounded-lg text-left text-[13.5px] font-medium text-foreground transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <span>
+                  Add your links
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    optional
+                  </span>
+                </span>
+                <ChevronDown
+                  size={16}
+                  strokeWidth={1.75}
+                  aria-hidden
+                  className={cn(
+                    "shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
+                    showLinks && "rotate-180"
+                  )}
+                />
+              </button>
+            </div>
+
+            <div
+              id="onboarding-optional-links"
+              hidden={!showLinks}
+              className="grid grid-cols-1 gap-4"
+            >
+              <Field label="LinkedIn" htmlFor="onboarding-linkedin">
                 <PrefixedInput
                   id="onboarding-linkedin"
                   prefix="linkedin.com/in/"
@@ -253,7 +305,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
                   </p>
                 ) : null}
               </Field>
-              <Field label="github" htmlFor="onboarding-github">
+              <Field label="GitHub" htmlFor="onboarding-github">
                 <PrefixedInput
                   id="onboarding-github"
                   prefix="github.com/"
@@ -271,7 +323,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
                   </p>
                 ) : null}
               </Field>
-              <Field label="portfolio / site" htmlFor="onboarding-portfolio">
+              <Field label="Portfolio or site" htmlFor="onboarding-portfolio">
                 <PrefixedInput
                   id="onboarding-portfolio"
                   prefix="https://"
@@ -291,9 +343,9 @@ export function LinksForm({ initial }: { initial: Initial }) {
               </Field>
             </div>
 
-            <div className="border-t border-border/60 pt-5">
+            <div hidden={!showLinks}>
               <Field
-                label="bio"
+                label="Short bio"
                 htmlFor="onboarding-bio"
                 error={error?.field === "bio" ? error.message : null}
               >
@@ -301,22 +353,25 @@ export function LinksForm({ initial }: { initial: Initial }) {
                   id="onboarding-bio"
                   value={state.bio}
                   onChange={(e) => setField("bio", e.target.value.slice(0, 220))}
-                  placeholder="full-stack dev, into ML and climbing"
+                  placeholder="Full-stack dev, into ML and climbing"
                   maxLength={220}
                   disabled={pending}
                   className={inputClasses}
                 />
                 <p className="pt-1 text-xs text-muted-foreground">
-                  one line, shown on your profile when directory visibility is on.{" "}
+                  One line, shown on your profile when directory visibility is on.{" "}
                   {state.bio.length}/220
                 </p>
               </Field>
             </div>
+            </CascadeItem>
+            </Reveal>
           </div>
+          </Reveal>
 
           {error && !FIELD_ERROR_HEADINGS[error.field ?? ""] ? (
             <OnbErrorBox>
-              <p className="font-medium">couldn&apos;t save your profile</p>
+              <p className="font-medium">We couldn&apos;t save that</p>
               <p className="mt-1">{error.message}</p>
             </OnbErrorBox>
           ) : null}
@@ -325,7 +380,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
 
       <OnbActionBar>
         <OnbPrimaryButton type="submit" form={FORM_ID} loading={pending}>
-          {pending ? "saving…" : "continue"}
+          {pending ? "Saving…" : "Continue"}
         </OnbPrimaryButton>
       </OnbActionBar>
     </>

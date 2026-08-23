@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { GUEST_CLAIM_COOKIE } from "@/lib/events/guest-claim";
 
 // Local-only Google OAuth bypass: signs in a fixed fully-onboarded test
 // account (member or admin, via ?role=) and redirects to /profile.
@@ -150,6 +151,29 @@ export async function GET(request: NextRequest) {
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
+  // Mirror /auth/callback's guest claim so the welcome-page flow can be
+  // exercised end to end without a real Google round trip. Same cookie, same
+  // RPC — only the identity provider is faked. Called with the freshly minted
+  // user JWT because claim_guest_identity() keys off auth.uid().
+  const claimToken = request.cookies.get(GUEST_CLAIM_COOKIE)?.value;
+  if (claimToken) {
+    const res = await fetch(
+      `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/claim_guest_identity`,
+      {
+        method: "POST",
+        headers: {
+          apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          authorization: `Bearer ${tokens.access_token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ p_token: claimToken }),
+      }
+    );
+    console.log(
+      `[dev-login] guest claim ${res.ok ? "ok" : "FAILED"}: ${await res.text()}`
+    );
+  }
+
   const requestedNext = request.nextUrl.searchParams.get("next");
   const defaultPath =
     role === "onboarding" ? "/onboarding/verify-email" : "/profile";
@@ -160,5 +184,6 @@ export async function GET(request: NextRequest) {
     path: "/",
     maxAge: tokens.expires_in,
   });
+  if (claimToken) response.cookies.delete(GUEST_CLAIM_COOKIE);
   return response;
 }

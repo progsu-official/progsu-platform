@@ -62,6 +62,9 @@ async function main() {
         grad_year: y,
         grad_term: `Fall ${y}`,
         interested_roles: ["software_engineering"],
+        // is_fully_onboarded() requires a phone; without one this user is
+        // routed back into the funnel and every assertion below fails.
+        phone_number: "(404) 555-0175",
       })
       .eq("id", userId);
 
@@ -77,11 +80,21 @@ async function main() {
       status: "active",
       is_current: true,
     });
-    // Insert the 3 required consents at v1.
+    // Required consents at the CURRENT versions. Hardcoding "v1" here (which
+    // this did) breaks the moment any policy is bumped: the user reads as
+    // stale-consent, /profile bounces into the funnel, and every assertion
+    // below fails for a reason that has nothing to do with what is under
+    // test. See CLAUDE.md, "Dynamic consent versions".
+    const { data: consentVersions } = await admin
+      .from("consent_versions")
+      .select("consent_type, version")
+      .in("consent_type", ["privacy_policy", "terms_of_service", "age_confirmation"]);
+    const versionFor = (type: string) =>
+      (consentVersions ?? []).find((v) => v.consent_type === type)?.version ?? "v1";
     await admin.from("consents").insert([
-      { user_id: userId, consent_type: "privacy_policy", accepted: true, version: "v1" },
-      { user_id: userId, consent_type: "terms_of_service", accepted: true, version: "v1" },
-      { user_id: userId, consent_type: "age_confirmation", accepted: true, version: "v1" },
+      { user_id: userId, consent_type: "privacy_policy", accepted: true, version: versionFor("privacy_policy") },
+      { user_id: userId, consent_type: "terms_of_service", accepted: true, version: versionFor("terms_of_service") },
+      { user_id: userId, consent_type: "age_confirmation", accepted: true, version: versionFor("age_confirmation") },
     ]);
 
     const signinRes = await fetch(
@@ -129,18 +142,24 @@ async function main() {
     });
     if (r1.status !== 200) throw new Error(`r1 ${r1.status} ${r1.headers.get("location")}`);
     const body = await r1.text();
-    // Greeting uses preferred_name fallback: the welcome string is "Welcome, {name}.".
-    // Match the name rather than the full greeting (the period gets escaped in SSR HTML).
-    if (!body.match(/Welcome[^<]+Dashy/))
-      throw new Error(`dashboard missing greeting; body starts: ${body.slice(body.indexOf("Welcome") - 20, body.indexOf("Welcome") + 80)}`);
+    // The page used to open with "Welcome, {name}." and this asserted that
+    // string. The header was redesigned and the greeting went with it, so the
+    // assertion was testing copy that had not existed for some time — it only
+    // surfaced now because an earlier failure was masking it. Assert the thing
+    // that actually matters: the signed-in member's own name is on their page.
+    if (!body.includes("Dashy"))
+      throw new Error("dashboard does not render the member's name");
     if (!body.includes("resume.pdf"))
       throw new Error(`dashboard missing resume block`);
     console.log(`  ✓ fully onboarded → /profile 200 with profile + resume`);
 
     // 2. Missing one required consent → dashboard bounces to /onboarding/consent.
+    // Both writes use the current version: restoring at a stale one would
+    // leave the user failing the consent gate for the wrong reason.
+    const ageVersion = versionFor("age_confirmation");
     await admin
       .from("consents")
-      .insert({ user_id: userId!, consent_type: "age_confirmation", accepted: false, version: "v1" });
+      .insert({ user_id: userId!, consent_type: "age_confirmation", accepted: false, version: ageVersion });
     const r2 = await fetch("http://localhost:3000/profile", {
       redirect: "manual",
       headers: { cookie },
@@ -152,7 +171,7 @@ async function main() {
     // Restore so the recruiter-toggle test works.
     await admin
       .from("consents")
-      .insert({ user_id: userId!, consent_type: "age_confirmation", accepted: true, version: "v1" });
+      .insert({ user_id: userId!, consent_type: "age_confirmation", accepted: true, version: ageVersion });
 
     // 3. /profile/settings renders (consents + profile + resume sections).
     const r3 = await fetch("http://localhost:3000/profile/settings", {
@@ -161,11 +180,22 @@ async function main() {
     });
     if (r3.status !== 200) throw new Error(`settings ${r3.status}`);
     const sb = await r3.text();
-    if (!sb.includes("Marketing preferences"))
-      throw new Error(`settings missing marketing section`);
-    if (!sb.includes("Resume"))
-      throw new Error(`settings missing resume section`);
-    console.log(`  ✓ /profile/settings renders all sections`);
+    // Settings was split into sub-pages: /profile/settings keeps profile and
+    // photo, marketing preferences moved to /profile/settings/notifications.
+    // This asserted "Marketing preferences" on the parent long after it left,
+    // and only surfaced now because an earlier failure masked it.
+    if (!sb.includes("Details"))
+      throw new Error(`settings missing the profile details section`);
+
+    const r4 = await fetch("http://localhost:3000/profile/settings/notifications", {
+      redirect: "manual",
+      headers: { cookie },
+    });
+    if (r4.status !== 200) throw new Error(`notifications ${r4.status}`);
+    const nb = await r4.text();
+    if (!nb.includes("Notifications"))
+      throw new Error(`notifications page missing its own section`);
+    console.log(`  ✓ /profile/settings and its notifications sub-page render`);
 
     console.log("✓ dashboard smoke OK");
   } finally {

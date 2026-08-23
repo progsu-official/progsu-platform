@@ -3,7 +3,7 @@
 import { Briefcase, Check, Mail, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { cn } from "@/lib/utils";
 import { recordConsents } from "@/lib/actions/consent";
@@ -19,8 +19,16 @@ import {
   OnbPrimaryButton,
   OnbSurface,
 } from "../_components/shell";
+import { usePreview } from "../_components/preview";
+import { CascadeItem, Reveal } from "../_components/reveal";
 
 type Acceptances = Record<ConsentType, boolean>;
+
+// Well past the 450ms glide and its ~90ms cascade tail. The extra time is the
+// point rather than a side effect: the opt-ins need long enough on screen to
+// actually get read, and a button that is already live is a button people
+// press before reading anything.
+const REVEAL_SETTLE_MS = 2200;
 
 const linkClasses = "text-primary underline underline-offset-4";
 
@@ -30,7 +38,7 @@ const linkClasses = "text-primary underline underline-offset-4";
 // The opt-ins below are NEVER pre-checked, deliberately: consents is an
 // append-only audit ledger (version + ip + user agent per row), and a
 // pre-checked box is not valid consent for sms under the TCPA. Conversion
-// comes from the benefit framing and the one-tap "turn all on" chip instead.
+// comes from the benefit framing and the one-tap "Turn all on" chip instead.
 export function ConsentForm({
   hasPhone,
   prefillRequired = false,
@@ -39,6 +47,7 @@ export function ConsentForm({
   prefillRequired?: boolean;
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<Acceptances>({
     privacy_policy: prefillRequired,
@@ -49,6 +58,26 @@ export function ConsentForm({
     sms_marketing: false,
   });
   const [error, setError] = useState<{ field?: string; message: string } | null>(null);
+
+  // The optional block only appears once the required three are agreed, so the
+  // screen opens as three checkboxes rather than six rows plus a header.
+  const requiredDone =
+    !!state.privacy_policy && !!state.terms_of_service && !!state.age_confirmation;
+
+  // Submit stays inert until the reveal has actually played. Two reasons, and
+  // the second is the honest one: a button that is live before the options
+  // exist lets someone finish without ever seeing them, and holding it for the
+  // length of the animation means the opt-ins are on screen and settled at the
+  // moment their attention lands on the CTA.
+  const [ctaArmed, setCtaArmed] = useState(false);
+  useEffect(() => {
+    if (!requiredDone) {
+      setCtaArmed(false);
+      return;
+    }
+    const t = setTimeout(() => setCtaArmed(true), REVEAL_SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [requiredDone]);
 
   function toggle(type: ConsentType, value: boolean) {
     setState((s) => ({ ...s, [type]: value }));
@@ -70,6 +99,7 @@ export function ConsentForm({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (preview) return preview.advance("/onboarding/done");
     setError(null);
     startTransition(async () => {
       // a thrown action (network drop, stale deployment) must land in the
@@ -79,7 +109,7 @@ export function ConsentForm({
         result = await recordConsents({ acceptances: state });
       } catch {
         setError({
-          message: "something went wrong saving your choices — try again.",
+          message: "That didn't save. Try again.",
         });
         return;
       }
@@ -98,9 +128,8 @@ export function ConsentForm({
   return (
     <form onSubmit={onSubmit}>
       <OnbSurface>
-        <OnbIntro title="last thing">
-          the required bits take ten seconds — the rest decides what you get
-          out of progsu.
+        <OnbIntro title="One last thing">
+The required bits take ten seconds. The rest decides what you actually get out of Progsu.
         </OnbIntro>
 
         {/* Checkbox copy is the canonical CONSENT_LABELS map (the strings the
@@ -116,7 +145,7 @@ export function ConsentForm({
             errorKey="privacy_policy"
             label={
               <>
-                i&apos;ve read and agree to the{" "}
+                I&apos;ve read and agree to the{" "}
                 <Link href="/privacy" className={linkClasses}>
                   {CONSENT_LABELS.privacy_policy}
                 </Link>
@@ -131,7 +160,7 @@ export function ConsentForm({
             errorKey="terms_of_service"
             label={
               <>
-                i&apos;ve read and agree to the{" "}
+                I&apos;ve read and agree to the{" "}
                 <Link href="/terms" className={linkClasses}>
                   {CONSENT_LABELS.terms_of_service}
                 </Link>
@@ -144,17 +173,19 @@ export function ConsentForm({
             onChange={(v) => toggle("age_confirmation", v)}
             errorField={error?.field}
             errorKey="age_confirmation"
-            label={CONSENT_LABELS.age_confirmation.toLowerCase()}
+            label={CONSENT_LABELS.age_confirmation}
           />
         </fieldset>
 
+        <Reveal open={requiredDone}>
+        <CascadeItem index={0}>
         <div className="flex items-end justify-between gap-3 pb-3 pt-6">
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">
-              make progsu work for you
+              Make Progsu work for you
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              recommended — change any of these whenever you want.
+              Recommended. Change any of these whenever you want.
             </p>
           </div>
           {/* one persistent button: swapping it for a static chip on
@@ -176,32 +207,32 @@ export function ConsentForm({
                 all on
               </>
             ) : (
-              "turn all on"
+              "Turn all on"
             )}
           </button>
           <span aria-live="polite" className="sr-only">
-            {allOptInsOn ? "all optional updates are on." : ""}
+            {allOptInsOn ? "All optional updates are on." : ""}
           </span>
         </div>
 
         <fieldset className="space-y-2.5">
-          <legend className="sr-only">recommended</legend>
+          <legend className="sr-only">Recommended</legend>
           <OptInRow
             id="c-recruiter"
             checked={!!state.recruiter_resume_sharing}
             onChange={(v) => toggle("recruiter_resume_sharing", v)}
             icon={<Briefcase aria-hidden className="h-5 w-5" strokeWidth={1.75} />}
-            label={CONSENT_LABELS.recruiter_resume_sharing.toLowerCase()}
-            badge="recommended"
-            hint="sponsors and recruiters scout progsu for people to interview — this is how they find you. progsu never sells your data."
+            label={CONSENT_LABELS.recruiter_resume_sharing}
+            badge="Recommended"
+            hint="This is how sponsors and recruiters find people to interview. Progsu never sells your data."
           />
           <OptInRow
             id="c-email"
             checked={!!state.email_marketing}
             onChange={(v) => toggle("email_marketing", v)}
             icon={<Mail aria-hidden className="h-5 w-5" strokeWidth={1.75} />}
-            label={CONSENT_LABELS.email_marketing.toLowerCase()}
-            hint="event drops, deadlines, and opportunities — the useful stuff only."
+            label={CONSENT_LABELS.email_marketing}
+            hint="Event drops, deadlines, and opportunities. The useful stuff only."
           />
           <OptInRow
             id="c-sms"
@@ -211,11 +242,11 @@ export function ConsentForm({
             icon={
               <MessageCircle aria-hidden className="h-5 w-5" strokeWidth={1.75} />
             }
-            label={CONSENT_LABELS.sms_marketing.toLowerCase()}
+            label={CONSENT_LABELS.sms_marketing}
             hint={
               hasPhone
-                ? "the fastest ping when spots open up. message & data rates may apply — reply STOP to unsubscribe."
-                : "add a phone number on your profile first to turn this on."
+                ? "The fastest ping when spots open up. Message & data rates may apply, reply STOP to unsubscribe."
+                : "Add a phone number to your profile first to turn this on."
             }
             errorField={error?.field}
             errorKey="sms_marketing"
@@ -224,6 +255,9 @@ export function ConsentForm({
             errorMessage={error?.message}
           />
         </fieldset>
+
+        </CascadeItem>
+        </Reveal>
 
         {error && !error.field ? (
           <OnbErrorBox className="mt-5 text-center">
@@ -234,11 +268,11 @@ export function ConsentForm({
 
       <OnbActionBar>
         <div className="flex w-full flex-col items-center gap-2.5">
-          <OnbPrimaryButton type="submit" loading={pending}>
-            save and finish
+          <OnbPrimaryButton type="submit" loading={pending} disabled={!ctaArmed}>
+            Save and finish
           </OnbPrimaryButton>
           <p className="text-center text-xs text-muted-foreground">
-            change any of this later from settings
+            Change any of this later from settings
           </p>
         </div>
       </OnbActionBar>
@@ -427,7 +461,7 @@ function OptInRow({
         </span>
         {isError ? (
           <span role="alert" className="mt-1 block text-xs text-destructive">
-            {errorMessage ?? "required."}
+            {errorMessage ?? "Required"}
           </span>
         ) : null}
       </span>

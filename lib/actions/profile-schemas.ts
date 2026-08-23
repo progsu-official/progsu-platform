@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidUsPhone, US_PHONE_ERROR } from "@/lib/phone";
+
 import { CLASS_STANDINGS, GRAD_TERMS, INTERESTED_ROLES } from "@/lib/enums/roles";
 
 // Kept in a non-"use server" module so we can import types from client components.
@@ -43,7 +45,7 @@ export const minimalSignupProfileSchema = z
       .string()
       .trim()
       .min(1, "Phone number is required")
-      .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+      .refine(isValidUsPhone, US_PHONE_ERROR),
     // Slug validation is done at call time against the majors table so admins
     // can add majors without a redeploy. Zod just checks the shape here.
     major: z.string().trim().min(1, "Pick a major from the list").max(100),
@@ -143,7 +145,7 @@ export const updateProfileSchema = z
       .string()
       .trim()
       .min(1, "Phone number is required")
-      .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+      .refine(isValidUsPhone, US_PHONE_ERROR),
   })
   .strict();
 

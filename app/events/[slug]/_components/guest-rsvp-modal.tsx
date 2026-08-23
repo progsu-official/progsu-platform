@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
+import { KeyRound, Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/app/_components/phone-input";
 import { guestRsvpToEvent } from "@/lib/actions/events";
+import { SMS_CONSENT_COPY } from "@/lib/actions/event-schemas";
 import { useTheme } from "@/app/_components/theme-shell";
 import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
+import { usePreview } from "@/app/onboarding/_components/preview";
 
 type GuestFields = { name: string; email: string; phone: string };
 
@@ -19,23 +23,33 @@ export function GuestRsvpModal({
   waitlistEnabled,
   onClose,
   onSuccess,
+  forceAccountExists = false,
 }: {
   eventId: string;
   capacityReached: boolean;
   waitlistEnabled: boolean;
   onClose: () => void;
   onSuccess: (status: "going" | "waitlisted") => void;
+  // /dev/screens only. This state is normally reached by submitting details
+  // that match a member, which needs a database.
+  forceAccountExists?: boolean;
 }) {
   const [fields, setFields] = useState<GuestFields>({
     name: "",
     email: "",
     phone: "",
   });
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [result, setResult] = useState<"going" | "waitlisted" | null>(null);
+  // Set when the submitted email or phone already belongs to a member. The
+  // RSVP is NOT recorded in that case — the only way forward is signing in.
+  // See docs/16-guest-conversion §3.1.
+  const [accountExists, setAccountExists] = useState(forceAccountExists);
   const nameRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
+  const preview = usePreview();
   // ThemeShell owns the .dark class on a wrapper div, not <html> — the
   // portal below renders outside that wrapper entirely, so it has to apply
   // the class itself or the token colors (bg-popover etc.) fall back to
@@ -74,22 +88,36 @@ export function GuestRsvpModal({
     setError(null);
     setFieldError(null);
     setPending(true);
+    // /dev/screens: everything up to here is real — native validation, the
+    // SMS box, the pending spinner. Only the RSVP write is skipped.
+    if (preview) {
+      onSuccess("going");
+      preview.advance("/joined");
+      return;
+    }
     const res = await guestRsvpToEvent({
       eventId,
       name: fields.name.trim(),
       email: fields.email.trim(),
       phone: fields.phone.trim(),
+      smsOptIn,
     });
-    setPending(false);
     if (!res.ok) {
+      setPending(false);
+      if (res.error.code === "ACCOUNT_EXISTS") {
+        setAccountExists(true);
+        return;
+      }
       setError(res.error.message);
       setFieldError(res.error.field ?? null);
       return;
     }
     const status =
       res.data.effectiveStatus === "waitlisted" ? "waitlisted" : "going";
-    setResult(status);
     onSuccess(status);
+    // Deliberately keeps `pending` true: the modal stays in its spinner state
+    // until the navigation commits, rather than flashing an idle form.
+    router.push(`/joined/${res.data.claimToken}`);
   }
 
   return createPortal(
@@ -117,7 +145,7 @@ export function GuestRsvpModal({
       >
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <h2 className="text-base font-semibold text-foreground">
-            {result ? "You're in" : "Your info"}
+            {accountExists ? "You're already a member" : "Your info"}
           </h2>
           <button
             type="button"
@@ -129,77 +157,57 @@ export function GuestRsvpModal({
           </button>
         </div>
 
-        {result ? (
+        {accountExists ? (
           <div className="flex flex-col items-center gap-3 px-5 pb-8 pt-2 text-center">
-            <div className="[perspective:600px]">
-              <CheckCircle2
-                size={44}
-                strokeWidth={1.5}
-                className="animate-coin-flip text-primary motion-reduce:animate-none"
-                aria-hidden
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {result === "going"
-                ? "You're registered. We'll email you the details."
-                : "You're on the waitlist. We'll email you if a spot opens."}
+            <span
+              aria-hidden
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/15 text-primary"
+            >
+              <KeyRound size={20} strokeWidth={1.75} />
+            </span>
+            {/* Names the two fields but not which one matched. Withholding
+                both left someone who had already tried three fresh emails no
+                way to guess their phone number was the match. */}
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              That email or phone number is already on a Progsu account. Sign
+              in and your RSVP takes one tap — plus you keep your ticket and
+              attendance history.
             </p>
-
-            <div className="mt-1 w-full space-y-4 rounded-2xl glass p-4 text-left">
-              <div className="flex items-start gap-3">
-                <span
-                  aria-hidden
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"
-                >
-                  <Sparkles size={16} strokeWidth={1.75} />
-                </span>
-                <p className="text-sm leading-relaxed text-foreground">
-                  While you&apos;re here, want to get onboarded? A full
-                  member profile is what gets you on recruiters&apos; radar.
-                </p>
-              </div>
-              {googleError ? (
-                <p role="alert" className="text-xs text-destructive">
-                  {googleError}
-                </p>
+            {googleError ? (
+              <p role="alert" className="text-xs text-destructive">
+                {googleError}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              onClick={() => signInWithGoogle()}
+              disabled={googlePending}
+              className="mt-1 h-11 w-full rounded-full text-[15px] shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.55)] transition-[transform,box-shadow,opacity] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-10px_hsl(var(--primary)/0.6)] active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            >
+              {googlePending ? (
+                <Loader2 size={16} strokeWidth={2} className="animate-spin" aria-hidden />
               ) : null}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={onClose}
-                  disabled={googlePending}
-                  className="h-10 flex-1 rounded-full text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Maybe later
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => signInWithGoogle()}
-                  disabled={googlePending}
-                  // Same premium-CTA recipe as onboarding/_components/shell.tsx's
-                  // primaryClasses: violet pill that lifts on hover with a
-                  // deeper glow, settles back on press. Gives the affirmative
-                  // action more visual weight than the plain "Maybe later" ghost.
-                  className="h-10 flex-1 rounded-full text-sm shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.55)] transition-[transform,box-shadow,opacity] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-10px_hsl(var(--primary)/0.6)] active:translate-y-0 active:shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.55)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-                >
-                  {googlePending ? (
-                    <Loader2 size={16} strokeWidth={2} className="animate-spin" aria-hidden />
-                  ) : null}
-                  {googlePending ? "Redirecting…" : "Yes, let's go"}
-                </Button>
-              </div>
-            </div>
+              {googlePending ? "Redirecting…" : "Sign in with Google"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setAccountExists(false)}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Use different details
+            </button>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4 px-5 pb-5">
             <div className="space-y-1.5">
-              <Label htmlFor="guest-rsvp-name">Name *</Label>
+              <Label htmlFor="guest-rsvp-name">Full name *</Label>
               <Input
                 id="guest-rsvp-name"
                 ref={nameRef}
                 required
+                autoComplete="name"
                 disabled={pending}
+                placeholder="Ada Lovelace"
                 value={fields.name}
                 onChange={(e) => set("name", e.target.value)}
                 className="rounded-xl"
@@ -207,32 +215,61 @@ export function GuestRsvpModal({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="guest-rsvp-email">Email *</Label>
+              <Label htmlFor="guest-rsvp-email">School email *</Label>
               <Input
                 id="guest-rsvp-email"
                 type="email"
                 required
+                autoComplete="email"
                 disabled={pending}
+                placeholder="you@student.gsu.edu"
                 value={fields.email}
                 onChange={(e) => set("email", e.target.value)}
                 className="rounded-xl"
+                aria-describedby="guest-rsvp-email-hint"
                 aria-invalid={fieldError === "email"}
               />
+              {/* Asked for by name rather than validated to a hard allowlist:
+                  a .edu is what carries onto the profile and unlocks recruiter
+                  exports, but alumni, speakers, and people from other schools
+                  come to these events too, and none of them should be turned
+                  away at the door over an address. */}
+              <p
+                id="guest-rsvp-email-hint"
+                className="text-[11.5px] leading-[1.4] text-muted-foreground"
+              >
+                Use your .edu if you have one — it&apos;s what gets you into the
+                lists we send recruiters. Any email works.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="guest-rsvp-phone">Phone number *</Label>
-              <Input
+              <PhoneInput
                 id="guest-rsvp-phone"
-                type="tel"
                 required
                 disabled={pending}
-                placeholder="201 555 0123"
                 value={fields.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                className="rounded-xl"
-                aria-invalid={fieldError === "phone"}
+                onChange={(v) => set("phone", v)}
+                invalid={fieldError === "phone"}
               />
             </div>
+
+            {/* Unchecked by default and staying that way. A pre-ticked box is
+                not express written consent, and carrier review looks for
+                exactly this. The disclosure text is the same constant stored
+                with the consent record. */}
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border/60 bg-muted/30 p-3">
+              <input
+                type="checkbox"
+                checked={smsOptIn}
+                disabled={pending}
+                onChange={(e) => setSmsOptIn(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[hsl(var(--primary))]"
+              />
+              <span className="text-[11.5px] leading-[1.45] text-muted-foreground">
+                {SMS_CONSENT_COPY}
+              </span>
+            </label>
 
             {error ? (
               <div

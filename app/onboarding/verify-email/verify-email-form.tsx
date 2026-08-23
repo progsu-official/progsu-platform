@@ -23,6 +23,7 @@ import {
   onbInputFocusClasses,
   useOnbSeam,
 } from "../_components/shell";
+import { usePreview } from "../_components/preview";
 
 type Phase = "email" | "code";
 
@@ -47,7 +48,7 @@ type FormState = {
 
 // Per-mode error copy: settings keeps the app's sentence case; the onboarding
 // branch speaks the funnel's lowercase voice and points at the actual
-// lowercase "verify later" control it renders.
+// lowercase "Verify later" control it renders.
 const ERROR_COPY_SETTINGS: Record<string, string> = {
   UNAUTHORIZED: "Please sign in again.",
   DOMAIN_NOT_ALLOWED:
@@ -64,18 +65,18 @@ const ERROR_COPY_SETTINGS: Record<string, string> = {
 };
 
 const ERROR_COPY_ONBOARDING: Record<string, string> = {
-  UNAUTHORIZED: "please sign in again.",
+  UNAUTHORIZED: "Sign in again to continue.",
   DOMAIN_NOT_ALLOWED:
-    "we can't send a code to that school yet — it's not on our allowlist. click \"verify later\" to save your email and we'll let you know when we add it.",
+    "we can't send a code to that school yet — it's not on our allowlist. click \"Verify later\" to save your email and we'll let you know when we add it.",
   EMAIL_TAKEN:
     "that email is already in use on another progsu account. contact an admin if this is a mistake.",
-  RATE_LIMITED: "please wait before requesting another code.",
-  OTP_INVALID: "incorrect code.",
-  OTP_EXPIRED: "that code expired. send yourself a new one.",
-  OTP_LOCKED: "too many attempts. request a new code later.",
-  CONFLICT: "you're already verified. sign out and back in if this looks wrong.",
-  INVALID_INPUT: "please check the input and try again.",
-  INTERNAL: "something went wrong. please try again.",
+  RATE_LIMITED: "Hang on a moment before asking for another code.",
+  OTP_INVALID: "That code isn't right.",
+  OTP_EXPIRED: "That code expired. Send yourself a new one.",
+  OTP_LOCKED: "Too many tries. Request a new code in a bit.",
+  CONFLICT: "You're already verified. Sign out and back in if that looks wrong.",
+  INVALID_INPUT: "Check the input and try again.",
+  INTERNAL: "That didn't work. Try again.",
 };
 
 function useNow(intervalMs = 1000) {
@@ -87,7 +88,7 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
-// Quiet tertiary control, folk's "use a different number" treatment on progsu
+// Quiet tertiary control, folk's "Use a different number" treatment on progsu
 // tokens. Used only by the onboarding branch below.
 const quietButtonClass =
   "text-[13px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm disabled:pointer-events-none disabled:opacity-60";
@@ -125,6 +126,7 @@ export function VerifyEmailForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const skipDestination = fullyOnboarded ? "/profile" : "/onboarding/profile";
   const [state, setState] = useState<FormState>({
     phase: initialEmail ? "email" : "email",
@@ -171,7 +173,7 @@ export function VerifyEmailForm({
     const base =
       copy[code] ??
       result.error.message ??
-      (mode === "settings" ? "Something went wrong." : "something went wrong.");
+      "Something went wrong.";
     if (code === "DOMAIN_NOT_ALLOWED" || code === "RATE_LIMITED") {
       setErrorForcedReveal(true);
     }
@@ -210,6 +212,16 @@ export function VerifyEmailForm({
   function onRequest(e: React.FormEvent) {
     e.preventDefault();
     setState((s) => ({ ...s, errorMessage: null, errorField: null }));
+    // /dev/screens: run the real phase swap and its seam animation with no
+    // OTP behind it. Ten minutes matches OTP_CODE_TTL_MINUTES so the countdown
+    // reads like the live one.
+    if (preview) {
+      const expiresAt = Date.now() + 10 * 60_000;
+      commitPhase(() => {
+        setState((s) => ({ ...s, phase: "code", expiresAt, code: "" }));
+      }, "fwd");
+      return;
+    }
     startTransition(async () => {
       const result = await requestStudentEmailCode({ studentEmail: state.email });
       if (!result.ok) {
@@ -239,6 +251,7 @@ export function VerifyEmailForm({
   function onVerify(e: React.FormEvent) {
     e.preventDefault();
     setState((s) => ({ ...s, errorMessage: null, errorField: null }));
+    if (preview) return preview.advance(skipDestination);
     startTransition(async () => {
       const result = await verifyStudentEmailCode({
         studentEmail: state.email,
@@ -301,6 +314,7 @@ export function VerifyEmailForm({
         setError(result);
         return;
       }
+      if (preview) return preview.advance(skipDestination);
       router.push(skipDestination);
       router.refresh();
     });
@@ -466,7 +480,7 @@ export function VerifyEmailForm({
   const resendLabel =
     msUntilResend > 0
       ? `resend in ${Math.ceil(msUntilResend / 1000)}s`
-      : "send a new code";
+      : "Send a new code";
 
   return (
     <>
@@ -499,7 +513,7 @@ export function VerifyEmailForm({
                 </p>
               ) : null}
               <p className="mx-auto mt-4 max-w-md text-center text-xs text-muted-foreground">
-                optional — but recruiters only see verified members.
+                Optional, but recruiters only ever see verified members.
               </p>
               {skipRevealed && allowSkip ? (
                 <div className="mt-3 text-center">
@@ -509,7 +523,7 @@ export function VerifyEmailForm({
                     disabled={pending || state.email.length === 0}
                     className={quietButtonClass}
                   >
-                    didn&apos;t get a code? verify later
+                    didn&apos;t get a code? Verify later
                   </button>
                 </div>
               ) : null}
@@ -517,9 +531,9 @@ export function VerifyEmailForm({
           ) : (
             <form id="onb-verify-email-code" onSubmit={onVerify}>
               <p className="text-center text-[13.5px] leading-[1.5] text-muted-foreground">
-                we sent a code to{" "}
+                Code sent to{" "}
                 <span className="font-medium text-foreground">{state.email}</span>
-                {" — it expires in "}
+                {" — expires in "}
                 <span className="tabular-nums">{expiryLabel}</span>.
               </p>
               {/* Segmented code cells (Cosmos-style): six discrete boxes, one
@@ -611,7 +625,7 @@ export function VerifyEmailForm({
                     disabled={pending}
                     className={quietButtonClass}
                   >
-                    verify later
+                    Verify later
                   </button>
                 ) : null}
               </div>

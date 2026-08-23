@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidUsPhone, US_PHONE_ERROR } from "@/lib/phone";
+
 // Kept in a non-"use server" module so we can import types/schemas from client
 // components without pulling in server-only action code.
 
@@ -184,6 +186,14 @@ export const rsvpToEventSchema = z.object({
 
 export type RsvpToEventInput = z.input<typeof rsvpToEventSchema>;
 
+// The exact SMS disclosure shown next to the opt-in checkbox. Stored verbatim
+// with each consent so we can prove later what someone actually agreed to, and
+// quoted in the carrier campaign registration. Changing this string changes
+// what future consents record — it is not cosmetic copy. Keep the frequency,
+// rates, STOP and HELP disclosures; carriers check for all four.
+export const SMS_CONSENT_COPY =
+  "Text me about Progsu events. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. See our Terms and Privacy Policy.";
+
 // Account-free guest RSVP (2026-08-21 decision). Phone regex matches the
 // onboarding profile form's (lib/actions/profile-schemas.ts).
 export const guestRsvpToEventSchema = z.object({
@@ -194,10 +204,12 @@ export const guestRsvpToEventSchema = z.object({
     .string()
     .trim()
     .min(1, "Phone number is required")
-    .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+    .refine(isValidUsPhone, US_PHONE_ERROR),
+  smsOptIn: z.boolean().default(false),
 });
 
 export type GuestRsvpToEventInput = z.input<typeof guestRsvpToEventSchema>;
+
 
 // Cover-image upload. Limit of 5 MB mirrors the DB's event-covers bucket
 // `file_size_limit`. Allowed MIME types match the bucket's `allowed_mime_types`.

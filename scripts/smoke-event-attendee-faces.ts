@@ -211,7 +211,10 @@ async function main() {
         p_event_id: eventId,
         p_name: "Guest Smoke",
         p_email: `guest-${suffix}@example.com`,
-        p_phone: "555-555-5555",
+        // Must differ from the seeded member's number: since
+        // 20260823150300 a guest RSVP whose phone matches an existing
+        // profile is refused outright with "account exists".
+        p_phone: "678-555-0113",
       });
       if (error) throw new Error(`guest_rsvp_to_event: ${error.message}`);
 

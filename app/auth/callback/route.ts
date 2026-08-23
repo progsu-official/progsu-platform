@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 import { isPublicEventDetailPath } from "@/lib/events/public-path";
+import { GUEST_CLAIM_COOKIE } from "@/lib/events/guest-claim";
 
 // OAuth callback for Supabase Auth. The user returns here from Google with a `code`
 // query param; we exchange it for a session, then route them to their next step.
@@ -58,6 +59,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirect);
   }
 
+  // A guest who just registered and then came here to make an account carries
+  // their claim token in a short-lived cookie. Link it before we read
+  // onboarding state, so the copied name/phone/school email count toward the
+  // routing decision below and they are not asked for what we already have.
+  //
+  // Deliberately not fatal: a failed or replayed claim must never cost someone
+  // the account they just created. claim_guest_identity() is idempotent and
+  // returns false rather than raising for an unknown or already-linked token.
+  const claimToken = request.cookies.get(GUEST_CLAIM_COOKIE)?.value;
+  if (claimToken) {
+    const { error: claimErr } = await supabase.rpc("claim_guest_identity", {
+      p_token: claimToken,
+    });
+    if (claimErr) {
+      console.error("[auth] guest identity claim failed:", claimErr.message);
+    }
+  }
+
   // Admins always go to the admin surface; they bypass member onboarding (D8).
   const state = await loadOnboardingState(supabase, user.id);
 
@@ -94,5 +113,6 @@ export async function GET(request: NextRequest) {
   for (const c of store.getAll()) {
     response.cookies.set(c.name, c.value);
   }
+  if (claimToken) response.cookies.delete(GUEST_CLAIM_COOKIE);
   return response;
 }
