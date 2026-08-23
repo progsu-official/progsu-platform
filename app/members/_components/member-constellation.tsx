@@ -54,8 +54,18 @@ const FALLOFF_EXP = 1.3;
 // popping in whenever a page loaded. The prefetch fires well before the
 // viewer reaches the rim, so the slow reveal reads as choreography, not as
 // waiting — by the time they pan to where a face lands, it has landed.
+//
+// 2026-08-23: reporting as laggy at the rim on a real deployment. Two
+// tunings, not a redesign — the choreography itself is fine, it was tuned
+// too close to localhost-latency assumptions: a full 24-member page took up
+// to ~1.9s to finish revealing (24 * 80ms), and the fetch-ahead trigger only
+// fired once the buffer dropped to half (12 left), leaving one real network
+// round-trip's worth of margin against a production RPC call. Halved the
+// per-member interval and fetch three-quarters through the buffer instead of
+// half, so there's roughly 2x the round-trip margin before the queue could
+// run dry.
 const FOLLOW_PAGE_SIZE = 24;
-const REVEAL_EVERY_MS = 80;
+const REVEAL_EVERY_MS = 40;
 const INITIAL_STAGGER_MS = 16;
 
 function hexSpiral(count: number) {
@@ -291,7 +301,7 @@ export function MemberConstellation({
     // Fetch ahead of the reveal: once the buffer runs low near the rim, the
     // next page should already be in flight — the ticker never waits on the
     // network, and the network never dumps into a fat queue.
-    if (nearRim && revealQueue.current.length < FOLLOW_PAGE_SIZE / 2) {
+    if (nearRim && revealQueue.current.length < FOLLOW_PAGE_SIZE * 0.75) {
       void loadMoreRef.current();
     }
   }, [positions, viewport.w, viewport.h, cell, hullRadius]);
@@ -367,7 +377,7 @@ export function MemberConstellation({
     const fits =
       hullRadius * 2 + cell * 2 <=
       Math.max(viewport.w || 0, viewport.h || 0);
-    if (fits && revealQueue.current.length < FOLLOW_PAGE_SIZE / 2) {
+    if (fits && revealQueue.current.length < FOLLOW_PAGE_SIZE * 0.75) {
       void loadMore();
     }
   }, [members.length, viewport.w, viewport.h, hullRadius, cell, loadMore]);
