@@ -19,6 +19,7 @@ import { StaticEducationCard, type VerificationState } from "@/app/profile/educa
 import { SchoolLogo } from "@/app/profile/school-logo";
 import { ResumePreview } from "@/app/profile/resume-preview";
 import { UpcomingEvents, type UpcomingPlan } from "@/app/profile/upcoming-events";
+import { AttendedEvents } from "@/app/profile/attended-events";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,13 @@ export default async function MemberProfilePage({
   const upcomingGoingCounts = new Map(
     upcomingRows.map((r) => [r.event_id, r.going_count])
   );
+  const attendedCoverUrls =
+    attendedEvents.length > 0
+      ? await resolveCoverUrls(
+          supabase,
+          attendedEvents.map((ev) => ev.cover_image_path)
+        )
+      : [];
 
   // profiles.major holds a slug from the majors table; resolve it to its
   // label so the card doesn't render "computer_information_systems". Legacy
@@ -312,34 +320,15 @@ export default async function MemberProfilePage({
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Events attended
           </h2>
-          {attendedEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No attended events to show.
-            </p>
-          ) : (
-            <ul className="divide-y divide-border/60 rounded-2xl border border-border/70 bg-card">
-              {attendedEvents.map((ev) => (
-                <li
-                  key={ev.event_id}
-                  className="flex items-center justify-between gap-4 px-5 py-3.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {ev.event_title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(ev.starts_at).toLocaleDateString(undefined, {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <AttendedEvents
+            events={attendedEvents.map((ev) => ({
+              event_id: ev.event_id,
+              slug: ev.event_slug,
+              title: ev.event_title,
+              starts_at: ev.starts_at,
+            }))}
+            coverUrls={attendedCoverUrls}
+          />
         </section>
       ) : null}
 
