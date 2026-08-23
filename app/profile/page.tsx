@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ProfileCompletionBand } from "./profile-completion-band";
 import { StaleConsentBanner } from "./stale-consent-banner";
 import { UpcomingEvents, MAX_PLANS, type UpcomingPlan } from "./upcoming-events";
+import { AttendedEvents } from "./attended-events";
 import { EducationCard, type VerificationState } from "./education-card";
 import { ResumePreview } from "./resume-preview";
 import { AvatarButton } from "./avatar-button";
@@ -76,6 +77,7 @@ export default async function DashboardHome() {
     { data: versions },
     upcomingResult,
     attendedResult,
+    attendedListResult,
     upcomingCountResult,
   ] = await Promise.all([
     supabase
@@ -104,6 +106,14 @@ export default async function DashboardHome() {
     env.FEATURE_EVENTS
       ? supabase
           .from("self_event_history")
+          .select("event_id, slug, title, starts_at, cover_image_path")
+          .eq("attended", true)
+          .order("starts_at", { ascending: false })
+          .limit(6)
+      : Promise.resolve({ data: null }),
+    env.FEATURE_EVENTS
+      ? supabase
+          .from("self_event_history")
           .select("*", { count: "exact", head: true })
           .gte("starts_at", nowIso)
           .in("rsvp_status", ["going", "waitlisted"])
@@ -112,6 +122,7 @@ export default async function DashboardHome() {
   ]);
   const upcomingPlans = upcomingResult.data;
   const attendedCount = attendedResult.count ?? null;
+  const attendedList = attendedListResult.data ?? [];
   const upcomingCount = upcomingCountResult.count ?? null;
 
   // Batch-resolve cover URLs + waitlist positions for the upcoming card.
@@ -162,6 +173,16 @@ export default async function DashboardHome() {
       })
     );
   }
+
+  const attendedCoverUrls =
+    attendedList.length > 0
+      ? await resolveCoverUrls(
+          supabase,
+          (attendedList as Array<{ cover_image_path: string | null }>).map(
+            (r) => r.cover_image_path ?? null
+          )
+        )
+      : [];
 
   // profiles.major holds a slug from the majors table; resolve it to its label
   // so the card doesn't render "computer_information_systems". Legacy rows
@@ -382,6 +403,25 @@ export default async function DashboardHome() {
           waitlistPositions={upcomingWaitlistPositions}
           goingCounts={upcomingGoingCounts}
         />
+      ) : null}
+
+      {env.FEATURE_EVENTS && attendedList.length > 0 ? (
+        <section aria-labelledby="attended-events-heading" className="space-y-4">
+          <h2 id="attended-events-heading" className="text-sm font-semibold text-foreground">
+            Events attended
+          </h2>
+          <AttendedEvents
+            events={(attendedList as Array<{ event_id: string; slug: string; title: string; starts_at: string }>).map(
+              (r) => ({
+                event_id: r.event_id,
+                slug: r.slug,
+                title: r.title,
+                starts_at: r.starts_at,
+              })
+            )}
+            coverUrls={attendedCoverUrls}
+          />
+        </section>
       ) : null}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
