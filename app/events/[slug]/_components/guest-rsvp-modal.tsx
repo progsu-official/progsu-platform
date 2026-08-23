@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Loader2, X } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { guestRsvpToEvent } from "@/lib/actions/events";
 import { useTheme } from "@/app/_components/theme-shell";
+import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
 
 type GuestFields = { name: string; email: string; phone: string };
 
@@ -40,6 +41,16 @@ export function GuestRsvpModal({
   // the class itself or the token colors (bg-popover etc.) fall back to
   // light-mode values.
   const { theme } = useTheme();
+  // No `next` override: an unonboarded first-time signup is routed straight
+  // into /onboarding/verify-email by /auth/callback regardless, and passing
+  // the event path here would make isPublicEventDetailPath() honor it
+  // instead, bouncing them back to the event and skipping onboarding
+  // entirely, the opposite of what this button is for.
+  const {
+    pending: googlePending,
+    error: googleError,
+    signIn: signInWithGoogle,
+  } = useGoogleSignIn();
 
   useEffect(() => {
     nameRef.current?.focus();
@@ -120,24 +131,65 @@ export function GuestRsvpModal({
 
         {result ? (
           <div className="flex flex-col items-center gap-3 px-5 pb-8 pt-2 text-center">
-            <CheckCircle2
-              size={44}
-              strokeWidth={1.5}
-              className="text-primary"
-              aria-hidden
-            />
+            <div className="[perspective:600px]">
+              <CheckCircle2
+                size={44}
+                strokeWidth={1.5}
+                className="animate-coin-flip text-primary motion-reduce:animate-none"
+                aria-hidden
+              />
+            </div>
             <p className="text-sm text-muted-foreground">
               {result === "going"
                 ? "You're registered. We'll email you the details."
                 : "You're on the waitlist. We'll email you if a spot opens."}
             </p>
-            <Button
-              type="button"
-              onClick={onClose}
-              className="mt-2 h-10 rounded-full px-8 text-sm"
-            >
-              Done
-            </Button>
+
+            <div className="mt-1 w-full space-y-4 rounded-2xl glass p-4 text-left">
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"
+                >
+                  <Sparkles size={16} strokeWidth={1.75} />
+                </span>
+                <p className="text-sm leading-relaxed text-foreground">
+                  While you&apos;re here, want to get onboarded? A full
+                  member profile is what gets you on recruiters&apos; radar.
+                </p>
+              </div>
+              {googleError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {googleError}
+                </p>
+              ) : null}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={onClose}
+                  disabled={googlePending}
+                  className="h-10 flex-1 rounded-full text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Maybe later
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => signInWithGoogle()}
+                  disabled={googlePending}
+                  // Same premium-CTA recipe as onboarding/_components/shell.tsx's
+                  // primaryClasses: violet pill that lifts on hover with a
+                  // deeper glow, settles back on press. Gives the affirmative
+                  // action more visual weight than the plain "Maybe later" ghost.
+                  className="h-10 flex-1 rounded-full text-sm shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.55)] transition-[transform,box-shadow,opacity] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-10px_hsl(var(--primary)/0.6)] active:translate-y-0 active:shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.55)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                >
+                  {googlePending ? (
+                    <Loader2 size={16} strokeWidth={2} className="animate-spin" aria-hidden />
+                  ) : null}
+                  {googlePending ? "Redirecting…" : "Yes, let's go"}
+                </Button>
+              </div>
+            </div>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4 px-5 pb-5">
