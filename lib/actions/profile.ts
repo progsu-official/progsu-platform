@@ -8,8 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { type ActionResult, err, ok } from "./result";
 import {
   type MinimalSignupProfileInput,
+  type OnboardingLinksInput,
   type UpdateProfileInput,
   minimalSignupProfileSchema,
+  onboardingLinksSchema,
   updateProfileSchema,
 } from "./profile-schemas";
 
@@ -64,12 +66,12 @@ export async function updateProfile(
   return ok({ updated: true });
 }
 
-// Minimal onboarding write (docs/14-low-friction-signup). Validates major
-// against the live majors table at call time so admins can add majors without
-// a redeploy. When major='other', writes major='other' + major_other_text.
-// Everything the old gate used to require (class_standing, grad_year,
-// grad_term, interested_roles) is left untouched and lives in the profile-
-// completion ring on the dashboard.
+// First onboarding step's write (/onboarding/profile, docs/14-low-friction-
+// signup). Validates major against the live majors table at call time so
+// admins can add majors without a redeploy. When major='other', writes
+// major='other' + major_other_text. class_standing, grad_year, grad_term,
+// interested_roles, and links are the second step's job (updateOnboardingLinks
+// below), this action never touches them.
 export async function updateMinimalProfile(
   rawInput: MinimalSignupProfileInput
 ): Promise<ActionResult<{ updated: true }>> {
@@ -110,16 +112,60 @@ export async function updateMinimalProfile(
     .update({
       first_name: data.firstName,
       last_name: data.lastName,
+      preferred_name: data.preferredName ?? null,
       school: data.school,
       phone_number: data.phoneNumber,
       major: data.major,
       major_other_text: isOther ? (data.majorOtherText ?? null) : null,
+      minor: data.minor ?? null,
     })
     .eq("id", user.id);
 
   if (error) return err("INTERNAL", error.message);
 
   revalidatePath("/onboarding/profile");
+  revalidatePath("/profile");
+  return ok({ updated: true });
+}
+
+// Second onboarding step's partial write (/onboarding/links). Same fields
+// updateProfile's full Settings schema covers, minus the identity fields the
+// first onboarding step already owns.
+export async function updateOnboardingLinks(
+  rawInput: OnboardingLinksInput
+): Promise<ActionResult<{ updated: true }>> {
+  const parsed = onboardingLinksSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return err("INVALID_INPUT", first?.message ?? "Invalid input", {
+      field: first?.path.join("."),
+    });
+  }
+  const data = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("UNAUTHORIZED", "You must be signed in.");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      class_standing: data.classStanding,
+      grad_year: data.gradYear,
+      grad_term: `${data.gradTerm} ${data.gradYear}`,
+      interested_roles: data.interestedRoles,
+      linkedin_url: data.linkedinUrl ?? null,
+      github_url: data.githubUrl ?? null,
+      portfolio_url: data.portfolioUrl ?? null,
+      bio: data.bio || null,
+    })
+    .eq("id", user.id);
+
+  if (error) return err("INTERNAL", error.message);
+
+  revalidatePath("/onboarding/links");
   revalidatePath("/profile");
   return ok({ updated: true });
 }

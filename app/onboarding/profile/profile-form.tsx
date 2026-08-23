@@ -5,7 +5,6 @@ import { useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/app/_components/select";
 import { updateMinimalProfile } from "@/lib/actions/profile";
 
@@ -16,6 +15,7 @@ import {
   OnbSurface,
   onbPanelClasses,
 } from "../_components/shell";
+import { Field } from "../_components/field";
 
 // Field-specific headlines so users know WHICH field blocked the save, not just
 // a vague "something went wrong".
@@ -31,11 +31,13 @@ const FIELD_ERROR_HEADINGS: Record<string, string> = {
 type Initial = {
   firstName: string;
   lastName: string;
+  preferredName: string;
   school: string;
   schoolOtherText: string;
   phoneNumber: string;
   major: string;
   majorOtherText: string;
+  minor: string;
 };
 
 const SCHOOL_OTHER = "other";
@@ -84,10 +86,12 @@ export function ProfileForm({
       const result = await updateMinimalProfile({
         firstName: state.firstName,
         lastName: state.lastName,
+        preferredName: state.preferredName || null,
         school: isSchoolOther ? state.schoolOtherText.trim() : state.school,
         phoneNumber: state.phoneNumber,
         major: state.major,
         majorOtherText: isOther ? state.majorOtherText : null,
+        minor: state.minor || null,
       });
       if (!result.ok) {
         setError({
@@ -96,13 +100,9 @@ export function ProfileForm({
         });
         return;
       }
-      // Resume comes next in the visible stepper (Profile -> Resume -> Consent).
-      // It's a soft/skippable step (resume-uploader.tsx pushes on to consent
-      // itself after upload or skip), but it needs to actually be shown once,
-      // not silently bypassed. Verify-email is separately soft, reached via
-      // the step indicator or a dashboard nudge — it auto-populates
-      // profiles.school on success but isn't required to finish the funnel.
-      router.push("/onboarding/resume");
+      // Roles & links comes next in the visible stepper (Profile -> Roles &
+      // Links -> Resume -> Consent).
+      router.push("/onboarding/links");
       router.refresh();
     });
   }
@@ -142,6 +142,30 @@ export function ProfileForm({
                 className={inputClasses}
               />
             </Field>
+            <Field label="preferred name">
+              <Input
+                value={state.preferredName}
+                onChange={(e) => setField("preferredName", e.target.value)}
+                disabled={pending}
+                className={inputClasses}
+              />
+            </Field>
+            <Field
+              label="phone"
+              required
+              error={error?.field === "phoneNumber" ? error.message : null}
+            >
+              <Input
+                type="tel"
+                value={state.phoneNumber}
+                onChange={(e) => setField("phoneNumber", e.target.value)}
+                autoComplete="tel"
+                required
+                disabled={pending}
+                placeholder="(404) 555-1234"
+                className={inputClasses}
+              />
+            </Field>
             <Field
               label="school"
               required
@@ -162,22 +186,6 @@ export function ProfileForm({
               />
             </Field>
             <Field
-              label="phone"
-              required
-              error={error?.field === "phoneNumber" ? error.message : null}
-            >
-              <Input
-                type="tel"
-                value={state.phoneNumber}
-                onChange={(e) => setField("phoneNumber", e.target.value)}
-                autoComplete="tel"
-                required
-                disabled={pending}
-                placeholder="(404) 555-1234"
-                className={inputClasses}
-              />
-            </Field>
-            <Field
               label="major"
               required
               htmlFor="onboarding-major"
@@ -194,6 +202,14 @@ export function ProfileForm({
                 placeholder="select your major"
                 invalid={error?.field === "major"}
                 disabled={pending}
+              />
+            </Field>
+            <Field label="minor">
+              <Input
+                value={state.minor}
+                onChange={(e) => setField("minor", e.target.value)}
+                disabled={pending}
+                className={inputClasses}
               />
             </Field>
 
@@ -247,10 +263,6 @@ export function ProfileForm({
               <p className="mt-1">{error.message}</p>
             </OnbErrorBox>
           ) : null}
-
-          <p className="text-center text-xs text-muted-foreground">
-            grad info, roles, and links come later, from your profile.
-          </p>
         </form>
       </OnbSurface>
 
@@ -260,37 +272,5 @@ export function ProfileForm({
         </OnbPrimaryButton>
       </OnbActionBar>
     </>
-  );
-}
-
-function Field({
-  label,
-  required,
-  error,
-  children,
-  htmlFor,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string | null;
-  children: React.ReactNode;
-  htmlFor?: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label
-        htmlFor={htmlFor}
-        className="text-[13px] text-muted-foreground"
-      >
-        {label}
-        {required ? <span className="text-primary"> *</span> : null}
-      </Label>
-      {children}
-      {error ? (
-        <p role="alert" className="text-[13px] text-destructive">
-          {error}
-        </p>
-      ) : null}
-    </div>
   );
 }

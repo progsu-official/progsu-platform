@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type OnboardingStep =
   | "verify-email"
   | "profile"
+  | "links"
   | "resume"
   | "consent"
   | null; // null = fully onboarded
@@ -24,10 +25,10 @@ export type OnboardingState = {
 
 // Required profile fields for `profile_fields_complete` (as of migration
 // 20260427000300). Minimum bar for low-friction signup: first/last/school/major/
-// phone. class_standing, grad_year, grad_term, interested_roles moved out of
-// the gate into the dashboard profile-completion ring (docs/14-low-friction-
-// signup/01-schema-changes.md §4). Must stay in sync with public.is_fully_onboarded()
-// — smoke-onboarding-parity.ts is the merge gate.
+// phone. class_standing, grad_year, grad_term, interested_roles live on the
+// soft /onboarding/links step (like resume, reachable in the funnel but not
+// hard-gated by nextStep below) rather than blocking here. Must stay in sync
+// with public.is_fully_onboarded(), smoke-onboarding-parity.ts is the merge gate.
 const REQUIRED_PROFILE_FIELDS: Array<
   keyof ProfileRow
 > = [
