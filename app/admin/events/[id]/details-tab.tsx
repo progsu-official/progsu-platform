@@ -10,6 +10,7 @@ import {
   archiveEvent,
   cancelEvent,
   deleteDraftEvent,
+  deleteEvent,
   publishEvent,
 } from "@/lib/actions/events";
 
@@ -89,6 +90,26 @@ export function DetailsTab({
     });
   }
 
+  function onDeleteArchived() {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        `Permanently delete "${event.title}"? All RSVPs, invites, and attendance history (including any imported historical attendance) will be permanently deleted. This cannot be undone.`
+      )
+    )
+      return;
+    setError(null);
+    startTransition(async () => {
+      const r = await deleteEvent(event.id);
+      if (!r.ok) {
+        setError(r.error.message);
+        return;
+      }
+      router.push("/admin/events");
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -135,6 +156,17 @@ export function DetailsTab({
               disabled={pending}
             >
               Delete draft
+            </Button>
+          ) : null}
+          {event.status === "archived" || event.status === "cancelled" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={onDeleteArchived}
+              disabled={pending}
+            >
+              Delete event
             </Button>
           ) : null}
         </div>

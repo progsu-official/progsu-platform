@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
 import { EventCard, joinHosts } from "@/app/events/_components/event-card";
 
+import { EventSearchInput } from "./event-search-input";
 import { StatusFilterSelect } from "./status-filter-select";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ const MAX_PAGE = 1000;
 type SearchParams = {
   tab?: string;
   page?: string;
+  q?: string;
 };
 
 function resolveTab(raw: string | undefined): TabKey {
@@ -43,6 +45,7 @@ export default async function AdminEventsPage({
 }) {
   const params = await searchParams;
   const tab = resolveTab(params.tab);
+  const q = params.q?.trim() ?? "";
   const page = Math.min(
     Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1),
     MAX_PAGE
@@ -72,6 +75,10 @@ export default async function AdminEventsPage({
     query = query.eq("status", "cancelled");
   } else if (tab === "archived") {
     query = query.eq("status", "archived");
+  }
+
+  if (q) {
+    query = query.ilike("title", `%${q}%`);
   }
 
   const from = (page - 1) * PAGE_SIZE;
@@ -144,6 +151,7 @@ export default async function AdminEventsPage({
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
         <div className="flex flex-wrap items-center gap-4">
+          <EventSearchInput tab={tab} initialQuery={q} />
           <StatusFilterSelect tabs={TABS} active={tab} />
           <Link
             href="/admin/events/analytics"
@@ -220,7 +228,7 @@ export default async function AdminEventsPage({
         </ul>
       )}
 
-      <Pagination page={page} totalPages={totalPages} tab={tab} />
+      <Pagination page={page} totalPages={totalPages} tab={tab} q={q} />
     </div>
   );
 }
@@ -262,13 +270,17 @@ function Pagination({
   page,
   totalPages,
   tab,
+  q,
 }: {
   page: number;
   totalPages: number;
   tab: string;
+  q: string;
 }) {
   const link = (p: number) =>
-    `/admin/events?tab=${encodeURIComponent(tab)}&page=${p}`;
+    `/admin/events?tab=${encodeURIComponent(tab)}&page=${p}${
+      q ? `&q=${encodeURIComponent(q)}` : ""
+    }`;
   return (
     <div className="flex items-center justify-between text-xs text-muted-foreground">
       <span>

@@ -298,6 +298,42 @@ export async function deleteDraftEvent(
   return ok({ deleted: true });
 }
 
+// Hard delete for an archived/cancelled event (delete_event RPC enforces
+// that status gate — see its migration comment). Every event_id FK cascades
+// at the DB level, so the RPC alone clears hosts/rsvps/invites/guest
+// rsvps/notification jobs/historical attendance; the storage cover object
+// is the one thing Postgres can't reach, same reasoning as
+// deleteEventCover() above.
+export async function deleteEvent(
+  eventId: string
+): Promise<ActionResult<{ deleted: true }>> {
+  const idParsed = z.string().uuid().safeParse(eventId);
+  if (!idParsed.success) return err("INVALID_INPUT", "Invalid event id.");
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("cover_image_path")
+    .eq("id", eventId)
+    .maybeSingle();
+  const coverPath = (event as { cover_image_path: string | null } | null)
+    ?.cover_image_path;
+
+  const { error } = await supabase.rpc("delete_event", { p_event_id: eventId });
+  if (error) return mapPgError(error);
+
+  if (coverPath) {
+    const admin = createAdminClient();
+    await admin.storage.from(EVENT_COVERS_BUCKET).remove([coverPath]);
+  }
+
+  revalidateEventPaths();
+  return ok({ deleted: true });
+}
+
 export async function inviteMember(
   eventId: string,
   userId: string
