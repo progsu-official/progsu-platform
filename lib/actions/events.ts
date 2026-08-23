@@ -69,9 +69,12 @@ function mapPgError(error: { code?: string | null; message?: string } | null) {
     // sign-in prompt rather than showing this text, so the message here is
     // only a fallback — but keep it non-committal about which field matched.
     if (lower.includes("account exists")) {
+      // Names both fields without saying which one matched. "Those details"
+      // read as a dead end — someone who typed a fresh email had no way to
+      // guess their phone was the match and would just try another email.
       return err(
         "ACCOUNT_EXISTS",
-        "You already have a Progsu account. Sign in to RSVP."
+        "That email or phone number is already on a Progsu account. Sign in to RSVP."
       );
     }
     // Treat admin-only / onboarding / auth-shape / visibility / check-in

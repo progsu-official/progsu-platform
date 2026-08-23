@@ -151,13 +151,13 @@ export function GuestRsvpModal({
             >
               <KeyRound size={20} strokeWidth={1.75} />
             </span>
-            {/* Says "these details" rather than naming which field matched:
-                the message is shown to whoever typed the form, who is not
-                necessarily the person who owns the account. */}
+            {/* Names the two fields but not which one matched. Withholding
+                both left someone who had already tried three fresh emails no
+                way to guess their phone number was the match. */}
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Those details are already on a Progsu account. Sign in and your
-              RSVP takes one tap — plus you keep your ticket and attendance
-              history.
+              That email or phone number is already on a Progsu account. Sign
+              in and your RSVP takes one tap — plus you keep your ticket and
+              attendance history.
             </p>
             {googleError ? (
               <p role="alert" className="text-xs text-destructive">
@@ -180,7 +180,7 @@ export function GuestRsvpModal({
               onClick={() => setAccountExists(false)}
               className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              Use a different email
+              Use different details
             </button>
           </div>
         ) : (

@@ -88,9 +88,17 @@ async function main() {
     if (data!.length < 1000) break;
   }
   const emailIdx = new Map<string, any>();
+  const phoneIdx = new Map<string, any>();
   for (const r of rows) {
     if (r.personal_email) emailIdx.set(r.personal_email.toLowerCase(), r);
     if (r.campus_email) emailIdx.set(r.campus_email.toLowerCase(), r);
+    // Phone is the second matching key on purpose. This script normalises
+    // campus-email domain typos that the original import didn't know about
+    // ("gsu.student.edu" -> "student.gsu.edu"), so a person already in the DB
+    // under the typo'd address would not match on email and would be inserted
+    // a second time. Matching on phone as well catches exactly that case.
+    const pe = r.phone_e164 ?? e164(r.phone_number);
+    if (pe && !phoneIdx.has(pe)) phoneIdx.set(pe, r);
   }
   const { count: supExisting } = await s.from("sms_suppressions").select("*", { count: "exact", head: true });
 
@@ -117,7 +125,9 @@ async function main() {
   const consentTargets: { id: string; at: string; copy: string }[] = [];
   for (const p of roster) {
     if (!p.sms_consent_at || !p.sms_consent_copy) continue;
-    const hit = (p.campus_email && emailIdx.get(p.campus_email)) || (p.personal_email && emailIdx.get(p.personal_email));
+    const hit = (p.campus_email && emailIdx.get(p.campus_email))
+      || (p.personal_email && emailIdx.get(p.personal_email))
+      || phoneIdx.get(p.phone_e164);
     if (hit && !hit.sms_consent_at) consentTargets.push({ id: hit.id, at: p.sms_consent_at, copy: p.sms_consent_copy });
   }
   const verbatimTotal = roster.filter((p) => p.sms_consent_at).length;
@@ -130,10 +140,17 @@ async function main() {
   const missing = roster.filter((p) => {
     const c = p.campus_email && emailIdx.has(p.campus_email);
     const e = p.personal_email && emailIdx.has(p.personal_email);
-    return !c && !e;
+    const ph = phoneIdx.has(p.phone_e164);
+    return !c && !e && !ph;
   });
+  const matchedOnPhoneOnly = roster.filter((p) => {
+    const c = p.campus_email && emailIdx.has(p.campus_email);
+    const e = p.personal_email && emailIdx.has(p.personal_email);
+    return !c && !e && phoneIdx.has(p.phone_e164);
+  }).length;
   console.log(`\n4. legacy_members inserts (missed by truncated import)`);
   console.log(`     people to insert:     ${missing.length}`);
+  console.log(`     matched on phone only:${matchedOnPhoneOnly}  (email typo'd in DB — NOT re-inserted)`);
   console.log(`     of those, Hacklanta:  ${missing.filter((p) => p.hacklanta).length}`);
   console.log(`     of those, opted in:   ${missing.filter((p) => p.sms_interest).length}`);
 
