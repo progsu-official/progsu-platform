@@ -15,9 +15,11 @@ import { Popover } from "./_composer/_components/popover";
 export function StatusFilterSelect({
   tabs,
   active,
+  q,
 }: {
   tabs: Array<{ key: string; label: string }>;
   active: string;
+  q?: string;
 }) {
   const router = useRouter();
   const activeLabel = tabs.find((t) => t.key === active)?.label ?? active;
@@ -59,7 +61,9 @@ export function StatusFilterSelect({
                 type="button"
                 onClick={() => {
                   close();
-                  router.push(`/admin/events?tab=${t.key}`);
+                  const params = new URLSearchParams({ tab: t.key });
+                  if (q) params.set("q", q);
+                  router.push(`/admin/events?${params.toString()}`);
                 }}
                 className={cn(
                   "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60",

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 
 import { EVENT_TIME_ZONE, formatTimeRange } from "@/app/events/_components/event-date";
+import { QrCenterMark } from "@/app/events/_components/qr-center-mark";
 
 const LINK_BUTTON = "h-11 flex-1 rounded-full";
 
@@ -81,8 +82,8 @@ export default async function GuestTicketPage({
   const coverUrl = await resolveCoverUrl(supabase, ticket.cover_image_path);
   const startsAt = new Date(ticket.starts_at);
 
-  // ECC level H so the code still decodes with the brand mark over its middle,
-  // same setting as the member ticket's QR.
+  // ECC level H so the code still decodes with the cover art (or brand glyph)
+  // over its middle, same setting as the member ticket's QR.
   const qrDataUrl = await QRCode.toDataURL(parsedToken.data, {
     errorCorrectionLevel: "H",
     margin: 0,
@@ -162,14 +163,7 @@ export default async function GuestTicketPage({
               </span>
             </div>
           ) : (
-            <span
-              aria-hidden
-              className="absolute left-1/2 top-1/2 flex h-[19%] w-[19%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white shadow-[0_0_0_4px_white]"
-            >
-              <span className="font-serif text-2xl font-black italic text-zinc-800">
-                P
-              </span>
-            </span>
+            <QrCenterMark coverUrl={coverUrl} />
           )}
         </div>
 

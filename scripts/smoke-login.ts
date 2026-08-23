@@ -68,7 +68,7 @@ async function main() {
     // 4. / landing page has the real Google sign-in button (no /login hop).
     const landing = await getHtml("/");
     if (landing.status !== 200) throw new Error(`/ status ${landing.status}`);
-    if (!landing.body.includes("Continue with Google"))
+    if (!landing.body.includes("continue with google"))
       throw new Error(`landing page missing Google sign-in CTA`);
     console.log(`  ✓ GET / has Google sign-in CTA`);
 

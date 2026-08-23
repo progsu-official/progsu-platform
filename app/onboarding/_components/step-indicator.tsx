@@ -11,6 +11,7 @@ import type { OnboardingStep } from "@/lib/auth/onboarding";
 // See lib/auth/onboarding.ts for the fullyOnboarded rule.
 const STEPS: Array<{ key: OnboardingStep; label: string; path: string }> = [
   { key: "profile", label: "profile", path: "/onboarding/profile" },
+  { key: "links", label: "roles & links", path: "/onboarding/links" },
   { key: "resume", label: "resume", path: "/onboarding/resume" },
   { key: "consent", label: "consent", path: "/onboarding/consent" },
 ];

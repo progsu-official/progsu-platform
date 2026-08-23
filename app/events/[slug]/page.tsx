@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, MapPin, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MapPin, SlidersHorizontal } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
@@ -8,8 +8,8 @@ import { getRequestOnboardingState } from "@/lib/auth/request-cache";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { EVENT_TIME_ZONE, formatTimeRange } from "../_components/event-date";
+import { AttendeeStack, type AttendeeFace } from "./_components/attendee-stack";
 import { EventDescription } from "./_components/event-description";
-import { EventTicket } from "./_components/event-ticket";
 import { RsvpPanel } from "./_components/rsvp-panel";
 
 export const dynamic = "force-dynamic";
@@ -36,11 +36,8 @@ type HostRow = { display_name: string; sort_order: number };
 type RsvpRow = {
   status: "going" | "waitlisted" | "declined" | "cancelled";
   waitlisted_at: string | null;
-  checkin_token: string | null;
 };
 type AttendanceRow = { checked_in_at: string; method: string };
-
-const CHECK_IN_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h before start to 2h after end.
 
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
   timeZone: EVENT_TIME_ZONE,
@@ -75,7 +72,6 @@ export default async function MemberEventDetailPage({
   let attendance: AttendanceRow | null;
   let goingCount: number | null;
   let waitlistedCount: number | null;
-  let holderRaw: Record<string, unknown> | null;
 
   if (!user) {
     // Anonymous visitor, per the 2026-08-20 RSVP-first decision: read through
@@ -128,7 +124,6 @@ export default async function MemberEventDetailPage({
     attendance = null;
     goingCount = p.going_count ?? 0;
     waitlistedCount = p.waitlisted_count ?? 0;
-    holderRaw = null;
   } else {
     const { data: eventRaw } = await supabase
       .from("events")
@@ -148,7 +143,6 @@ export default async function MemberEventDetailPage({
       { data: attendanceRaw },
       { count: going },
       { count: waitlisted },
-      { data: holder },
       { data: guestCountsRaw },
     ] = await Promise.all([
       supabase
@@ -158,7 +152,7 @@ export default async function MemberEventDetailPage({
         .order("sort_order", { ascending: true }),
       supabase
         .from("event_rsvps")
-        .select("status, waitlisted_at, checkin_token")
+        .select("status, waitlisted_at")
         .eq("event_id", event.id)
         .eq("user_id", user.id)
         .maybeSingle(),
@@ -178,11 +172,6 @@ export default async function MemberEventDetailPage({
         .select("*", { count: "exact", head: true })
         .eq("event_id", event.id)
         .eq("status", "waitlisted"),
-      supabase
-        .from("profiles")
-        .select("preferred_name, first_name, last_name")
-        .eq("id", user.id)
-        .maybeSingle(),
       // Capacity is one shared pool across members + guests (2026-08-21
       // guest-RSVP decision); event_guest_rsvps has no client RLS access, so
       // this SECURITY DEFINER RPC is the only way to fold guest counts in.
@@ -201,7 +190,6 @@ export default async function MemberEventDetailPage({
     } | null;
     goingCount = (going ?? 0) + (guestCounts?.going_count ?? 0);
     waitlistedCount = (waitlisted ?? 0) + (guestCounts?.waitlisted_count ?? 0);
-    holderRaw = holder as Record<string, unknown> | null;
   }
 
   // Waitlist position via SECURITY DEFINER helper — RLS on event_rsvps is
@@ -216,6 +204,21 @@ export default async function MemberEventDetailPage({
       typeof positionData === "number" ? positionData : Number(positionData);
     waitlistPosition = Number.isFinite(parsed) ? parsed : null;
   }
+
+  // Attendee social proof. Separate from goingCount on purpose: this total
+  // also folds approved historical attendance for backfilled events, which
+  // must NOT feed the capacity/waitlist maths below — those pools are about
+  // seats in a room that has already happened. RLS on event_rsvps is
+  // self-only, so the faces can only come from a SECURITY DEFINER helper.
+  const { data: attendeeRaw } = await supabase
+    .rpc("event_attendee_faces", { p_event_id: event.id, p_limit: 12 })
+    .maybeSingle();
+  const attendees = attendeeRaw as {
+    total_count: number;
+    faces: AttendeeFace[];
+  } | null;
+  const attendeeTotal = attendees?.total_count ?? goingCount ?? 0;
+  const attendeeFaces = attendees?.faces ?? [];
 
   // Fully-onboarded state drives whether a successful RSVP nudges the user
   // into the onboarding funnel right after (2026-08-20 RSVP-first decision) —
@@ -232,34 +235,15 @@ export default async function MemberEventDetailPage({
   const nowMs = Date.now();
   const startDate = new Date(event.starts_at);
   const startMs = startDate.getTime();
-  const endMs = new Date(event.ends_at).getTime();
-  const inCheckInWindow =
-    nowMs >= startMs - CHECK_IN_WINDOW_MS &&
-    nowMs <= endMs + CHECK_IN_WINDOW_MS;
 
   // RSVPs close when the event is over, cancelled, archived, or still a
   // draft. The DB also enforces this — hide the form so we don't tease a
   // button that will 400.
   const rsvpOpen = event.status === "published" && startMs > nowMs;
 
-  // D12: the personal ticket is the check-in entry — staff scan its QR
-  // inline from /admin/events/[id] (the Members tab is the manual fallback).
-  // Shown from the moment the RSVP lands on `going`; redemption is admin-only
-  // server-side, so early visibility is safe.
-  const holder = holderRaw as {
-    preferred_name: string | null;
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
-  const holderName = holder
-    ? [holder.preferred_name || holder.first_name, holder.last_name]
-        .filter(Boolean)
-        .join(" ") || null
-    : null;
-  const hasTicket =
-    event.status === "published" &&
-    rsvp?.status === "going" &&
-    !!rsvp.checkin_token;
+  // Drives "231 went" vs "4 going". Keyed off the end, not the start — an
+  // event in progress is still one people are going to.
+  const isPast = new Date(event.ends_at).getTime() < nowMs;
 
   return (
     <div className="relative">
@@ -322,7 +306,7 @@ export default async function MemberEventDetailPage({
         <div className="grid gap-8 lg:grid-cols-[19rem_1fr] lg:gap-12">
           {/* Left rail: cover art + hosts + crowd, Luma-style. */}
           <div className="space-y-5">
-            <div className="aspect-square w-full max-w-[19rem] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-muted to-primary/20 shadow-2xl shadow-black/40">
+            <div className="aspect-square w-full lg:max-w-[19rem] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-muted to-primary/20 shadow-2xl shadow-black/40">
               {coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -332,6 +316,25 @@ export default async function MemberEventDetailPage({
                 />
               ) : null}
             </div>
+
+            {/* Officers land here from the members-side link as often as from
+                /admin, and previously had to navigate back out to edit. Glass,
+                not an admin-styled control: this is a member surface and the
+                two rooms don't share atmosphere (DESIGN.md §0). */}
+            {onboardingState?.isAdmin ? (
+              <Link
+                href={`/admin/events/${event.id}`}
+                className="glass flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors hover:bg-foreground/5"
+              >
+                <span className="text-muted-foreground">
+                  You can manage this event
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-foreground">
+                  <SlidersHorizontal size={14} strokeWidth={1.75} aria-hidden />
+                  Manage
+                </span>
+              </Link>
+            ) : null}
 
             {hosts.length > 0 ? (
               <section className="space-y-2.5">
@@ -357,13 +360,14 @@ export default async function MemberEventDetailPage({
               </section>
             ) : null}
 
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users size={15} strokeWidth={1.75} aria-hidden />
-              {goingCount ?? 0} going
-              {event.waitlist_enabled && (waitlistedCount ?? 0) > 0
-                ? ` · ${waitlistedCount} waitlisted`
-                : ""}
-            </p>
+            <AttendeeStack
+              faces={attendeeFaces}
+              total={attendeeTotal}
+              past={isPast}
+              waitlistedCount={waitlistedCount ?? 0}
+              waitlistEnabled={event.waitlist_enabled}
+              linkProfiles={!!user}
+            />
           </div>
 
           {/* Right column: title, when/where, RSVP, about. */}
@@ -429,17 +433,7 @@ export default async function MemberEventDetailPage({
               ) : null}
             </div>
 
-            {hasTicket ? (
-              <EventTicket
-                eventId={event.id}
-                title={event.title}
-                startsAt={event.starts_at}
-                token={rsvp!.checkin_token as string}
-                holderName={holderName}
-                checkedInAt={attendance?.checked_in_at ?? null}
-                inCheckInWindow={inCheckInWindow}
-              />
-            ) : attendance ? (
+            {attendance ? (
               <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
                 {/* Drawn, not the "✓" character — a typed glyph inherits the
                     text font and renders differently per platform. */}

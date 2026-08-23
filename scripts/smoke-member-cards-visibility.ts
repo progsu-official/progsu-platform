@@ -431,12 +431,17 @@ async function main() {
         .maybeSingle();
       if (error) throw new Error(`member_cards self-select: ${error.message}`);
       if (!data) throw new Error(`alice couldn't see her own member_card row`);
+      // student_email_verified is a deliberate exception (2026-08-20,
+      // per John): the education card shows a verification badge to peers
+      // without the raw email itself, so it's excluded from this list on
+      // purpose — see member_cards' own comment in
+      // 20260820210000_public_profile_sections.sql. Everything else here
+      // still must never appear in the sanitized peer-facing projection.
       const forbidden = [
         "google_email",
         "student_email",
         "phone_number",
         "is_admin",
-        "student_email_verified",
       ];
       for (const f of forbidden) {
         if (f in (data as Record<string, unknown>)) {

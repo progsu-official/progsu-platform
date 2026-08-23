@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { rsvpToEvent } from "@/lib/actions/events";
@@ -44,10 +45,20 @@ export function RsvpPanel({
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
+  const [joinedToast, setJoinedToast] = useState(false);
   const { pending: googlePending, signIn: signInWithGoogle } =
     useGoogleSignIn(eventPath);
 
   const capacityReached = capacity !== null && goingCount >= capacity;
+
+  // Personal check-in QR now lives on /profile, not this page, so RSVPing
+  // no longer surfaces a code here to confirm the join happened — this toast
+  // is that confirmation instead.
+  useEffect(() => {
+    if (!joinedToast) return;
+    const timer = setTimeout(() => setJoinedToast(false), 3000);
+    return () => clearTimeout(timer);
+  }, [joinedToast]);
 
   function submit(desired: "going" | "declined" | "cancelled") {
     setError(null);
@@ -64,6 +75,9 @@ export function RsvpPanel({
         waitlistPosition:
           res.data.effectiveStatus === "waitlisted" ? null : null,
       });
+      if (desired === "going" && res.data.effectiveStatus === "going") {
+        setJoinedToast(true);
+      }
       // Per the 2026-08-20 RSVP-first decision: a not-yet-onboarded member
       // gets pushed into the (already minimal) onboarding funnel right after
       // a successful RSVP, rather than that funnel blocking the RSVP itself.
@@ -138,100 +152,113 @@ export function RsvpPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-2xl glass p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
-          <CurrentStateLine current={current} />
+    <>
+      <section className="space-y-4 rounded-2xl glass p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
+            <CurrentStateLine current={current} />
+          </div>
         </div>
-      </div>
 
-      {capacity !== null ? (
-        <CapacityBar going={goingCount} capacity={capacity} />
-      ) : null}
+        {capacity !== null ? (
+          <CapacityBar going={goingCount} capacity={capacity} />
+        ) : null}
 
-      {error ? (
-        // "Not fully onboarded" can only reach this panel for admins — member
-        // layouts route everyone else through the onboarding cascade before
-        // they ever see an RSVP button (D8). Give it a path, not a dead end.
-        error.toLowerCase().includes("not fully onboarded") ? (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 dark:border-amber-400/30 dark:bg-amber-400/10 px-3 py-2 text-xs"
-          >
-            <span className="text-amber-800 dark:text-amber-200">
-              Finish setting up your member profile to RSVP.
-            </span>
-            <Link
-              href="/onboarding/consent"
-              className="font-semibold text-amber-700 dark:text-amber-300 underline-offset-2 hover:underline"
+        {error ? (
+          // "Not fully onboarded" can only reach this panel for admins — member
+          // layouts route everyone else through the onboarding cascade before
+          // they ever see an RSVP button (D8). Give it a path, not a dead end.
+          error.toLowerCase().includes("not fully onboarded") ? (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 dark:border-amber-400/30 dark:bg-amber-400/10 px-3 py-2 text-xs"
             >
-              Finish setup →
-            </Link>
-          </div>
+              <span className="text-amber-800 dark:text-amber-200">
+                Finish setting up your member profile to RSVP.
+              </span>
+              <Link
+                href="/onboarding/consent"
+                className="font-semibold text-amber-700 dark:text-amber-300 underline-offset-2 hover:underline"
+              >
+                Finish setup →
+              </Link>
+            </div>
+          ) : (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            >
+              {error}
+            </div>
+          )
+        ) : null}
+
+        {current.status === null ? (
+          <NoRsvpForm
+            onGoing={() => submit("going")}
+            onDeclined={() => submit("declined")}
+            pending={pending}
+            comment={comment}
+            setComment={setComment}
+            capacityReached={capacityReached}
+            waitlistEnabled={waitlistEnabled}
+          />
+        ) : current.status === "going" ? (
+          <ActionButtons
+            pending={pending}
+            buttons={[
+              {
+                label: "I can't make it",
+                onClick: () => submit("cancelled"),
+                variant: "outline",
+              },
+            ]}
+          />
+        ) : current.status === "waitlisted" ? (
+          <ActionButtons
+            pending={pending}
+            buttons={[
+              {
+                label: "Leave waitlist",
+                onClick: () => submit("cancelled"),
+                variant: "outline",
+              },
+            ]}
+          />
         ) : (
-          <div
-            role="alert"
-            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          >
-            {error}
-          </div>
-        )
-      ) : null}
+          <ActionButtons
+            pending={pending}
+            buttons={[
+              {
+                label: capacityReached && waitlistEnabled
+                  ? "Join waitlist"
+                  : "RSVP as Going",
+                onClick: () => submit("going"),
+                variant: "default",
+              },
+            ]}
+          />
+        )}
 
-      {current.status === null ? (
-        <NoRsvpForm
-          onGoing={() => submit("going")}
-          onDeclined={() => submit("declined")}
-          pending={pending}
-          comment={comment}
-          setComment={setComment}
-          capacityReached={capacityReached}
-          waitlistEnabled={waitlistEnabled}
-        />
-      ) : current.status === "going" ? (
-        <ActionButtons
-          pending={pending}
-          buttons={[
-            {
-              label: "I can't make it",
-              onClick: () => submit("cancelled"),
-              variant: "outline",
-            },
-          ]}
-        />
-      ) : current.status === "waitlisted" ? (
-        <ActionButtons
-          pending={pending}
-          buttons={[
-            {
-              label: "Leave waitlist",
-              onClick: () => submit("cancelled"),
-              variant: "outline",
-            },
-          ]}
-        />
-      ) : (
-        <ActionButtons
-          pending={pending}
-          buttons={[
-            {
-              label: capacityReached && waitlistEnabled
-                ? "Join waitlist"
-                : "RSVP as Going",
-              onClick: () => submit("going"),
-              variant: "default",
-            },
-          ]}
-        />
-      )}
+        {waitlistEnabled && current.status !== "waitlisted" ? (
+          <p className="text-[11px] text-muted-foreground">
+            Waitlist: {waitlistedCount} waiting.
+          </p>
+        ) : null}
+      </section>
 
-      {waitlistEnabled && current.status !== "waitlisted" ? (
-        <p className="text-[11px] text-muted-foreground">
-          Waitlist: {waitlistedCount} waiting.
-        </p>
+      {joinedToast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="animate-fade-up motion-reduce:animate-none fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit items-center gap-2 rounded-full glass px-4 py-2.5 text-sm font-medium text-foreground shadow-lg"
+        >
+          <CheckCircle2 size={16} strokeWidth={1.75} className="text-primary" aria-hidden />
+          You&apos;re in! We&apos;ll see you there.
+        </div>
       ) : null}
-    </section>
+    </>
   );
 }
 

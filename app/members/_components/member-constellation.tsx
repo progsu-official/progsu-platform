@@ -45,12 +45,17 @@ const MIN_SCALE = 0.42;
 const MIN_OPACITY = 0.3;
 const FALLOFF_EXP = 1.3;
 
-// Pages after the first are deliberately small and their faces trickle in
-// one by one (ENTRY_STAGGER_MS apart). The prefetch below fires well before
-// the viewer reaches the rim, so the slow reveal reads as choreography, not
-// as waiting — by the time they pan to where a face lands, it has landed.
+// Fetched pages land in a buffer and members are REVEALED one at a time,
+// REVEAL_EVERY_MS apart. The reveal appends to React state, so a member's
+// face, its lattice cell, its edge lines, and the hull all arrive in the
+// same commit. The old way mounted the whole batch at once with staggered
+// CSS delays on the faces only — the lattice grew instantly and the faces
+// caught up over two seconds, which read as a spiderweb of empty cells
+// popping in whenever a page loaded. The prefetch fires well before the
+// viewer reaches the rim, so the slow reveal reads as choreography, not as
+// waiting — by the time they pan to where a face lands, it has landed.
 const FOLLOW_PAGE_SIZE = 24;
-const ENTRY_STAGGER_MS = 90;
+const REVEAL_EVERY_MS = 80;
 const INITIAL_STAGGER_MS = 16;
 
 function hexSpiral(count: number) {
@@ -97,15 +102,30 @@ export function MemberConstellation({
   const loading = useRef(false);
   const [pending, setPending] = useState(false);
 
-  // Per-face entrance delay, assigned once at append time so a face keeps its
-  // slot in the trickle even as later pages land. The first page settles fast
-  // (it's the whole opening view); every page after drips in slowly.
-  const entryDelay = useRef<Map<string, number>>(new Map());
-  if (entryDelay.current.size === 0 && initialMembers.length > 0) {
-    initialMembers.forEach((m, i) =>
-      entryDelay.current.set(m.userId, Math.min(i, 30) * INITIAL_STAGGER_MS),
-    );
-  }
+  // Buffer between the network and the lattice. loadMore() fills it a page
+  // at a time; the ticker drains it one member per beat into React state.
+  const revealQueue = useRef<ConstellationMember[]>([]);
+  const revealTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startReveal = useCallback(() => {
+    if (revealTimer.current !== null) return;
+    revealTimer.current = setInterval(() => {
+      const next = revealQueue.current.shift();
+      if (!next) {
+        clearInterval(revealTimer.current!);
+        revealTimer.current = null;
+        return;
+      }
+      setMembers((prev) =>
+        prev.some((m) => m.userId === next.userId) ? prev : [...prev, next],
+      );
+    }, REVEAL_EVERY_MS);
+  }, []);
+  useEffect(
+    () => () => {
+      if (revealTimer.current !== null) clearInterval(revealTimer.current);
+    },
+    [],
+  );
 
   const loadMore = useCallback(async () => {
     if (loading.current || cursor.current === null) return;
@@ -128,25 +148,23 @@ export function MemberConstellation({
       }
       cursor.current = cursorAfter(result.data, FOLLOW_PAGE_SIZE);
       if (result.data.length > 0) {
-        setMembers((prev) => {
-          // The cursor is (visible_since, user_id) and both halves are stable,
-          // so overlap should be impossible -- but a duplicate key here would
-          // desync nodeRefs from positions and corrupt the whole paint loop.
-          const seen = new Set(prev.map((m) => m.userId));
-          const fresh = result.data
-            .filter((c) => !seen.has(c.user_id))
-            .map(toConstellationMember);
-          fresh.forEach((m, j) =>
-            entryDelay.current.set(m.userId, j * ENTRY_STAGGER_MS),
-          );
-          return fresh.length > 0 ? [...prev, ...fresh] : prev;
-        });
+        // The cursor is (visible_since, user_id) and both halves are stable,
+        // so overlap should be impossible -- but a duplicate key would desync
+        // nodeRefs from positions and corrupt the whole paint loop, so dedupe
+        // against both the revealed lattice and the not-yet-revealed queue.
+        // (The reveal tick re-checks against members at append time.)
+        const queued = new Set(revealQueue.current.map((m) => m.userId));
+        const fresh = result.data
+          .map(toConstellationMember)
+          .filter((m) => !queued.has(m.userId));
+        revealQueue.current.push(...fresh);
+        startReveal();
       }
     } finally {
       loading.current = false;
       setPending(false);
     }
-  }, [search]);
+  }, [search, startReveal]);
   // paint() runs every animation frame and needs to ask for more lattice
   // without being re-created (and re-cancelling the frame loop) every time
   // the loader identity changes.
@@ -270,7 +288,12 @@ export function MemberConstellation({
     const nearRim =
       Math.hypot(probeX, probeY) > hullRadius - cell * 2 ||
       Math.hypot(cx, cy) > hullRadius - cell * 3;
-    if (nearRim) void loadMoreRef.current();
+    // Fetch ahead of the reveal: once the buffer runs low near the rim, the
+    // next page should already be in flight — the ticker never waits on the
+    // network, and the network never dumps into a fat queue.
+    if (nearRim && revealQueue.current.length < FOLLOW_PAGE_SIZE / 2) {
+      void loadMoreRef.current();
+    }
   }, [positions, viewport.w, viewport.h, cell, hullRadius]);
 
   const requestFrame = useCallback(() => {
@@ -344,7 +367,9 @@ export function MemberConstellation({
     const fits =
       hullRadius * 2 + cell * 2 <=
       Math.max(viewport.w || 0, viewport.h || 0);
-    if (fits) void loadMore();
+    if (fits && revealQueue.current.length < FOLLOW_PAGE_SIZE / 2) {
+      void loadMore();
+    }
   }, [members.length, viewport.w, viewport.h, hullRadius, cell, loadMore]);
 
   const moved = useRef(false);
@@ -502,7 +527,13 @@ export function MemberConstellation({
 
         <ul className="absolute inset-0">
           {members.map((member, i) => {
-            const delay = entryDelay.current.get(member.userId) ?? 0;
+            // Members past the initial page mount one per reveal tick, so
+            // their bubble-in needs no extra delay; the opening batch still
+            // settles as a quick cascade.
+            const delay =
+              i < initialMembers.length
+                ? Math.min(i, 30) * INITIAL_STAGGER_MS
+                : 0;
             return (
               <li
                 key={member.userId}

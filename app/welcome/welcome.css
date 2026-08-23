@@ -1,0 +1,729 @@
+/* Ported from the standalone marketing prototype. Every rule is scoped under
+   .welcome-root so this stylesheet can't leak into the rest of the app --
+   the palette here (paper/ink/violet) is a deliberate marketing-surface
+   departure from the app's HSL tokens, same precedent as the event
+   composer's own themed background (see DESIGN.md §7). Tailwind's preflight
+   (@tailwind base, loaded app-wide) already resets box-sizing/margin/padding,
+   so the prototype's own `*` reset is dropped as redundant. */
+
+.welcome-root {
+  --w-paper: #fcfbfe;
+  --w-surface: #ffffff;
+  --w-ink: #141021;
+  --w-muted: #6a6480;
+  --w-faint: #9a94ac;
+  --w-violet: #6e3ae0;
+  --w-violet-deep: #4c1fb8;
+  --w-lilac: #f1edfb;
+  --w-lilac-soft: #f7f4fd;
+  --w-line: #eceaf3;
+  --w-line-strong: #ddd8ec;
+  --w-shadow-sm: 0 1px 2px rgba(20, 16, 33, 0.05), 0 2px 8px rgba(20, 16, 33, 0.04);
+  --w-shadow-md: 0 10px 30px rgba(76, 31, 184, 0.08), 0 2px 6px rgba(20, 16, 33, 0.05);
+  --w-shadow-lg: 0 30px 70px rgba(76, 31, 184, 0.13), 0 10px 24px rgba(20, 16, 33, 0.06);
+  --w-r: 16px;
+
+  position: relative;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  background: var(--w-paper);
+  color: var(--w-ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.welcome-root a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.welcome-root .wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.welcome-root h1,
+.welcome-root h2,
+.welcome-root h3 {
+  font-family: inherit;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+  font-weight: 600;
+}
+
+.welcome-root .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--w-violet);
+  text-transform: lowercase;
+}
+
+/* ---------- nav ---------- */
+.welcome-root nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  transition: background 0.3s, border-color 0.3s, backdrop-filter 0.3s;
+  border-bottom: 1px solid transparent;
+}
+.welcome-root nav.solid {
+  background: rgba(252, 251, 254, 0.82);
+  backdrop-filter: saturate(1.5) blur(16px);
+  border-color: var(--w-line);
+}
+.welcome-root .nav-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.welcome-root .brand {
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.welcome-root .beta {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--w-violet);
+  background: var(--w-lilac);
+  padding: 3px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.welcome-root .nav-cta {
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--w-violet);
+  border: 1px solid var(--w-violet);
+  padding: 9px 15px;
+  border-radius: 10px;
+  transition: all 0.16s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.welcome-root .nav-cta:hover {
+  border-color: var(--w-violet-deep);
+  background: var(--w-violet-deep);
+  color: #fff;
+}
+
+/* ---------- hero scene (scroll coalescence) ---------- */
+.welcome-root .scene {
+  position: relative;
+  height: 220vh;
+}
+.welcome-root .sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.welcome-root .dotfield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.6s ease;
+}
+.welcome-root .dotfield.ready {
+  opacity: 1;
+}
+.welcome-root .dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+}
+/* One tile that reshapes, not two faces that swap: radius, fill and shadow
+   all interpolate, so a member circle becomes a company card by deforming.
+   .dot owns position (rewritten every frame by the rAF loop); .dot-cell owns
+   the morph (a CSS transition) -- one transform each, neither clobbers the
+   other. --wave-delay is written per-dot by the JS right before the state
+   flips, and inherits down to the glyphs. */
+.welcome-root .dot-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--dot-fill);
+  box-shadow: var(--dot-shadow);
+  /* Slight overshoot so the shape settles rather than arriving flat -- the
+     difference between "morphing" and "cross-fading". */
+  transition:
+    border-radius 900ms cubic-bezier(0.34, 1.28, 0.52, 1) var(--wave-delay, 0ms),
+    transform 900ms cubic-bezier(0.34, 1.28, 0.52, 1) var(--wave-delay, 0ms),
+    background-color 900ms cubic-bezier(0.16, 1, 0.3, 1) var(--wave-delay, 0ms),
+    box-shadow 900ms cubic-bezier(0.16, 1, 0.3, 1) var(--wave-delay, 0ms);
+}
+.welcome-root .dotfield[data-side="companies"] .dot-cell {
+  border-radius: 30%;
+  background: var(--dot-fill-co);
+  box-shadow: var(--dot-shadow-co);
+  transform: scale(1.05);
+}
+.welcome-root .dot-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+/* The outgoing glyph leaves faster than the incoming one arrives, so the
+   swap never reads as two things stacked on top of each other. */
+.welcome-root .dot-mono {
+  color: #fff;
+  font-weight: 600;
+  font-size: 23px;
+  transition:
+    opacity 300ms ease-out var(--wave-delay, 0ms),
+    transform 460ms cubic-bezier(0.16, 1, 0.3, 1) var(--wave-delay, 0ms);
+}
+.welcome-root .dot-mark {
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 420ms ease-in calc(var(--wave-delay, 0ms) + 260ms),
+    transform 560ms cubic-bezier(0.34, 1.28, 0.52, 1) calc(var(--wave-delay, 0ms) + 220ms);
+}
+.welcome-root .dotfield[data-side="companies"] .dot-mono {
+  opacity: 0;
+  transform: scale(0.5);
+}
+.welcome-root .dotfield[data-side="companies"] .dot-mark {
+  opacity: 1;
+  transform: scale(1);
+}
+.welcome-root .dot-mark svg {
+  /* Smaller and the wordmark-style marks (SAP, Samsung, Splunk) are mush. */
+  width: 56%;
+  height: 56%;
+  display: block;
+}
+
+.welcome-root .hero-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 20;
+  width: min(780px, 90vw);
+  pointer-events: none;
+}
+.welcome-root .hero-main .scrim {
+  position: absolute;
+  inset: -56px -90px;
+  background: radial-gradient(closest-side, rgba(252, 251, 254, 0.95), rgba(252, 251, 254, 0.72) 52%, transparent);
+  z-index: -1;
+}
+.welcome-root .hero-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+}
+.welcome-root .hero-main h1 {
+  font-size: clamp(40px, 6.4vw, 78px);
+  font-weight: 600;
+}
+.welcome-root .hero-main h1 .accent {
+  color: var(--w-violet);
+  font-style: italic;
+}
+.welcome-root .cta-wrap {
+  pointer-events: auto;
+  margin-top: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.welcome-root .hero-desc {
+  font-size: 12.5px;
+  color: var(--w-muted);
+  line-height: 1.7;
+}
+.welcome-root .hero-community {
+  top: 75%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  width: min(640px, 90vw);
+}
+.welcome-root .hero-community .scrim {
+  position: absolute;
+  inset: -44px -80px;
+  background: radial-gradient(closest-side, rgba(252, 251, 254, 0.96), rgba(252, 251, 254, 0.72) 55%, transparent);
+  z-index: -1;
+}
+.welcome-root .hero-community h2 {
+  font-size: clamp(26px, 3.6vw, 42px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.welcome-root .hero-community h2 .accent {
+  color: var(--w-violet);
+}
+.welcome-root .hero-community p {
+  color: var(--w-muted);
+  font-size: clamp(14px, 1.5vw, 16px);
+  margin: 10px auto 16px;
+  max-width: 500px;
+}
+.welcome-root .bene-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 34px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.welcome-root .bene b {
+  display: block;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--w-ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.welcome-root .bene span {
+  font-size: 12px;
+  color: var(--w-faint);
+  margin-top: 6px;
+  display: block;
+}
+.welcome-root .hero-community .btn-google {
+  pointer-events: auto;
+}
+
+.welcome-root .btn-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--w-ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 13px 20px 13px 15px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--w-shadow-md);
+  transition: transform 0.16s, box-shadow 0.16s;
+}
+.welcome-root .btn-google:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--w-shadow-lg);
+}
+.welcome-root .btn-google:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+.welcome-root .g-badge {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.welcome-root .scroll-hint {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--w-faint);
+  text-transform: uppercase;
+}
+.welcome-root .scroll-hint .bar {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(var(--w-line-strong), transparent);
+  position: relative;
+  overflow: hidden;
+}
+.welcome-root .scroll-hint .bar::after {
+  content: "";
+  position: absolute;
+  top: -34px;
+  left: 0;
+  width: 1px;
+  height: 34px;
+  background: var(--w-violet);
+  animation: welcome-scroll-drop 1.8s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+}
+@keyframes welcome-scroll-drop {
+  to {
+    top: 34px;
+  }
+}
+
+/* ---------- content sections ---------- */
+.welcome-root .section {
+  padding: 110px 0;
+  border-top: 1px solid var(--w-line);
+}
+.welcome-root .sec-label {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--w-faint);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+.welcome-root .sec-label b {
+  color: var(--w-violet);
+  font-weight: 500;
+}
+.welcome-root .sec-head {
+  max-width: 640px;
+}
+.welcome-root .sec-head h2 {
+  font-size: clamp(30px, 4vw, 50px);
+}
+.welcome-root .sec-head p {
+  color: var(--w-muted);
+  font-size: 17px;
+  margin-top: 18px;
+  max-width: 520px;
+}
+
+/* steps */
+.welcome-root .steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 56px;
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-r);
+  overflow: hidden;
+  background: var(--w-surface);
+}
+.welcome-root .step {
+  padding: 34px 30px 40px;
+  border-right: 1px solid var(--w-line);
+  transition: background 0.2s;
+}
+.welcome-root .step:last-child {
+  border-right: none;
+}
+.welcome-root .step:hover {
+  background: var(--w-lilac-soft);
+}
+.welcome-root .step-n {
+  font-size: 12.5px;
+  color: var(--w-violet);
+}
+.welcome-root .step h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 22px 0 10px;
+}
+.welcome-root .step p {
+  font-size: 14.5px;
+  color: var(--w-muted);
+}
+@media (max-width: 760px) {
+  .welcome-root .steps {
+    grid-template-columns: 1fr;
+  }
+  .welcome-root .step {
+    border-right: none;
+    border-bottom: 1px solid var(--w-line);
+  }
+  .welcome-root .step:last-child {
+    border-bottom: none;
+  }
+}
+
+/* events check-in */
+.welcome-root .events-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 52px;
+  align-items: center;
+  margin-top: 8px;
+}
+.welcome-root .events-image {
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+/* consent */
+.welcome-root .consent-split {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 52px;
+  align-items: center;
+}
+.welcome-root .consent-split .rv-card {
+  width: 100%;
+  max-width: 420px;
+  margin-left: auto;
+}
+.welcome-root .rv-card {
+  background: var(--w-surface);
+  border: 1px solid var(--w-line);
+  border-radius: 18px;
+  box-shadow: var(--w-shadow-lg);
+  overflow: hidden;
+}
+.welcome-root .rv-top {
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--w-line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.welcome-root .rv-ava {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7a45e8, #b93bc9);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  flex: none;
+}
+.welcome-root .rv-top .n {
+  font-weight: 700;
+  font-size: 16px;
+}
+.welcome-root .rv-top .m {
+  font-size: 12.5px;
+  color: var(--w-muted);
+}
+.welcome-root .rv-toggle {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+.welcome-root .rv-toggle[aria-checked="true"] .switch {
+  background: var(--w-violet);
+}
+.welcome-root .rv-toggle[aria-checked="true"] .switch::after {
+  transform: translateX(17px);
+}
+.welcome-root .rv-toggle:focus-visible {
+  outline: 2px solid var(--w-violet);
+  outline-offset: 3px;
+  border-radius: 20px;
+}
+.welcome-root .rv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--w-line);
+  font-size: 14px;
+}
+.welcome-root .rv-field:last-child {
+  border-bottom: none;
+}
+.welcome-root .rv-field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.welcome-root .rv-field .k {
+  font-size: 11px;
+  color: var(--w-faint);
+  width: 78px;
+  flex: none;
+  text-transform: uppercase;
+}
+.welcome-root .rv-field .v {
+  font-weight: 500;
+}
+.welcome-root .rv-field .d {
+  font-size: 12px;
+  color: var(--w-faint);
+  margin-left: 90px;
+}
+.welcome-root .rv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 44px 20px;
+  color: var(--w-faint);
+  font-size: 13.5px;
+  text-align: center;
+}
+.welcome-root .switch {
+  margin-left: auto;
+  width: 42px;
+  height: 25px;
+  border-radius: 20px;
+  background: var(--w-line-strong);
+  position: relative;
+  transition: background 0.22s;
+  flex: none;
+}
+.welcome-root .switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--w-shadow-sm);
+  transition: transform 0.22s;
+}
+@media (max-width: 760px) {
+  .welcome-root .consent-split {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .welcome-root .consent-split .rv-card {
+    max-width: none;
+    margin-left: 0;
+  }
+  .welcome-root .events-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* final (dark card) */
+.welcome-root .final {
+  padding: 120px 0;
+}
+.welcome-root .final-box {
+  background: #141021;
+  border-radius: 26px;
+  padding: 80px 40px;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.welcome-root .final-box::before {
+  content: "";
+  position: absolute;
+  top: -140px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(110, 58, 224, 0.5), transparent 65%);
+  pointer-events: none;
+}
+.welcome-root .final-box .eyebrow {
+  color: #b9a6f0;
+  position: relative;
+}
+.welcome-root .final-box h2 {
+  font-size: clamp(30px, 4.4vw, 52px);
+  margin: 18px 0 12px;
+  position: relative;
+}
+.welcome-root .final-box p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 17px;
+  margin-bottom: 34px;
+  position: relative;
+}
+.welcome-root .final-box .btn-google {
+  background: #fff;
+  color: var(--w-ink);
+  position: relative;
+}
+
+.welcome-root footer {
+  border-top: 1px solid var(--w-line);
+  padding: 34px 0;
+}
+.welcome-root .foot-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.welcome-root .foot-inner .brand {
+  font-size: 16px;
+}
+.welcome-root .foot-links {
+  display: flex;
+  gap: 24px;
+  font-size: 13.5px;
+  color: var(--w-muted);
+}
+.welcome-root .foot-links a:hover {
+  color: var(--w-violet);
+}
+.welcome-root .foot-note {
+  font-size: 12px;
+  color: var(--w-faint);
+}
+
+@media (max-width: 540px) {
+  .welcome-root .wrap {
+    padding: 0 22px;
+  }
+  .welcome-root .nav-inner {
+    padding: 0 22px;
+  }
+  .welcome-root .section {
+    padding: 76px 0;
+  }
+  .welcome-root .final {
+    padding: 80px 0;
+  }
+  .welcome-root .final-box {
+    padding: 56px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-root .dot-cell,
+  .welcome-root .dot-mono,
+  .welcome-root .dot-mark {
+    transition: none;
+  }
+  .welcome-root .scroll-hint .bar::after {
+    animation: none;
+  }
+}

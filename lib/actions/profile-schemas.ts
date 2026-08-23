@@ -31,6 +31,13 @@ export const minimalSignupProfileSchema = z
   .object({
     firstName: z.string().trim().min(1).max(100),
     lastName: z.string().trim().min(1).max(100),
+    preferredName: z
+      .string()
+      .trim()
+      .max(100)
+      .transform((v) => (v.length === 0 ? null : v))
+      .nullable()
+      .optional(),
     school: z.string().trim().min(1, "Pick your school").max(150),
     phoneNumber: z
       .string()
@@ -47,6 +54,13 @@ export const minimalSignupProfileSchema = z
       .transform((v) => (v.length === 0 ? null : v))
       .nullable()
       .optional(),
+    minor: z
+      .string()
+      .trim()
+      .max(150)
+      .transform((v) => (v.length === 0 ? null : v))
+      .nullable()
+      .optional(),
   })
   .strict()
   .refine(
@@ -55,6 +69,43 @@ export const minimalSignupProfileSchema = z
   );
 
 export type MinimalSignupProfileInput = z.infer<typeof minimalSignupProfileSchema>;
+
+// Second onboarding step (docs/14-low-friction-signup follow-up, 2026-08-23):
+// grad info, roles, and links used to be deferred entirely to the dashboard
+// profile-completion ring. Now collected up front on their own step
+// (/onboarding/links) right after the minimal-signup step, as its own
+// partial write, same shape the full updateProfileSchema below uses for
+// these fields, just without the identity fields that step doesn't touch.
+export const onboardingLinksSchema = z
+  .object({
+    classStanding: z.enum(CLASS_STANDINGS),
+    gradYear: z.coerce
+      .number()
+      .int()
+      .min(MinGradYear, `Graduation year must be ${MinGradYear} or later`)
+      .max(MaxGradYear, `Graduation year must be ${MaxGradYear} or earlier`),
+    gradTerm: z.enum(GRAD_TERMS),
+    interestedRoles: z
+      .array(z.enum(INTERESTED_ROLES))
+      .min(1, "Pick at least one role")
+      .max(6, "Pick up to 6 roles")
+      .transform((arr) => Array.from(new Set(arr))),
+    linkedinUrl: urlOrEmpty(
+      /^https?:\/\/([a-z0-9-]+\.)*linkedin\.com\//i
+    ).optional(),
+    githubUrl: urlOrEmpty(/^https?:\/\/([a-z0-9-]+\.)*github\.com\//i).optional(),
+    portfolioUrl: urlOrEmpty(null).optional(),
+    bio: z
+      .string()
+      .trim()
+      .max(220, "Keep it to 220 characters")
+      .refine((v) => !/[\r\n]/.test(v), "One line only")
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
+export type OnboardingLinksInput = z.infer<typeof onboardingLinksSchema>;
 
 export const updateProfileSchema = z
   .object({

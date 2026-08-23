@@ -28,8 +28,48 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "past", label: "Past" },
 ];
 
-function resolveTab(raw: string | undefined): TabKey {
-  return (TABS.find((t) => t.key === raw)?.key ?? "upcoming") as TabKey;
+// Signed-out visitors get Past as well as Upcoming — it reads through
+// public_past_events(), which is anon-safe. Withholding it hid the whole
+// backfilled history from exactly the prospective members a 417-person
+// turnout is meant to convince. My Plans stays out: it needs a session.
+const ANON_TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "upcoming", label: "Upcoming" },
+  { key: "past", label: "Past" },
+];
+
+function resolveTab(
+  raw: string | undefined,
+  allowed: Array<{ key: TabKey }> = TABS
+): TabKey {
+  return (allowed.find((t) => t.key === raw)?.key ?? "upcoming") as TabKey;
+}
+
+function TabNav({ tab, tabs }: { tab: TabKey; tabs: typeof TABS }) {
+  return (
+    <nav
+      aria-label="Event views"
+      className="inline-flex items-center gap-0.5 rounded-full glass p-1"
+    >
+      {tabs.map((t) => {
+        const active = t.key === tab;
+        return (
+          <Link
+            key={t.key}
+            href={`/events?tab=${t.key}`}
+            aria-current={active ? "page" : undefined}
+            className={
+              "rounded-full px-4 py-1.5 text-sm transition-colors " +
+              (active
+                ? "bg-muted font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            {t.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }
 
 type HostRef = { display_name: string; sort_order: number };
@@ -63,6 +103,27 @@ type HistoryRow = {
   checked_in_at: string | null;
 };
 
+// Org-wide past event, from public_past_events(). No capacity/waitlist here:
+// those describe seats in a room that has already emptied.
+type PastEventRow = {
+  id: string;
+  slug: string;
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  location_text: string | null;
+  cover_image_path: string | null;
+  going_count: number | null;
+  hosts: HostRef[];
+};
+
+// The viewer's own relationship to a past event, used only to badge a row.
+type MyPastRow = {
+  rsvp_status: string | null;
+  attended: boolean | null;
+  status: string | null;
+};
+
 type InviteRow = {
   event_id: string;
   slug: string;
@@ -88,12 +149,19 @@ export default async function MemberEventsPage({
   const supabase = await createClient();
 
   if (!user) {
+    const { tab: rawAnonTab } = await searchParams;
+    const anonTab = resolveTab(rawAnonTab, ANON_TABS);
     return (
       <div className="mx-auto max-w-3xl space-y-8">
-        <header>
+        <header className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-4xl font-bold tracking-tight">Events</h1>
+          <TabNav tab={anonTab} tabs={ANON_TABS} />
         </header>
-        <UpcomingTab supabase={supabase} anon />
+        {anonTab === "past" ? (
+          <PastTab supabase={supabase} anon />
+        ) : (
+          <UpcomingTab supabase={supabase} anon />
+        )}
       </div>
     );
   }
@@ -110,29 +178,7 @@ export default async function MemberEventsPage({
     <div className="mx-auto max-w-3xl space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-4xl font-bold tracking-tight">Events</h1>
-        <nav
-          aria-label="Event views"
-          className="inline-flex items-center gap-0.5 rounded-full glass p-1"
-        >
-          {TABS.map((t) => {
-            const active = t.key === tab;
-            return (
-              <Link
-                key={t.key}
-                href={`/events?tab=${t.key}`}
-                aria-current={active ? "page" : undefined}
-                className={
-                  "rounded-full px-4 py-1.5 text-sm transition-colors " +
-                  (active
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {t.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <TabNav tab={tab} tabs={TABS} />
       </header>
 
       {tab === "upcoming" ? <UpcomingTab supabase={supabase} /> : null}
@@ -396,40 +442,64 @@ async function loadInvitedPending(
   return rows;
 }
 
-async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
+async function PastTab({
+  supabase,
+  anon,
+}: {
+  supabase: SupabaseCtx;
+  anon?: boolean;
+}) {
+  // Org-wide, not self-scoped. This tab used to read self_event_history,
+  // which joins on auth.uid() and keeps only events the viewer personally
+  // RSVP'd to or checked into — so it answered "what did I go to", never
+  // "what has progsu run". With three live RSVPs and no attendance rows on
+  // the platform it rendered empty for everyone, which also meant the
+  // backfilled Luma-era events were reachable by URL and listed nowhere.
+  //
+  // public_past_events() is the org-wide list; self_event_history is still
+  // read alongside it, but only to badge the rows the viewer was part of.
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("self_event_history")
-    .select(
-      "event_id, slug, title, starts_at, ends_at, status, location_text, cover_image_path, rsvp_status, attended, checked_in_at"
-    )
-    .lt("ends_at", nowIso)
-    .order("starts_at", { ascending: false })
-    .limit(100);
+  const [{ data, error }, { data: mineRaw }] = await Promise.all([
+    supabase.rpc("public_past_events", { p_limit: 50 }),
+    anon
+      ? Promise.resolve({ data: null })
+      : supabase
+          .from("self_event_history")
+          .select("event_id, rsvp_status, attended, status")
+          .lt("ends_at", nowIso),
+  ]);
 
   if (error) {
     return (
       <p className="text-sm text-destructive">
-        Couldn&apos;t load your history: {error.message}
+        Couldn&apos;t load past events: {error.message}
       </p>
     );
   }
 
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map(
-    (r): HistoryRow => ({
-      event_id: r.event_id as string,
+    (r): PastEventRow => ({
+      id: r.id as string,
       slug: r.slug as string,
       title: r.title as string,
       starts_at: r.starts_at as string,
       ends_at: r.ends_at as string,
-      status: r.status as string,
       location_text: (r.location_text as string | null) ?? null,
       cover_image_path: (r.cover_image_path as string | null) ?? null,
-      rsvp_status: (r.rsvp_status as string | null) ?? null,
-      attended: (r.attended as boolean | null) ?? null,
-      checked_in_at: (r.checked_in_at as string | null) ?? null,
+      going_count: (r.going_count as number | null) ?? 0,
+      hosts: (r.hosts as HostRef[] | null) ?? [],
     })
   );
+
+  const mine = new Map<string, MyPastRow>();
+  for (const raw of (mineRaw ?? []) as Array<Record<string, unknown>>) {
+    mine.set(raw.event_id as string, {
+      rsvp_status: (raw.rsvp_status as string | null) ?? null,
+      attended: (raw.attended as boolean | null) ?? null,
+      status: (raw.status as string | null) ?? null,
+    });
+  }
+
   const pastCoverUrls = await resolveCoverUrls(
     supabase,
     rows.map((r) => r.cover_image_path)
@@ -439,8 +509,8 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
     return (
       <EmptyState
         icon={History}
-        title="No event history yet"
-        body="Events you attend will appear here after they end."
+        title="No past events yet"
+        body="Events show up here once they have wrapped."
         cta={{ href: "/events?tab=upcoming", label: "See what's coming up" }}
       />
     );
@@ -449,38 +519,45 @@ async function PastTab({ supabase }: { supabase: SupabaseCtx }) {
   return (
     <EventTimeline
       items={rows.map((ev, i) => ({
-        key: ev.event_id,
+        key: ev.id,
         href: `/events/${ev.slug}`,
         title: ev.title,
-        hosts: null,
+        hosts: joinHosts(ev.hosts),
         startsAt: ev.starts_at,
         endsAt: ev.ends_at,
         location: ev.location_text,
-        cancelled: ev.status === "cancelled",
         coverUrl: pastCoverUrls[i] ?? null,
-        footer: buildPastBadge(ev),
+        footer: (
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="tabular-nums text-muted-foreground">
+              {(ev.going_count ?? 0).toLocaleString()} went
+            </span>
+            {buildPastBadge(mine.get(ev.id))}
+          </span>
+        ),
       }))}
     />
   );
 }
 
-function buildPastBadge(ev: HistoryRow) {
-  if (ev.status === "cancelled") {
+function buildPastBadge(mine: MyPastRow | undefined) {
+  if (!mine) return null;
+  if (mine.status === "cancelled") {
     return <Badge tone="destructive">Cancelled</Badge>;
   }
-  if (ev.attended) {
-    return <Badge tone="primary">Attended</Badge>;
+  if (mine.attended) {
+    return <Badge tone="primary">You attended</Badge>;
   }
-  if (ev.rsvp_status === "going") {
+  if (mine.rsvp_status === "going") {
     return <Badge tone="muted">No check-in</Badge>;
   }
-  if (ev.rsvp_status === "waitlisted") {
+  if (mine.rsvp_status === "waitlisted") {
     return <Badge tone="muted">Waitlisted</Badge>;
   }
-  if (ev.rsvp_status === "declined") {
+  if (mine.rsvp_status === "declined") {
     return <Badge tone="muted">You declined</Badge>;
   }
-  if (ev.rsvp_status === "cancelled") {
+  if (mine.rsvp_status === "cancelled") {
     return <Badge tone="muted">You cancelled</Badge>;
   }
   return null;
