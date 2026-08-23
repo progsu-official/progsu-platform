@@ -10,6 +10,7 @@ import { readTheme } from "@/lib/theme";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { MemberHeader } from "@/app/_components/member-header";
+import { SiteFooter } from "@/app/_components/site-footer";
 import { ThemeShell } from "@/app/_components/theme-shell";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ export default async function DashboardLayout({
         showEvents={env.FEATURE_EVENTS}
       />
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <SiteFooter />
     </ThemeShell>
   );
 }

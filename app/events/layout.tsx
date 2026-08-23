@@ -10,6 +10,7 @@ import { env } from "@/lib/env";
 import { readTheme } from "@/lib/theme";
 
 import { MemberHeader } from "@/app/_components/member-header";
+import { SiteFooter } from "@/app/_components/site-footer";
 import { ThemeShell } from "@/app/_components/theme-shell";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +83,7 @@ export default async function EventsLayout({
         </div>
       ) : null}
       <main className="mx-auto max-w-5xl px-4 pb-8">{children}</main>
+      <SiteFooter />
     </ThemeShell>
   );
 }
