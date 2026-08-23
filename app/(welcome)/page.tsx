@@ -12,6 +12,9 @@ import { ConsentDemo } from "./_components/consent-demo";
 import { FinalCta } from "./_components/final-cta";
 import { SiteFooter } from "./_components/site-footer";
 
+// Served at `/`: `(welcome)` is a route group, so the folder name keeps the
+// page, its CSS and its _components together without becoming a URL segment.
+//
 // Public marketing page, no per-request auth data -- unlike the
 // dashboard/admin/events/members surfaces, this one doesn't need
 // `dynamic = "force-dynamic"` and is left to render statically.

@@ -1,4 +1,4 @@
-// Config for the /welcome landing page. No public/anon-safe endpoint exists
+// Config for the landing page (/). No public/anon-safe endpoint exists
 // for real member counts or avatars (list_member_cards requires auth, and
 // there's no anon-granted equivalent) -- these are placeholder monograms and
 // hand-set stats, kept here so they're easy to find and update.
