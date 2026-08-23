@@ -40,7 +40,7 @@ export function ConsentDemo() {
               </p>
             </div>
           </div>
-          <div className="rv-card" aria-hidden>
+          <div className="rv-card">
             <div className="rv-top">
               <div className="rv-ava">PM</div>
               <div>
