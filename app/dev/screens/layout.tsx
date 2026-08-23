@@ -40,9 +40,12 @@ export default function DevScreensLayout({
         </Link>
       </header>
 
-      {/* pb clears the fixed screen-nav pill, which otherwise sits on top of
-          whatever the last control on a tall step is. */}
-      <main className="relative z-10 min-h-dvh w-full pb-24">{children}</main>
+      {/* pb clears the fixed screen-nav pill. 24 was not enough — measured at
+          full scroll, the pill's top edge landed exactly on the submit
+          button's top edge and covered the whole control. This is gallery
+          chrome the real funnel does not have, so the clearance lives here
+          rather than in the shared shell. */}
+      <main className="relative z-10 min-h-dvh w-full pb-40">{children}</main>
 
       <ScreenNav />
     </div>
