@@ -2,7 +2,7 @@
 
 Owner: Events / onboarding
 Last revised: 2026-08-23
-Status: Spec. No code yet.
+Status: Phase 1 shipped 2026-08-23. Phases 2-3 open.
 
 Supersedes nothing. Extends the guest RSVP path introduced in
 `supabase/migrations/20260821010000_guest_event_rsvp.sql` and the completion-ring
@@ -388,6 +388,54 @@ data on first application.
 Registration (§7) runs in parallel with Phase 1, starting immediately, since it
 waits on carriers rather than on us.
 
+## 9a. What shipped (2026-08-23)
+
+Migrations, in order:
+
+| File | Contents |
+|---|---|
+| `20260823150000_phone_e164.sql` | `normalize_phone_e164()` + generated `profiles.phone_e164` + index |
+| `20260823150100_legacy_members_guest_answers.sql` | answer/consent columns, table comment correction |
+| `20260823150200_sms_suppressions.sql` | suppression table + `suppress_sms_number()` |
+| `20260823150300_guest_claim.sql` | `claim_token`, anon `majors` read, `upsert_guest_identity()`, `guest_rsvp_to_event()` drop+recreate, `guest_claim_context()`, `submit_guest_answers()` |
+| `20260823150400_handle_new_user_guest_answers.sql` | claim-on-first-login copies the answers |
+| `20260823150500_privacy_policy_v6.sql` | privacy bump (open question 1 resolved: yes) |
+| `20260823150600_lock_down_service_role_helpers.sql` | see below |
+
+App: `/welcome/[token]` (+ layout), collision and SMS states in the guest RSVP
+modal, `ACCOUNT_EXISTS` error code, `submitGuestAnswers` /
+`getGuestClaimContext` / `listActiveMajors` actions, `/welcome` added to
+`PUBLIC_PREFIXES`, privacy v6 and terms SMS copy.
+
+Verification: `scripts/smoke-guest-conversion.ts` (42 checks, green),
+`smoke-guest-ticket.ts` updated for the new return shape and green,
+`smoke-onboarding-parity.ts` green, typecheck and build clean, e2e scenario 10
+updated for the redirect. `scripts/apply-migration.ts` was added because this
+project has neither `psql` nor the Supabase CLI; `--dry` runs a whole chain in
+one transaction and rolls it back, `--apply` commits file by file.
+
+### The one thing that was wrong in the spec
+
+`revoke all on function ... from public` does **not** make a function
+service-role-only on Supabase. The project ships default privileges granting
+`EXECUTE` to `anon` and `authenticated` on every new function in `public`, and
+revoking from `PUBLIC` leaves those explicit grants in place. Both new helpers
+were anon-callable on first apply.
+
+`upsert_guest_identity` was the dangerous one: reachable by anon, it let
+anybody write arbitrary `legacy_members` rows — including staging a row against
+a stranger's email with attacker-chosen major, phone, and SMS consent, which
+`handle_new_user()` would then copy onto that person's real profile at first
+sign-in. Closed by `20260823150600` with an explicit
+`revoke execute ... from anon, authenticated`, and both denials are now
+asserted in the smoke.
+
+**Other service-role-only helpers in this schema very likely have the same
+gap.** Not swept as part of this change. Each needs its own look at whether an
+internal guard (`is_admin()`, an `auth.uid()` check) already covers it —
+`write_audit()`, for instance, validates the actor itself and is therefore not
+exposed by the loose grant.
+
 ## 10. Considered and deferred
 
 - **Members-only QR tickets** — guests check in by name, members skip the line.
@@ -405,8 +453,9 @@ waits on carriers rather than on us.
 
 ## 11. Open questions
 
-1. **Privacy version bump?** §6.3. Not strictly required by rule #8; recommended
-   anyway. Owner's call, and it gates the migration ordering.
+1. ~~**Privacy version bump?**~~ Resolved: bumped to v6 in
+   `20260823150500_privacy_policy_v6.sql`. Members will be routed to
+   `/onboarding/consent` on their next page load.
 2. **EIN status.** §7.1. Determines brand type and the registration timeline.
    Everything else in Phase 3 waits on this answer.
 3. **Does the collision check include `student_email`?** Currently specified as

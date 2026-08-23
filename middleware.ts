@@ -14,6 +14,13 @@ import {
 // Google sign-in would make the ticket unusable by exactly the people it was
 // built for. Access control lives in guest_ticket_by_token(), which only ever
 // returns the row matching the token presented.
+//
+// /welcome/[token] is public on the same reasoning (docs/16-guest-conversion
+// §3.2): it is the page a guest lands on immediately after registering, before
+// they have any account at all. Its claim token is the credential and
+// guest_claim_context() only ever returns the row matching it. Bouncing this
+// one to /login would defeat the entire point — the page exists to talk
+// someone into signing up.
 const PUBLIC_PREFIXES = [
   "/",
   "/home",
@@ -22,6 +29,7 @@ const PUBLIC_PREFIXES = [
   "/terms",
   "/auth/callback",
   "/tickets",
+  "/welcome",
 ];
 const ADMIN_PREFIXES = ["/admin"];
 const ONBOARDING_PREFIX = "/onboarding";

@@ -95,7 +95,7 @@ async function main() {
     eventId = (ev as { id: string }).id;
 
     // --- 1. anon guest RSVP mints a token ---------------------------------
-    const { data: effective, error: rsvpErr } = await anon.rpc(
+    const { data: rsvpRows, error: rsvpErr } = await anon.rpc(
       "guest_rsvp_to_event",
       {
         p_event_id: eventId,
@@ -105,7 +105,9 @@ async function main() {
       }
     );
     if (rsvpErr) throw new Error(`guest_rsvp_to_event: ${rsvpErr.message}`);
-    check("anon guest RSVP lands 'going'", effective === "going", effective);
+    // Returns a one-row table since 20260823150300 (status, claim_token).
+    const effective = (rsvpRows as Array<{ status: string }>)?.[0]?.status;
+    check("anon guest RSVP lands 'going'", effective === "going", rsvpRows);
 
     const { data: gRow } = await admin
       .from("event_guest_rsvps")

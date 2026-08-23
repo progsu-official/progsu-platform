@@ -93,9 +93,12 @@ test("guest loop: register → confirmation email → ticket QR → staff check-
     await modal.getByLabel(/phone/i).fill("201 555 0123");
     await modal.getByRole("button", { name: /^register$/i }).click();
 
-    await expect(modal.getByText(/you'?re registered/i)).toBeVisible({
-      timeout: 15_000,
-    });
+    // Since docs/16-guest-conversion the modal no longer shows a success card
+    // — a successful RSVP redirects to the token-keyed /welcome page.
+    await guestPage.waitForURL(/\/welcome\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await expect(
+      guestPage.getByRole("heading", { name: /you'?re in/i })
+    ).toBeVisible({ timeout: 15_000 });
 
     // The DB minted a token because the effective status is 'going'.
     const { data: guestRow, error: guestErr } = await admin

@@ -184,6 +184,14 @@ export const rsvpToEventSchema = z.object({
 
 export type RsvpToEventInput = z.input<typeof rsvpToEventSchema>;
 
+// The exact SMS disclosure shown next to the opt-in checkbox. Stored verbatim
+// with each consent so we can prove later what someone actually agreed to, and
+// quoted in the carrier campaign registration. Changing this string changes
+// what future consents record — it is not cosmetic copy. Keep the frequency,
+// rates, STOP and HELP disclosures; carriers check for all four.
+export const SMS_CONSENT_COPY =
+  "Text me about Progsu events. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. See our Terms and Privacy Policy.";
+
 // Account-free guest RSVP (2026-08-21 decision). Phone regex matches the
 // onboarding profile form's (lib/actions/profile-schemas.ts).
 export const guestRsvpToEventSchema = z.object({
@@ -195,9 +203,55 @@ export const guestRsvpToEventSchema = z.object({
     .trim()
     .min(1, "Phone number is required")
     .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+  smsOptIn: z.boolean().default(false),
 });
 
 export type GuestRsvpToEventInput = z.input<typeof guestRsvpToEventSchema>;
+
+// /welcome/[token] answers. Every field is optional: the page lets someone
+// skip a step, and a partial answer is worth more than an abandoned form.
+export const CLASS_STANDINGS = [
+  "freshman",
+  "sophomore",
+  "junior",
+  "senior",
+  "graduate",
+  "phd",
+  "alumni",
+] as const;
+
+export const INTERESTED_ROLES = [
+  "software_engineering",
+  "data_science",
+  "data_engineering",
+  "machine_learning",
+  "product_management",
+  "ui_ux_design",
+  "devops_sre",
+  "cybersecurity",
+  "research",
+  "consulting",
+  "quant_finance",
+  "other",
+] as const;
+
+export const submitGuestAnswersSchema = z.object({
+  token: z.string().uuid("Invalid link."),
+  major: z.string().trim().min(1).max(100).nullable().default(null),
+  majorOtherText: z.string().trim().max(120).nullable().default(null),
+  gradYear: z
+    .number()
+    .int()
+    .min(1950, "Enter a valid year")
+    .max(2100, "Enter a valid year")
+    .nullable()
+    .default(null),
+  classStanding: z.enum(CLASS_STANDINGS).nullable().default(null),
+  interestedRoles: z.array(z.enum(INTERESTED_ROLES)).max(12).default([]),
+  smsOptIn: z.boolean().default(false),
+});
+
+export type SubmitGuestAnswersInput = z.input<typeof submitGuestAnswersSchema>;
 
 // Cover-image upload. Limit of 5 MB mirrors the DB's event-covers bucket
 // `file_size_limit`. Allowed MIME types match the bucket's `allowed_mime_types`.
