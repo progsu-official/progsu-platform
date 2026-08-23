@@ -9,7 +9,6 @@ import { onboardingPathFor } from "@/lib/auth/onboarding";
 
 import { EVENT_TIME_ZONE, formatTimeRange } from "../_components/event-date";
 import { EventDescription } from "./_components/event-description";
-import { EventTicket } from "./_components/event-ticket";
 import { RsvpPanel } from "./_components/rsvp-panel";
 
 export const dynamic = "force-dynamic";
@@ -36,11 +35,8 @@ type HostRow = { display_name: string; sort_order: number };
 type RsvpRow = {
   status: "going" | "waitlisted" | "declined" | "cancelled";
   waitlisted_at: string | null;
-  checkin_token: string | null;
 };
 type AttendanceRow = { checked_in_at: string; method: string };
-
-const CHECK_IN_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h before start to 2h after end.
 
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
   timeZone: EVENT_TIME_ZONE,
@@ -75,7 +71,6 @@ export default async function MemberEventDetailPage({
   let attendance: AttendanceRow | null;
   let goingCount: number | null;
   let waitlistedCount: number | null;
-  let holderRaw: Record<string, unknown> | null;
 
   if (!user) {
     // Anonymous visitor, per the 2026-08-20 RSVP-first decision: read through
@@ -128,7 +123,6 @@ export default async function MemberEventDetailPage({
     attendance = null;
     goingCount = p.going_count ?? 0;
     waitlistedCount = p.waitlisted_count ?? 0;
-    holderRaw = null;
   } else {
     const { data: eventRaw } = await supabase
       .from("events")
@@ -148,7 +142,6 @@ export default async function MemberEventDetailPage({
       { data: attendanceRaw },
       { count: going },
       { count: waitlisted },
-      { data: holder },
       { data: guestCountsRaw },
     ] = await Promise.all([
       supabase
@@ -158,7 +151,7 @@ export default async function MemberEventDetailPage({
         .order("sort_order", { ascending: true }),
       supabase
         .from("event_rsvps")
-        .select("status, waitlisted_at, checkin_token")
+        .select("status, waitlisted_at")
         .eq("event_id", event.id)
         .eq("user_id", user.id)
         .maybeSingle(),
@@ -178,11 +171,6 @@ export default async function MemberEventDetailPage({
         .select("*", { count: "exact", head: true })
         .eq("event_id", event.id)
         .eq("status", "waitlisted"),
-      supabase
-        .from("profiles")
-        .select("preferred_name, first_name, last_name")
-        .eq("id", user.id)
-        .maybeSingle(),
       // Capacity is one shared pool across members + guests (2026-08-21
       // guest-RSVP decision); event_guest_rsvps has no client RLS access, so
       // this SECURITY DEFINER RPC is the only way to fold guest counts in.
@@ -201,7 +189,6 @@ export default async function MemberEventDetailPage({
     } | null;
     goingCount = (going ?? 0) + (guestCounts?.going_count ?? 0);
     waitlistedCount = (waitlisted ?? 0) + (guestCounts?.waitlisted_count ?? 0);
-    holderRaw = holder as Record<string, unknown> | null;
   }
 
   // Waitlist position via SECURITY DEFINER helper — RLS on event_rsvps is
@@ -232,34 +219,11 @@ export default async function MemberEventDetailPage({
   const nowMs = Date.now();
   const startDate = new Date(event.starts_at);
   const startMs = startDate.getTime();
-  const endMs = new Date(event.ends_at).getTime();
-  const inCheckInWindow =
-    nowMs >= startMs - CHECK_IN_WINDOW_MS &&
-    nowMs <= endMs + CHECK_IN_WINDOW_MS;
 
   // RSVPs close when the event is over, cancelled, archived, or still a
   // draft. The DB also enforces this — hide the form so we don't tease a
   // button that will 400.
   const rsvpOpen = event.status === "published" && startMs > nowMs;
-
-  // D12: the personal ticket is the check-in entry — staff scan its QR
-  // inline from /admin/events/[id] (the Members tab is the manual fallback).
-  // Shown from the moment the RSVP lands on `going`; redemption is admin-only
-  // server-side, so early visibility is safe.
-  const holder = holderRaw as {
-    preferred_name: string | null;
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
-  const holderName = holder
-    ? [holder.preferred_name || holder.first_name, holder.last_name]
-        .filter(Boolean)
-        .join(" ") || null
-    : null;
-  const hasTicket =
-    event.status === "published" &&
-    rsvp?.status === "going" &&
-    !!rsvp.checkin_token;
 
   return (
     <div className="relative">
@@ -429,17 +393,7 @@ export default async function MemberEventDetailPage({
               ) : null}
             </div>
 
-            {hasTicket ? (
-              <EventTicket
-                eventId={event.id}
-                title={event.title}
-                startsAt={event.starts_at}
-                token={rsvp!.checkin_token as string}
-                holderName={holderName}
-                checkedInAt={attendance?.checked_in_at ?? null}
-                inCheckInWindow={inCheckInWindow}
-              />
-            ) : attendance ? (
+            {attendance ? (
               <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
                 {/* Drawn, not the "✓" character — a typed glyph inherits the
                     text font and renders differently per platform. */}
