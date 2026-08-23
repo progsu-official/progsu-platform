@@ -27,7 +27,7 @@ export default async function HomePage() {
       {nextEvent ? (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Up next
+            Coming up
           </h2>
           <ul>
             <EventCard
@@ -151,13 +151,6 @@ function HacklantaCard() {
           fill
           className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 via-pink-500 to-amber-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg shadow-black/30">
-          <span className="relative flex h-1.5 w-1.5" aria-hidden>
-            <span className="absolute inline-flex h-full w-full rounded-full bg-white/80 motion-safe:animate-ping motion-reduce:hidden" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-          </span>
-          Coming up
-        </span>
         {/* Spine label — decorative, echoes the badge below along the image edge */}
         <span
           aria-hidden
