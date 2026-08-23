@@ -32,9 +32,15 @@ import { cn } from "@/lib/utils";
 export function WelcomeFlow({
   token,
   context,
+  devBypass = false,
 }: {
   token: string;
   context: GuestClaimContext;
+  // Local development: swap the Google redirect for /api/dev-login, which
+  // mints a blank test account and runs the SAME claim RPC off the SAME
+  // cookie. Only the identity provider is faked, so the interesting half of
+  // this flow is still the half under test.
+  devBypass?: boolean;
 }) {
   const [smsOptIn, setSmsOptIn] = useState(context.smsOptedIn);
   const [pending, startPending] = useTransition();
@@ -49,6 +55,10 @@ export function WelcomeFlow({
       // /auth/callback cannot reconnect them by matching — this token is the
       // only link between the registration and the account.
       await stageGuestClaim(token);
+      if (devBypass) {
+        window.location.href = "/api/dev-login?role=onboarding&next=/profile";
+        return;
+      }
       await signIn();
     });
   }
@@ -121,8 +131,19 @@ export function WelcomeFlow({
             loading={googlePending || pending}
             onClick={createAccount}
           >
-            {googlePending ? "Redirecting…" : "Create your account with Google"}
+            {googlePending || pending
+              ? "Redirecting…"
+              : devBypass
+                ? "Create your account (dev bypass)"
+                : "Create your account with Google"}
           </OnbPrimaryButton>
+
+          {devBypass ? (
+            <p className="text-center text-[11.5px] text-muted-foreground">
+              Local build — this skips Google and signs in a throwaway test
+              account. The claim itself runs for real.
+            </p>
+          ) : null}
 
           {/* A text link, not a second button. These are not equal choices and
               the layout should not pretend otherwise. */}

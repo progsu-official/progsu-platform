@@ -142,20 +142,23 @@ async function main() {
 
 function printPlaybook(site: string) {
   console.log(`Try these in order at ${site}/events/${SLUG}\n`);
-  console.log("  1. NEW GUEST — Register with an email and phone that are not");
-  console.log("     yours. Expect: redirect to /welcome/<token>, three questions,");
-  console.log("     then 'Save this — sign in with Google'.");
-  console.log("     Skip a question to confirm partial answers still save.\n");
-  console.log("  2. COLLISION — Register again using YOUR Google address.");
-  console.log("     Expect: no redirect. The modal swaps to 'You're already a");
-  console.log("     member' with a sign-in button, and no guest row is written.\n");
-  console.log("  3. COLLISION BY PHONE — Use a fresh email but the phone number");
-  console.log("     already on your profile, typed in a different format");
-  console.log("     (spaces vs dashes). Expect the same sign-in panel.\n");
-  console.log("  4. SMS BOX — Tick it on the way through, then run `status`;");
-  console.log("     sms should read yes with the disclosure stored verbatim.\n");
-  console.log("  5. RE-ENTRY — Reopen the /welcome/<token> URL from `status`.");
-  console.log("     Expect: it jumps straight to the sign-in step, no re-asking.\n");
+  console.log("  1. NEW GUEST — Register with a school email and a phone that");
+  console.log("     are not already on a member profile. Expect: redirect to");
+  console.log("     /welcome/<token> showing what is already on file, and one");
+  console.log("     button to create the account.\n");
+  console.log("  2. THE CLAIM — Press that button. On a local build it skips");
+  console.log("     Google and signs in a throwaway account, but runs the real");
+  console.log("     claim. Then run `status`: the staged row should read");
+  console.log("     claimed=yes, and the .edu should be on the new profile as an");
+  console.log("     UNVERIFIED student email with the school filled in.\n");
+  console.log("  3. COLLISION — Register again using an email already on a");
+  console.log("     member profile. Expect: no redirect. The modal swaps to");
+  console.log("     'You're already a member' and no guest row is written.\n");
+  console.log("  4. COLLISION BY PHONE — Fresh email, but a phone already on a");
+  console.log("     profile, typed in a different format (spaces vs dashes).");
+  console.log("     Expect the same sign-in panel.\n");
+  console.log("  5. SMS BOX — Tick it on the way through, then run `status`;");
+  console.log("     sms should read yes.\n");
   console.log("  run `status` to see what landed, `reset` to go again, `down` when done");
 }
 

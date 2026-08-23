@@ -27,5 +27,11 @@ export default async function WelcomePage({
   // visitor on purpose.
   if (!context) notFound();
 
-  return <WelcomeFlow token={token} context={context} />;
+  // Local only. /api/dev-login is itself hard-gated on NODE_ENV, so a leaked
+  // `true` here cannot do anything against a real deployment.
+  const devBypass = process.env.NODE_ENV !== "production";
+
+  return (
+    <WelcomeFlow token={token} context={context} devBypass={devBypass} />
+  );
 }
