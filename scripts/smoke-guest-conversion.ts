@@ -198,6 +198,7 @@ async function main() {
       p_email: guestEmail,
       p_phone: guestPhone,
       p_sms_opt_in: false,
+      p_sms_consent_copy: null,
     });
     const { data: lm2 } = await admin
       .from("legacy_members")
@@ -207,6 +208,25 @@ async function main() {
     check(
       "an unticked box does not withdraw an earlier SMS consent",
       !!(lm2 as { sms_consent_at: string | null })?.sms_consent_at
+    );
+
+    // --- 4c. the transitional 4-arg shim (20260823150700) -----------------
+    // Already-deployed builds call this form and expect a bare status string.
+    // Delete this block when the shim goes.
+    const { data: legacyShape, error: legacyErr } = await anon.rpc(
+      "guest_rsvp_to_event",
+      {
+        p_event_id: eventId,
+        p_name: "Ada Guest",
+        p_email: guestEmail,
+        p_phone: guestPhone,
+      }
+    );
+    check("4-arg shim resolves without ambiguity", !legacyErr, legacyErr?.message);
+    check(
+      "4-arg shim returns a scalar status, as pre-welcome builds expect",
+      legacyShape === "going",
+      legacyShape
     );
 
     // --- 5. anon claim context --------------------------------------------

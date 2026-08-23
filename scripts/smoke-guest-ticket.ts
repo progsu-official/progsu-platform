@@ -102,6 +102,8 @@ async function main() {
         p_name: "Ada Guest",
         p_email: guestEmail,
         p_phone: "201 555 0123",
+        p_sms_opt_in: false,
+        p_sms_consent_copy: null,
       }
     );
     if (rsvpErr) throw new Error(`guest_rsvp_to_event: ${rsvpErr.message}`);

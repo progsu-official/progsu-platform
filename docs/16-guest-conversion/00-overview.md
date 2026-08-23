@@ -401,6 +401,7 @@ Migrations, in order:
 | `20260823150400_handle_new_user_guest_answers.sql` | claim-on-first-login copies the answers |
 | `20260823150500_privacy_policy_v6.sql` | privacy bump (open question 1 resolved: yes) |
 | `20260823150600_lock_down_service_role_helpers.sql` | see below |
+| `20260823150700_guest_rsvp_backcompat.sql` | 4-arg shim so the schema is safe ahead of the deploy — see below |
 
 App: `/welcome/[token]` (+ layout), collision and SMS states in the guest RSVP
 modal, `ACCOUNT_EXISTS` error code, `submitGuestAnswers` /
@@ -413,6 +414,42 @@ Verification: `scripts/smoke-guest-conversion.ts` (42 checks, green),
 updated for the redirect. `scripts/apply-migration.ts` was added because this
 project has neither `psql` nor the Supabase CLI; `--dry` runs a whole chain in
 one transaction and rolls it back, `--apply` commits file by file.
+
+### Applying schema ahead of the deploy
+
+Migrations here land on the live database while app code ships separately
+through Vercel, so any change to an existing helper's shape has a window where
+deployed code talks to a schema it does not expect. Changing
+`guest_rsvp_to_event()` from a scalar to a one-row table created exactly that:
+old code doing `typeof data === "string"` would write the RSVP and then show
+the visitor an error.
+
+Resolved by overloading on arity rather than by racing the deploy — 4 args
+returns the old scalar, 6 args returns `(status, claim_token)`. PostgREST
+selects on the argument names in the request body, so each caller reaches its
+own function. The 6-arg form had to lose its DEFAULTs for that to be
+unambiguous.
+
+The 4-arg shim is transitional and marked as such in its comment. Drop it once
+the build carrying the `/welcome` redirect is live and no rollback is planned.
+`scripts/smoke-guest-conversion.ts` asserts it while it exists.
+
+**Generalizes past this change:** any migration that alters a helper's return
+type or signature needs the same treatment, because there is no window in which
+schema and code deploy together.
+
+### A collision-check consequence, found by an unrelated smoke
+
+`smoke-event-attendee-faces.ts` seeded a member and a guest with the same
+placeholder phone (`555-555-5555`) and started failing with "account exists" —
+the check working correctly against a fixture that predated it. Fixture fixed.
+
+Worth knowing about the live data: of 203 profiles, 157 have a phone that
+normalizes, 6 have one that does not, and three numbers are shared by two
+accounts each (almost certainly duplicate accounts rather than two people).
+Nothing placeholder-shaped, so the phone branch of the collision check will not
+false-positive real guests. Members with a missing or unparseable phone are
+still caught by the email branch.
 
 ### The one thing that was wrong in the spec
 
