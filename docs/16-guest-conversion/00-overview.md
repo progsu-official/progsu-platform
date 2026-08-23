@@ -480,10 +480,17 @@ fabricated props, with no session and no database. Same components production
 renders; only the props are invented, so a prop-type change breaks the build
 there too rather than letting the gallery drift.
 
+It is also walkable: fill a form in, press Continue, and it advances through
+the funnel with the real validation, transitions and reveals. Each form skips
+exactly one thing — its server action — via the `usePreview()` context in
+`app/onboarding/_components/preview.tsx`, which is `null` everywhere else.
+`PreviewStage` maps the paths the forms navigate to onto gallery routes.
+
 **Keep it current.** Adding a screen or a meaningful state means adding it to
-`app/dev/screens/screens.ts` and the switch in `app/dev/screens/[slug]/page.tsx`.
-A state that cannot be reached in the gallery is a state nobody will look at
-again.
+`app/dev/screens/screens.ts` and the switch in `app/dev/screens/[slug]/page.tsx`;
+a new navigation target means adding it to `PreviewStage`'s route map, or the
+walkthrough silently dead-ends at the index. A state that cannot be reached in
+the gallery is a state nobody will look at again.
 
 Gated on `NODE_ENV` in its layout and again in `middleware.ts`, so the path
 does not exist in a deployment.

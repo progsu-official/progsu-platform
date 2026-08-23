@@ -17,6 +17,7 @@ import { WelcomeFlow } from "@/app/joined/[token]/welcome-flow";
 
 import { screenAt } from "../screens";
 import { ModalStage } from "./modal-stage";
+import { PreviewStage } from "./preview-stage";
 
 export const dynamic = "force-dynamic";
 
@@ -92,10 +93,12 @@ const CLAIM_CONTEXT = {
 
 export default async function DevScreenPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ play?: string }>;
 }) {
-  const { slug } = await params;
+  const [{ slug }, { play }] = await Promise.all([params, searchParams]);
   const at = screenAt(slug);
   if (!at) notFound();
 
@@ -110,10 +113,10 @@ export default async function DevScreenPage({
     ) : null;
 
   return (
-    <>
+    <PreviewStage>
       {chrome}
-      {render(slug)}
-    </>
+      {render(slug, play === "1")}
+    </PreviewStage>
   );
 }
 
@@ -126,7 +129,7 @@ function stepFor(slug: string) {
   return "profile" as const;
 }
 
-function render(slug: string) {
+function render(slug: string, play: boolean) {
   switch (slug) {
     case "guest-modal":
       return <ModalStage variant="form" />;
@@ -136,7 +139,14 @@ function render(slug: string) {
     case "joined-landed":
       // The live page auto-advances after ~1.5s. `freeze` holds the first beat
       // so it can actually be looked at.
-      return <WelcomeFlow token={FAKE_TOKEN} context={CLAIM_CONTEXT} devBypass freeze="landed" />;
+      return (
+        <WelcomeFlow
+          token={FAKE_TOKEN}
+          context={CLAIM_CONTEXT}
+          devBypass
+          freeze={play ? undefined : "landed"}
+        />
+      );
     case "joined-ask":
       return <WelcomeFlow token={FAKE_TOKEN} context={CLAIM_CONTEXT} devBypass freeze="ask" />;
     case "joined-waitlisted":

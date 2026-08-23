@@ -14,6 +14,7 @@ import {
 } from "@/app/onboarding/_components/shell";
 import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
 import { stageGuestClaim } from "@/lib/actions/guest-claim";
+import { usePreview } from "@/app/onboarding/_components/preview";
 import type { GuestClaimContext } from "@/lib/actions/events";
 
 // Two beats, one decision.
@@ -53,6 +54,7 @@ export function WelcomeFlow({
   );
   const [pending, startPending] = useTransition();
   const { pending: googlePending, error: googleError, signIn } = useGoogleSignIn();
+  const preview = usePreview();
 
   // Hold the confirmation long enough to read, fade it, then swap. The timers
   // run under reduced motion too — the transition is decoration, the sequence
@@ -68,6 +70,9 @@ export function WelcomeFlow({
   }, [freeze]);
 
   function createAccount() {
+    // /dev/screens: hand off to the funnel instead of leaving for an identity
+    // provider, so the walkthrough continues into onboarding.
+    if (preview) return preview.advance("/onboarding/verify-email");
     startPending(async () => {
       // Arm the claim cookie BEFORE leaving for Google. The school email on
       // file and the personal address Google returns are different strings, so

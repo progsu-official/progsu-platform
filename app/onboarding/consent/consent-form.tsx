@@ -19,6 +19,7 @@ import {
   OnbPrimaryButton,
   OnbSurface,
 } from "../_components/shell";
+import { usePreview } from "../_components/preview";
 import { CascadeItem, Reveal } from "../_components/reveal";
 
 type Acceptances = Record<ConsentType, boolean>;
@@ -45,6 +46,7 @@ export function ConsentForm({
   prefillRequired?: boolean;
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<Acceptances>({
     privacy_policy: prefillRequired,
@@ -96,6 +98,7 @@ export function ConsentForm({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (preview) return preview.advance("/onboarding/done");
     setError(null);
     startTransition(async () => {
       // a thrown action (network drop, stale deployment) must land in the

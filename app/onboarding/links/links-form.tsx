@@ -38,6 +38,7 @@ import {
   onbPanelClasses,
 } from "../_components/shell";
 import { Field } from "../_components/field";
+import { usePreview } from "../_components/preview";
 import { CascadeItem, Reveal } from "../_components/reveal";
 
 const FIELD_ERROR_HEADINGS: Record<string, string> = {
@@ -84,6 +85,7 @@ const inputClasses =
 
 export function LinksForm({ initial }: { initial: Initial }) {
   const router = useRouter();
+  const preview = usePreview();
   const [pending, startTransition] = useTransition();
   const [showLinks, setShowLinks] = useState(false);
 
@@ -117,6 +119,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (preview) return preview.advance("/onboarding/resume");
     startTransition(async () => {
       const result = await updateOnboardingLinks({
         classStanding: state.classStanding as ClassStanding,

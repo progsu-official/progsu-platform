@@ -16,6 +16,7 @@ import {
   onbPanelClasses,
 } from "../_components/shell";
 import { Field } from "../_components/field";
+import { usePreview } from "../_components/preview";
 
 // Field-specific headlines so users know WHICH field blocked the save, not just
 // a vague "something went wrong".
@@ -80,6 +81,7 @@ export function ProfileForm({
   schoolOptions: string[];
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
   const [state, setState] = useState<Initial>(initial);
@@ -94,6 +96,9 @@ export function ProfileForm({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    // /dev/screens: native `required` has already run, so the form behaves
+    // normally right up to the point where it would need a database.
+    if (preview) return preview.advance("/onboarding/links");
     startTransition(async () => {
       const result = await updateMinimalProfile({
         firstName: state.firstName,

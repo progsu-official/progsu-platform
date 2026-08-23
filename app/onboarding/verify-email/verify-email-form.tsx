@@ -23,6 +23,7 @@ import {
   onbInputFocusClasses,
   useOnbSeam,
 } from "../_components/shell";
+import { usePreview } from "../_components/preview";
 
 type Phase = "email" | "code";
 
@@ -125,6 +126,7 @@ export function VerifyEmailForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const skipDestination = fullyOnboarded ? "/profile" : "/onboarding/profile";
   const [state, setState] = useState<FormState>({
     phase: initialEmail ? "email" : "email",
@@ -210,6 +212,16 @@ export function VerifyEmailForm({
   function onRequest(e: React.FormEvent) {
     e.preventDefault();
     setState((s) => ({ ...s, errorMessage: null, errorField: null }));
+    // /dev/screens: run the real phase swap and its seam animation with no
+    // OTP behind it. Ten minutes matches OTP_CODE_TTL_MINUTES so the countdown
+    // reads like the live one.
+    if (preview) {
+      const expiresAt = Date.now() + 10 * 60_000;
+      commitPhase(() => {
+        setState((s) => ({ ...s, phase: "code", expiresAt, code: "" }));
+      }, "fwd");
+      return;
+    }
     startTransition(async () => {
       const result = await requestStudentEmailCode({ studentEmail: state.email });
       if (!result.ok) {
@@ -239,6 +251,7 @@ export function VerifyEmailForm({
   function onVerify(e: React.FormEvent) {
     e.preventDefault();
     setState((s) => ({ ...s, errorMessage: null, errorField: null }));
+    if (preview) return preview.advance(skipDestination);
     startTransition(async () => {
       const result = await verifyStudentEmailCode({
         studentEmail: state.email,
@@ -301,6 +314,7 @@ export function VerifyEmailForm({
         setError(result);
         return;
       }
+      if (preview) return preview.advance(skipDestination);
       router.push(skipDestination);
       router.refresh();
     });

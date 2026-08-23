@@ -12,6 +12,7 @@ import { guestRsvpToEvent } from "@/lib/actions/events";
 import { SMS_CONSENT_COPY } from "@/lib/actions/event-schemas";
 import { useTheme } from "@/app/_components/theme-shell";
 import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
+import { usePreview } from "@/app/onboarding/_components/preview";
 
 type GuestFields = { name: string; email: string; phone: string };
 
@@ -47,6 +48,7 @@ export function GuestRsvpModal({
   const [accountExists, setAccountExists] = useState(forceAccountExists);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
+  const preview = usePreview();
   // ThemeShell owns the .dark class on a wrapper div, not <html> — the
   // portal below renders outside that wrapper entirely, so it has to apply
   // the class itself or the token colors (bg-popover etc.) fall back to
@@ -85,6 +87,13 @@ export function GuestRsvpModal({
     setError(null);
     setFieldError(null);
     setPending(true);
+    // /dev/screens: everything up to here is real — native validation, the
+    // SMS box, the pending spinner. Only the RSVP write is skipped.
+    if (preview) {
+      onSuccess("going");
+      preview.advance("/joined");
+      return;
+    }
     const res = await guestRsvpToEvent({
       eventId,
       name: fields.name.trim(),

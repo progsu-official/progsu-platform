@@ -20,6 +20,7 @@ import {
   OnbSecondaryButton,
   OnbSurface,
 } from "../_components/shell";
+import { usePreview } from "../_components/preview";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -59,6 +60,7 @@ export function ResumeUploader({
   currentUploadedAt: string | null;
 }) {
   const router = useRouter();
+  const preview = usePreview();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>({ kind: "idle" });
@@ -107,6 +109,8 @@ export function ResumeUploader({
 
   function onUpload() {
     if (!file) return;
+    // /dev/screens: a real upload needs signed storage URLs.
+    if (preview) return preview.advance("/onboarding/consent");
     setStatus({ kind: "signing" });
     startTransition(async () => {
       const created = await createResumeUploadUrl({
@@ -123,7 +127,7 @@ export function ResumeUploader({
       } catch (e) {
         setStatus({
           kind: "error",
-          message: e instanceof Error ? e.message : "The The upload failed.",
+          message: e instanceof Error ? e.message : "The upload failed.",
         });
         return;
       }
@@ -266,6 +270,7 @@ export function ResumeUploader({
             className="w-auto flex-none px-5"
             disabled={busy}
             onClick={() => {
+              if (preview) return preview.advance("/onboarding/consent");
               router.push("/onboarding/consent");
             }}
           >

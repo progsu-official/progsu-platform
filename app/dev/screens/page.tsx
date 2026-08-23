@@ -17,8 +17,10 @@ export default function DevScreensIndex() {
         Every screen, no account needed.
       </h1>
       <p className="mt-2.5 max-w-lg text-[14px] leading-[1.55] text-muted-foreground">
-        The real components with fabricated props. Nothing here reads or writes
-        the database. Arrow keys move between screens.
+        The real components with fabricated props. Fill them in and press
+        Continue — the funnel walks exactly as it does in production, with the
+        same validation, transitions and reveals. Nothing reads or writes the
+        database. Arrow keys jump between screens.
       </p>
 
       <div className="mt-10 space-y-10">
@@ -57,10 +59,9 @@ export default function DevScreensIndex() {
       </div>
 
       <p className="mt-10 text-[12.5px] leading-[1.5] text-muted-foreground">
-        Submitting a form still calls its real server action and will fail with
-        no session. That is deliberate — the actions return errors rather than
-        throwing, so it renders the inline error state, which is also worth
-        looking at.
+        Each form skips exactly one thing here: the server action. Everything
+        else is the shipped component, so a screen that looks right here looks
+        right in production. Start at the RSVP form to walk the whole thing.
       </p>
     </div>
   );
