@@ -149,16 +149,73 @@
   left: 0;
   width: 60px;
   height: 60px;
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+}
+/* One tile that reshapes, not two faces that swap: radius, fill and shadow
+   all interpolate, so a member circle becomes a company card by deforming.
+   .dot owns position (rewritten every frame by the rAF loop); .dot-cell owns
+   the morph (a CSS transition) -- one transform each, neither clobbers the
+   other. --wave-delay is written per-dot by the JS right before the state
+   flips, and inherits down to the glyphs. */
+.welcome-root .dot-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
+  background: var(--dot-fill);
+  box-shadow: var(--dot-shadow);
+  /* Slight overshoot so the shape settles rather than arriving flat -- the
+     difference between "morphing" and "cross-fading". */
+  transition:
+    border-radius 900ms cubic-bezier(0.34, 1.28, 0.52, 1) var(--wave-delay, 0ms),
+    transform 900ms cubic-bezier(0.34, 1.28, 0.52, 1) var(--wave-delay, 0ms),
+    background-color 900ms cubic-bezier(0.16, 1, 0.3, 1) var(--wave-delay, 0ms),
+    box-shadow 900ms cubic-bezier(0.16, 1, 0.3, 1) var(--wave-delay, 0ms);
+}
+.welcome-root .dotfield[data-side="companies"] .dot-cell {
+  border-radius: 30%;
+  background: var(--dot-fill-co);
+  box-shadow: var(--dot-shadow-co);
+  transform: scale(1.05);
+}
+.welcome-root .dot-glyph {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
+}
+/* The outgoing glyph leaves faster than the incoming one arrives, so the
+   swap never reads as two things stacked on top of each other. */
+.welcome-root .dot-mono {
   color: #fff;
   font-weight: 600;
   font-size: 23px;
-  transform-origin: center;
-  will-change: transform;
-  box-shadow: 0 6px 16px rgba(20, 16, 33, 0.1);
-  user-select: none;
+  transition:
+    opacity 300ms ease-out var(--wave-delay, 0ms),
+    transform 460ms cubic-bezier(0.16, 1, 0.3, 1) var(--wave-delay, 0ms);
+}
+.welcome-root .dot-mark {
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 420ms ease-in calc(var(--wave-delay, 0ms) + 260ms),
+    transform 560ms cubic-bezier(0.34, 1.28, 0.52, 1) calc(var(--wave-delay, 0ms) + 220ms);
+}
+.welcome-root .dotfield[data-side="companies"] .dot-mono {
+  opacity: 0;
+  transform: scale(0.5);
+}
+.welcome-root .dotfield[data-side="companies"] .dot-mark {
+  opacity: 1;
+  transform: scale(1);
+}
+.welcome-root .dot-mark svg {
+  /* Smaller and the wordmark-style marks (SAP, Samsung, Splunk) are mush. */
+  width: 56%;
+  height: 56%;
+  display: block;
 }
 
 .welcome-root .hero-text {
@@ -661,7 +718,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .welcome-root .dot {
+  .welcome-root .dot-cell,
+  .welcome-root .dot-mono,
+  .welcome-root .dot-mark {
     transition: none;
   }
   .welcome-root .scroll-hint .bar::after {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import type { CompanyLogo } from "./company-logos";
 import { GoogleCtaButton } from "./google-cta-button";
 import { COMMUNITY_STATS, DOT_COUNT, DOT_LETTERS, DOT_PALETTE } from "./welcome-data";
 
@@ -21,6 +22,25 @@ import { COMMUNITY_STATS, DOT_COUNT, DOT_LETTERS, DOT_PALETTE } from "./welcome-
 // app/members/_components/member-constellation.tsx for the same reason: a
 // re-render per animation frame across dozens of nodes is a dropped-frame
 // machine.
+//
+// Each dot also morphs between two identities: a member monogram on a
+// saturated circle, and a company mark on a pale squircle. It is one tile
+// deforming -- radius, fill, shadow and scale all interpolate, and the two
+// glyphs cross-fade on offset curves -- not two faces swapping, which read as
+// a card trick rather than a transformation. While the hero is idle the field
+// morphs on a timer, staggered left-to-right (then right-to-left) so it
+// crosses as a wave and the mid-wave frame shows students and companies side
+// by side -- that mixed frame is the whole point, it's the page's pitch in one
+// image. The morph is a CSS transition driven by one data attribute on
+// .dotfield, not by the rAF loop, so a 60-dot wave costs zero frame budget. It
+// stops as soon as the scroll starts gathering the sphere: the gathered sphere
+// is captioned "a community of N students", so it holds member faces only.
+//
+// company-logos.ts is ~66KB of SVG path data and is imported dynamically, not
+// statically: bundling it into the route took `/` from 6kB to 38kB of route
+// JS, and this is the LCP page. Nothing needs it until the first wave several
+// seconds in, so it loads as its own chunk after hydration and the morph loop
+// waits on it. Keep the import dynamic.
 
 const BASE = 60; // px, must match .dot { width; height } in welcome.css
 const COLS = 10;
@@ -39,6 +59,16 @@ const SPHERE_SCALE_MAX = 0.85;
 const SPHERE_OPACITY_MIN = 0.45;
 const SPHERE_OPACITY_MAX = 1;
 
+// Idle member/company morph loop. The interval is the full period of one
+// side: at 7s and a ~1.8s wave (spread + the 900ms transition in welcome.css)
+// each identity sits settled for ~5s, which is long enough to read the faces
+// rather than just clock that something moved.
+const MORPH_INTERVAL_MS = 7000;
+const MORPH_SPREAD_MS = 900; // stagger between the first and last dot in a wave
+// Past this much scroll progress the field is committing to the sphere, and
+// the sphere is member-only -- see the header comment.
+const MORPH_SCROLL_CUTOFF = 0.32;
+
 const AUTO_ROTATE_SPEED = 0.12; // deg/frame
 const DRAG_SENSITIVITY = 0.5;
 const MOMENTUM_DECAY = 0.95;
@@ -55,6 +85,7 @@ type DotParams = {
   spd: number; // idle float speed
   ph: number; // idle float phase
   scale: number; // per-dot scatter size variety
+  jitter: number; // 0..1, softens the flip wave off a perfectly straight line
 };
 
 function clamp(v: number, a: number, b: number) {
@@ -79,6 +110,23 @@ function clampSpeed(v: number) {
   return Math.max(-MAX_ROTATION_SPEED, Math.min(MAX_ROTATION_SPEED, v));
 }
 
+// Brand hex -> the two derived values the company tile needs: a near-white
+// wash so the tile isn't a flat white chip on a near-white page, and a
+// translucent edge/shadow so it reads as a card rather than a sticker.
+function hexToRgb(hex: string) {
+  const h = hex.replace("#", "");
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
+}
+function washOnWhite(hex: string, amount: number) {
+  const [r, g, b] = hexToRgb(hex);
+  const mix = (c: number) => Math.round(255 + (c - 255) * amount);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+function alpha(hex: string, a: number) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
 function generateParams(): DotParams[] {
   const params: DotParams[] = Array.from({ length: DOT_COUNT }, () => ({
     fx: 0,
@@ -91,6 +139,7 @@ function generateParams(): DotParams[] {
     spd: 0.6 + Math.random() * 0.8,
     ph: Math.random() * Math.PI * 2,
     scale: 0.5 + Math.random() * 0.55,
+    jitter: Math.random(),
   }));
 
   // Scatter: a jittered grid so dots fill the stage evenly rather than
@@ -145,6 +194,17 @@ export function HeroScene() {
   const velocityRef = useRef({ x: 0, y: 0 });
   const draggingRef = useRef(false);
   const lastPointRef = useRef({ x: 0, y: 0 });
+
+  // Idle morph loop: which side is showing, and how many waves have crossed
+  // (parity picks the direction, so consecutive waves sweep opposite ways
+  // instead of always marching left-to-right).
+  const companiesRef = useRef(false);
+  const waveRef = useRef(0);
+
+  // Rendered faces need this in state; the interval needs it in a ref (it
+  // closes over the mount effect's scope and never sees later renders).
+  const [logos, setLogos] = useState<CompanyLogo[] | null>(null);
+  const logosRef = useRef<CompanyLogo[] | null>(null);
 
   const [ready, setReady] = useState(false);
 
@@ -258,6 +318,34 @@ export function HeroScene() {
 
       const hint = hintRef.current;
       if (hint) hint.style.opacity = String(clamp(1 - progressRef.current / 0.12, 0, 1));
+
+      // Scrolling into the gather wins over the idle loop immediately --
+      // waiting for the next tick would let companies ride onto the sphere.
+      // setSide no-ops when the field is already student-side.
+      if (progressRef.current > MORPH_SCROLL_CUTOFF) setSide(false);
+    }
+
+    // Morph the whole field to one side. Delays are written per-dot right
+    // before the state flips, so the same CSS transition produces a
+    // left-to-right wave on one pass and a right-to-left one on the next.
+    // --wave-delay sits on .dot and inherits into the tile and both glyphs,
+    // so one write per dot staggers all four transitions together.
+    function setSide(showCompanies: boolean) {
+      const field = dotfieldRef.current;
+      if (!field || companiesRef.current === showCompanies) return;
+      companiesRef.current = showCompanies;
+
+      const leftToRight = waveRef.current % 2 === 0;
+      waveRef.current += 1;
+      paramsRef.current.forEach((d, i) => {
+        const dot = dotRefs.current[i];
+        if (!dot) return;
+        const along = leftToRight ? d.gx : 1 - d.gx;
+        const delay = Math.round((along * 0.82 + d.jitter * 0.18) * MORPH_SPREAD_MS);
+        dot.style.setProperty("--wave-delay", `${delay}ms`);
+      });
+
+      field.dataset.side = showCompanies ? "companies" : "students";
     }
 
     function loop(t: number) {
@@ -276,6 +364,17 @@ export function HeroScene() {
       readScroll();
       frameRef.current = requestAnimationFrame(loop);
     }
+
+    // Reduced motion never starts the loop: that path pins the scene at the
+    // gathered sphere, which is student-only anyway.
+    const flipTimer = reduced
+      ? null
+      : window.setInterval(() => {
+          if (!logosRef.current) return; // chunk still in flight -- no back face to show
+          if (document.hidden) return; // a wave nobody can see is a wave worth skipping
+          if (progressRef.current > MORPH_SCROLL_CUTOFF) return;
+          setSide(!companiesRef.current);
+        }, MORPH_INTERVAL_MS);
 
     const onScroll = () => {
       if (!reducedRef.current) readScroll();
@@ -330,8 +429,29 @@ export function HeroScene() {
       window.removeEventListener("pointerup", endDrag);
       window.removeEventListener("pointercancel", endDrag);
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (flipTimer !== null) window.clearInterval(flipTimer);
     };
   }, []);
+
+  useEffect(() => {
+    // Reduced motion pins the scene at the gathered (student-only) sphere and
+    // never runs the flip loop, so the chunk would be dead weight there.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let alive = true;
+    void import("./company-logos").then((m) => {
+      if (alive) setLogos(m.COMPANY_LOGOS);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Mirrored to the ref only after the commit that renders the back faces --
+  // set it alongside setLogos and a timer tick landing in between would flip
+  // the field onto a back face that isn't in the DOM yet.
+  useEffect(() => {
+    logosRef.current = logos;
+  }, [logos]);
 
   return (
     <section className="scene" ref={sceneRef}>
@@ -339,6 +459,7 @@ export function HeroScene() {
         <div className={`dotfield${ready ? " ready" : ""}`} ref={dotfieldRef} aria-hidden>
           {Array.from({ length: DOT_COUNT }).map((_, i) => {
             const solid = i % 7 === 3;
+            const logo = logos ? logos[i % logos.length] : null;
             return (
               <div
                 key={i}
@@ -346,9 +467,37 @@ export function HeroScene() {
                 ref={(el) => {
                   dotRefs.current[i] = el;
                 }}
-                style={{ background: DOT_PALETTE[i % DOT_PALETTE.length] }}
               >
-                {solid ? "" : DOT_LETTERS[i % DOT_LETTERS.length]}
+                <div
+                  className="dot-cell"
+                  style={
+                    {
+                      // Both ends of the morph as custom properties, so the
+                      // tile interpolates between them. Both shadows are two
+                      // layers with the inset first -- box-shadow only
+                      // interpolates between matching layer structures, so the
+                      // member state carries a fully transparent ring rather
+                      // than no ring at all.
+                      "--dot-fill": DOT_PALETTE[i % DOT_PALETTE.length],
+                      "--dot-shadow": `inset 0 0 0 1px ${alpha(logo?.hex ?? "#141021", 0)}, 0 6px 16px rgba(20, 16, 33, 0.1)`,
+                      "--dot-fill-co": logo ? washOnWhite(logo.hex, 0.1) : undefined,
+                      "--dot-shadow-co": logo
+                        ? `inset 0 0 0 1px ${alpha(logo.hex, 0.28)}, 0 6px 18px ${alpha(logo.hex, 0.26)}`
+                        : undefined,
+                    } as React.CSSProperties
+                  }
+                >
+                  <div className="dot-glyph dot-mono">
+                    {solid ? "" : DOT_LETTERS[i % DOT_LETTERS.length]}
+                  </div>
+                  {logo ? (
+                    <div className="dot-glyph dot-mark">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <path d={logo.path} fill={logo.hex} />
+                      </svg>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             );
           })}
