@@ -335,7 +335,7 @@ export const legacyMembers = pgTable("legacy_members", {
 			columns: [table.claimedProfileId],
 			foreignColumns: [profiles.id],
 			name: "legacy_members_claimed_profile_id_fkey"
-		}),
+		}).onDelete("set null"),
 	pgPolicy("legacy_members_admin_all", { as: "permissive", for: "all", to: ["public"], using: sql`is_admin(auth.uid())`, withCheck: sql`is_admin(auth.uid())`  }),
 	pgPolicy("legacy_members_select_own_claimed", { as: "permissive", for: "select", to: ["authenticated"] }),
 	check("legacy_members_has_email", sql`(personal_email IS NOT NULL) OR (campus_email IS NOT NULL)`),
