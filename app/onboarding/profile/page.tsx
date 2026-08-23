@@ -78,15 +78,15 @@ export default async function OnboardingProfilePage() {
     <OnbSection>
       <ProfileForm
         intro={
-          <OnbIntro title="let's get you set up">
-            the basics, takes about a minute.
+          <OnbIntro title="The basics">
+            Five fields. Everything else can wait.
           </OnbIntro>
         }
         notice={
           legacyMatch ? (
             <div className="rounded-[14px] border border-primary/25 bg-primary/[0.06] px-4 py-3 text-center text-sm text-primary">
-              we found you from a past progsu event and filled in what we had,
-              worth a quick check below.
+              You’ve been to a Progsu event before, so we filled in what we already
+              had. Worth a quick look.
             </div>
           ) : null
         }

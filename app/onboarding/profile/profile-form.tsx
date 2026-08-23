@@ -20,12 +20,12 @@ import { Field } from "../_components/field";
 // Field-specific headlines so users know WHICH field blocked the save, not just
 // a vague "something went wrong".
 const FIELD_ERROR_HEADINGS: Record<string, string> = {
-  firstName: "first name is required",
-  lastName: "last name is required",
-  school: "pick your school",
-  phoneNumber: "a phone number is required",
-  major: "pick a major",
-  majorOtherText: "tell us your major",
+  firstName: "First name is required",
+  lastName: "Last name is required",
+  school: "Pick your school",
+  phoneNumber: "A phone number is required",
+  major: "Pick a major",
+  majorOtherText: "Which major?",
 };
 
 // The submit button lives in a fixed action bar, so an inline field error
@@ -129,9 +129,14 @@ export function ProfileForm({
         {intro}
         {notice}
         <form id={FORM_ID} onSubmit={onSubmit} className="space-y-4">
+          {/* Exactly the fields is_fully_onboarded() actually gates on.
+              Preferred name and minor used to sit here at identical weight,
+              which made an optional field look required and turned a
+              five-field step into a wall of nine. Both are still editable in
+              /profile/settings, where someone goes on purpose. */}
           <div className={`${onbPanelClasses} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
             <Field
-              label="first name"
+              label="First name"
               required
               htmlFor="onboarding-first-name"
               error={error?.field === "firstName" ? error.message : null}
@@ -147,7 +152,7 @@ export function ProfileForm({
               />
             </Field>
             <Field
-              label="last name"
+              label="Last name"
               required
               htmlFor="onboarding-last-name"
               error={error?.field === "lastName" ? error.message : null}
@@ -162,16 +167,8 @@ export function ProfileForm({
                 className={inputClasses}
               />
             </Field>
-            <Field label="preferred name">
-              <Input
-                value={state.preferredName}
-                onChange={(e) => setField("preferredName", e.target.value)}
-                disabled={pending}
-                className={inputClasses}
-              />
-            </Field>
             <Field
-              label="phone"
+              label="Phone"
               required
               htmlFor="onboarding-phone"
               error={error?.field === "phoneNumber" ? error.message : null}
@@ -189,7 +186,7 @@ export function ProfileForm({
               />
             </Field>
             <Field
-              label="school"
+              label="School"
               required
               htmlFor="onboarding-school"
               error={error?.field === "school" ? error.message : null}
@@ -200,15 +197,15 @@ export function ProfileForm({
                 onChange={(v) => setField("school", v)}
                 options={[
                   ...schoolOptions.map((s) => ({ value: s, label: s })),
-                  { value: SCHOOL_OTHER, label: "other (not listed)" },
+                  { value: SCHOOL_OTHER, label: "Other (not listed)" },
                 ]}
-                placeholder="select your school"
+                placeholder="Pick your school"
                 invalid={error?.field === "school"}
                 disabled={pending}
               />
             </Field>
             <Field
-              label="major"
+              label="Major"
               required
               htmlFor="onboarding-major"
               error={error?.field === "major" ? error.message : null}
@@ -221,24 +218,16 @@ export function ProfileForm({
                   value: m.slug,
                   label: m.label,
                 }))}
-                placeholder="select your major"
+                placeholder="Pick your major"
                 invalid={error?.field === "major"}
                 disabled={pending}
-              />
-            </Field>
-            <Field label="minor">
-              <Input
-                value={state.minor}
-                onChange={(e) => setField("minor", e.target.value)}
-                disabled={pending}
-                className={inputClasses}
               />
             </Field>
 
             {isSchoolOther ? (
               <div className="sm:col-span-2">
                 <Field
-                  label="tell us your school"
+                  label="Which school?"
                   required
                   error={error?.field === "school" ? error.message : null}
                 >
@@ -258,7 +247,7 @@ export function ProfileForm({
             {isOther ? (
               <div className="sm:col-span-2">
                 <Field
-                  label="tell us your major"
+                  label="Which major?"
                   required
                   htmlFor="onboarding-major-other"
                   error={error?.field === "majorOtherText" ? error.message : null}
@@ -282,7 +271,7 @@ export function ProfileForm({
             <OnbErrorBox>
               <p className="font-medium">
                 {FIELD_ERROR_HEADINGS[error.field ?? ""] ??
-                  "couldn't save your profile"}
+                  "We couldn't save that"}
               </p>
               <p className="mt-1">{error.message}</p>
             </OnbErrorBox>
@@ -292,7 +281,7 @@ export function ProfileForm({
 
       <OnbActionBar>
         <OnbPrimaryButton type="submit" form={FORM_ID} loading={pending}>
-          {pending ? "saving…" : "continue"}
+          {pending ? "Saving…" : "Continue"}
         </OnbPrimaryButton>
       </OnbActionBar>
     </>

@@ -6,12 +6,16 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "@/lib/auth/onboarding";
 
-// Verify-email is intentionally NOT in the cascade — users can complete the
-// funnel without it, then come back to verify when their OTP actually arrives.
-// See lib/auth/onboarding.ts for the fullyOnboarded rule.
-const STEPS: Array<{ key: OnboardingStep; label: string; path: string }> = [
-  { key: "profile", label: "profile", path: "/onboarding/profile" },
-  { key: "links", label: "roles & links", path: "/onboarding/links" },
+// Verify-email is not in the onboarding CASCADE — the funnel completes without
+// it and people come back when the code actually arrives (see
+// lib/auth/onboarding.ts). It is still the first screen anyone sees after
+// OAuth, so leaving it out of the bar meant your first impression was a
+// progress meter reading zero while you were already doing work. It is shown
+// here as a step and simply never blocks.
+const STEPS: Array<{ key: OnboardingStep | "verify"; label: string; path: string }> = [
+  { key: "verify", label: "verify email", path: "/onboarding/verify-email" },
+  { key: "profile", label: "the basics", path: "/onboarding/profile" },
+  { key: "links", label: "what you're into", path: "/onboarding/links" },
   { key: "resume", label: "resume", path: "/onboarding/resume" },
   { key: "consent", label: "consent", path: "/onboarding/consent" },
 ];
@@ -21,6 +25,9 @@ const STEPS: Array<{ key: OnboardingStep; label: string; path: string }> = [
 // loudest thing on a page whose actual job is one question.
 export function StepIndicator({ nextStep }: { nextStep: OnboardingStep }) {
   const pathname = usePathname() ?? "";
+  // "verify" never appears as nextStep, so a null nextStep means done and
+  // anything else resolves by key; the verify pill leads and is treated as
+  // complete once the cascade has moved past it.
   const nextIdx =
     nextStep === null ? STEPS.length : STEPS.findIndex((s) => s.key === nextStep);
   const activeIdx = STEPS.findIndex((s) => pathname.startsWith(s.path));

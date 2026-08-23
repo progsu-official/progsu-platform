@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Check } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
@@ -32,12 +33,21 @@ export default async function OnboardingDonePage() {
   return (
     <OnbSection>
       <OnbSurface>
-        <OnbIntro title="you’re in">
-          that’s everything — taking you to your profile…
-        </OnbIntro>
+        <div className="flex flex-col items-center gap-5 text-center">
+          <span
+            aria-hidden
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]"
+          >
+            <Check size={26} strokeWidth={2.5} />
+          </span>
+          <OnbIntro title="That’s you, done.">
+            You’re on the list, you’ll get the emails, and your profile is live
+            for the rest of the community.
+          </OnbIntro>
+        </div>
       </OnbSurface>
       <OnbActionBar>
-        <OnbPrimaryButton href="/profile">go to my profile</OnbPrimaryButton>
+        <OnbPrimaryButton href="/profile">Go to my profile</OnbPrimaryButton>
       </OnbActionBar>
       <DoneRedirect />
     </OnbSection>

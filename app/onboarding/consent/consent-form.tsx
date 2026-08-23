@@ -30,7 +30,7 @@ const linkClasses = "text-primary underline underline-offset-4";
 // The opt-ins below are NEVER pre-checked, deliberately: consents is an
 // append-only audit ledger (version + ip + user agent per row), and a
 // pre-checked box is not valid consent for sms under the TCPA. Conversion
-// comes from the benefit framing and the one-tap "turn all on" chip instead.
+// comes from the benefit framing and the one-tap "Turn all on" chip instead.
 export function ConsentForm({
   hasPhone,
   prefillRequired = false,
@@ -79,7 +79,7 @@ export function ConsentForm({
         result = await recordConsents({ acceptances: state });
       } catch {
         setError({
-          message: "something went wrong saving your choices — try again.",
+          message: "That didn't save. Try again.",
         });
         return;
       }
@@ -98,7 +98,7 @@ export function ConsentForm({
   return (
     <form onSubmit={onSubmit}>
       <OnbSurface>
-        <OnbIntro title="last thing">
+        <OnbIntro title="One last thing">
           the required bits take ten seconds — the rest decides what you get
           out of progsu.
         </OnbIntro>
@@ -176,11 +176,11 @@ export function ConsentForm({
                 all on
               </>
             ) : (
-              "turn all on"
+              "Turn all on"
             )}
           </button>
           <span aria-live="polite" className="sr-only">
-            {allOptInsOn ? "all optional updates are on." : ""}
+            {allOptInsOn ? "All optional updates are on." : ""}
           </span>
         </div>
 
@@ -192,7 +192,7 @@ export function ConsentForm({
             onChange={(v) => toggle("recruiter_resume_sharing", v)}
             icon={<Briefcase aria-hidden className="h-5 w-5" strokeWidth={1.75} />}
             label={CONSENT_LABELS.recruiter_resume_sharing.toLowerCase()}
-            badge="recommended"
+            badge="Recommended"
             hint="sponsors and recruiters scout progsu for people to interview — this is how they find you. progsu never sells your data."
           />
           <OptInRow
@@ -201,7 +201,7 @@ export function ConsentForm({
             onChange={(v) => toggle("email_marketing", v)}
             icon={<Mail aria-hidden className="h-5 w-5" strokeWidth={1.75} />}
             label={CONSENT_LABELS.email_marketing.toLowerCase()}
-            hint="event drops, deadlines, and opportunities — the useful stuff only."
+            hint="Event drops, deadlines, and opportunities. The useful stuff only."
           />
           <OptInRow
             id="c-sms"
@@ -215,7 +215,7 @@ export function ConsentForm({
             hint={
               hasPhone
                 ? "the fastest ping when spots open up. message & data rates may apply — reply STOP to unsubscribe."
-                : "add a phone number on your profile first to turn this on."
+                : "Add a phone number to your profile first to turn this on."
             }
             errorField={error?.field}
             errorKey="sms_marketing"
@@ -427,7 +427,7 @@ function OptInRow({
         </span>
         {isError ? (
           <span role="alert" className="mt-1 block text-xs text-destructive">
-            {errorMessage ?? "required."}
+            {errorMessage ?? "Required"}
           </span>
         ) : null}
       </span>
