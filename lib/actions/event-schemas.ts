@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidUsPhone, US_PHONE_ERROR } from "@/lib/phone";
+
 // Kept in a non-"use server" module so we can import types/schemas from client
 // components without pulling in server-only action code.
 
@@ -202,7 +204,7 @@ export const guestRsvpToEventSchema = z.object({
     .string()
     .trim()
     .min(1, "Phone number is required")
-    .regex(/^\+?[0-9\-\(\) ]{7,20}$/, "Enter a valid phone number"),
+    .refine(isValidUsPhone, US_PHONE_ERROR),
   smsOptIn: z.boolean().default(false),
 });
 

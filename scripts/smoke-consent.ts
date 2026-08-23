@@ -155,9 +155,18 @@ async function main() {
       .eq("user_id", aliceId!);
     if (!rows1 || rows1.length !== 3)
       throw new Error(`expected 3 rows, got ${rows1?.length}`);
-    if (!rows1.every((r) => r.version === "v1"))
+    // Against the CURRENT version per type, not a hardcoded "v1". Pinning the
+    // literal made this smoke fail on every policy bump for a reason that has
+    // nothing to do with consent recording. See CLAUDE.md, "Dynamic consent
+    // versions".
+    const { data: currentVersions } = await admin
+      .from("consent_versions")
+      .select("consent_type, version");
+    const currentFor = (type: string) =>
+      (currentVersions ?? []).find((v) => v.consent_type === type)?.version;
+    if (!rows1.every((r) => r.version === currentFor(r.consent_type)))
       throw new Error(`versions: ${JSON.stringify(rows1)}`);
-    console.log(`  ✓ 3 consent rows persisted (all v1)`);
+    console.log(`  ✓ 3 consent rows persisted at current versions`);
 
     // 4. Second submission (toggle flow) appends instead of updating — reconciliation #28.
     const ok2 = await call({

@@ -24,10 +24,11 @@ import { CascadeItem, Reveal } from "../_components/reveal";
 
 type Acceptances = Record<ConsentType, boolean>;
 
-// The reveal glide is 450ms and the cascade settles ~90ms behind it. Arming
-// the CTA at 700ms means the options are on screen and still by the time it
-// becomes pressable.
-const REVEAL_SETTLE_MS = 700;
+// Well past the 450ms glide and its ~90ms cascade tail. The extra time is the
+// point rather than a side effect: the opt-ins need long enough on screen to
+// actually get read, and a button that is already live is a button people
+// press before reading anything.
+const REVEAL_SETTLE_MS = 2200;
 
 const linkClasses = "text-primary underline underline-offset-4";
 

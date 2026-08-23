@@ -51,15 +51,27 @@ export function OnbBackdrop() {
 export function OnbSection({
   children,
   fill = false,
+  center = false,
 }: {
   children: ReactNode;
   fill?: boolean;
+  // Vertically centres the column. For steps whose whole content is a title,
+  // a line, and a button, top-anchoring leaves most of the viewport empty
+  // below and the group reads as having slid up the page.
+  center?: boolean;
 }) {
   return (
     <section
       className={cn(
-        "relative z-10 flex h-full w-full items-start overflow-y-auto px-5 pb-[calc(9rem+env(safe-area-inset-bottom,0px))] pt-28 sm:px-8 lg:px-12",
-        fill ? "sm:overflow-hidden sm:pb-10 sm:pt-20" : "sm:pb-16 sm:pt-[22vh]",
+        "relative z-10 flex h-full w-full overflow-y-auto px-5 pb-[calc(9rem+env(safe-area-inset-bottom,0px))] pt-28 sm:px-8 lg:px-12",
+        // min-h-dvh, not h-full: centring needs a definite height, and h-full
+        // only resolves when every ancestor has one. The onboarding layout
+        // does; /dev/screens does not, and a centred step silently pinned to
+        // the top there.
+        center ? "min-h-dvh items-center sm:pt-10" : "items-start",
+        fill ? "sm:overflow-hidden sm:pb-10" : "sm:pb-16",
+        !fill && !center && "sm:pt-[22vh]",
+        fill && !center && "sm:pt-20",
       )}
       style={{ overscrollBehavior: "contain" }}
     >

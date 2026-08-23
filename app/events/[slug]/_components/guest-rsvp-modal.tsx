@@ -8,6 +8,7 @@ import { KeyRound, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/app/_components/phone-input";
 import { guestRsvpToEvent } from "@/lib/actions/events";
 import { SMS_CONSENT_COPY } from "@/lib/actions/event-schemas";
 import { useTheme } from "@/app/_components/theme-shell";
@@ -243,17 +244,13 @@ export function GuestRsvpModal({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="guest-rsvp-phone">Phone number *</Label>
-              <Input
+              <PhoneInput
                 id="guest-rsvp-phone"
-                type="tel"
                 required
-                autoComplete="tel"
                 disabled={pending}
-                placeholder="201 555 0123"
                 value={fields.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                className="rounded-xl"
-                aria-invalid={fieldError === "phone"}
+                onChange={(v) => set("phone", v)}
+                invalid={fieldError === "phone"}
               />
             </div>
 

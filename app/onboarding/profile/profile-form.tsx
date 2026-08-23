@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Select } from "@/app/_components/select";
+import { PhoneInput } from "@/app/_components/phone-input";
 import { updateMinimalProfile } from "@/lib/actions/profile";
 
 import {
@@ -178,16 +179,13 @@ export function ProfileForm({
               htmlFor="onboarding-phone"
               error={error?.field === "phoneNumber" ? error.message : null}
             >
-              <Input
+              <PhoneInput
                 id="onboarding-phone"
-                type="tel"
                 value={state.phoneNumber}
-                onChange={(e) => setField("phoneNumber", e.target.value)}
-                autoComplete="tel"
+                onChange={(v) => setField("phoneNumber", v)}
                 required
                 disabled={pending}
-                placeholder="(404) 555-1234"
-                className={inputClasses}
+                invalid={error?.field === "phoneNumber"}
               />
             </Field>
             <Field

@@ -42,11 +42,32 @@ async function main() {
       .select("consent_type, version")
       .order("consent_type");
     if (vErr || !versions) throw new Error(`versions: ${vErr?.message}`);
-    if (versions.length !== 5)
-      throw new Error(`expected 5 version rows, got ${versions.length}`);
-    if (!versions.every((v) => v.version === "v1"))
-      throw new Error(`not all versions are v1: ${JSON.stringify(versions)}`);
-    console.log(`  ✓ consent_versions seeded: 5 rows all v1`);
+    // By name, not by count. This expected exactly five rows, written before
+    // 20260421070400 added age_confirmation, so it has been asserting a
+    // stale headcount ever since.
+    const EXPECTED_TYPES = [
+      "age_confirmation",
+      "email_marketing",
+      "privacy_policy",
+      "recruiter_resume_sharing",
+      "sms_marketing",
+      "terms_of_service",
+    ];
+    const present = versions.map((v) => v.consent_type).sort();
+    const missing = EXPECTED_TYPES.filter((t) => !present.includes(t));
+    if (missing.length)
+      throw new Error(`consent_versions missing: ${missing.join(", ")}`);
+    // Shape, not value. This asserted every row was still "v1" — i.e. that no
+    // policy had ever been bumped — which stopped being true the first time
+    // one was. What the migration actually guarantees is that all five types
+    // exist with a well-formed version.
+    if (!versions.every((v) => /^v[0-9]+(\.[0-9]+)?$/.test(v.version)))
+      throw new Error(`malformed version: ${JSON.stringify(versions)}`);
+    console.log(
+      `  ✓ consent_versions seeded: ${versions.length} types, versions ${versions
+        .map((v) => v.version)
+        .join("/")}`
+    );
 
     // 2. Alice can insert a consent row for herself.
     const { error: c1Err } = await aliceClient.from("consents").insert({

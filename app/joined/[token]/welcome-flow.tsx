@@ -92,11 +92,11 @@ export function WelcomeFlow({
 
   if (phase !== "ask") {
     return (
-      <OnbSection fill>
+      <OnbSection fill center>
         <div
           aria-live="polite"
           style={{ transitionDuration: `${FADE_MS}ms` }}
-          className={`flex flex-col items-center gap-5 pt-[12vh] text-center transition-opacity ease-out motion-reduce:transition-none ${
+          className={`flex w-full flex-col items-center gap-5 text-center transition-opacity ease-out motion-reduce:transition-none ${
             phase === "leaving" ? "opacity-0" : "opacity-100"
           }`}
         >
@@ -120,7 +120,7 @@ export function WelcomeFlow({
   }
 
   return (
-    <OnbSection>
+    <OnbSection fill center>
       <OnbSurface>
         <OnbIntro title="Almost there!">
           {waitlisted
@@ -139,18 +139,8 @@ export function WelcomeFlow({
             loading={googlePending || pending}
             onClick={createAccount}
           >
-            {googlePending || pending
-              ? "Redirecting…"
-              : devBypass
-                ? "Continue (dev bypass)"
-                : "Continue with Google"}
+            {googlePending || pending ? "Redirecting…" : "Let’s do it!"}
           </OnbPrimaryButton>
-
-          {devBypass ? (
-            <p className="text-center text-[11.5px] text-muted-foreground">
-              Local build — skips Google, claim still runs for real.
-            </p>
-          ) : null}
 
           {/* A text link, not a second button. These are not equal choices and
               the layout should not pretend otherwise. */}

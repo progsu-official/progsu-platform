@@ -3,14 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 
-import {
-  OnbActionBar,
-  OnbIntro,
-  OnbPrimaryButton,
-  OnbSection,
-  OnbSurface,
-} from "../_components/shell";
-import { DoneRedirect } from "./done-redirect";
+import { DoneCelebration } from "./done-celebration";
 
 export const dynamic = "force-dynamic";
 
@@ -29,20 +22,5 @@ export default async function OnboardingDonePage() {
     redirect(next);
   }
 
-  return (
-    <OnbSection>
-      <OnbSurface>
-        <div className="flex flex-col items-center gap-5 text-center">
-          <span aria-hidden className="text-[56px] leading-none">
-            🥳
-          </span>
-          <OnbIntro title="Let’s gooo">Bringing you to your profile…</OnbIntro>
-        </div>
-      </OnbSurface>
-      <OnbActionBar>
-        <OnbPrimaryButton href="/profile">Go to my profile</OnbPrimaryButton>
-      </OnbActionBar>
-      <DoneRedirect />
-    </OnbSection>
-  );
+  return <DoneCelebration />;
 }

@@ -21,10 +21,9 @@ export const CONSENT_LABELS: Record<ConsentType, string> = {
   privacy_policy: "Privacy Policy",
   terms_of_service: "Terms of Service",
   age_confirmation: "I confirm I am 18 or older",
-  recruiter_resume_sharing:
-    "Share my profile and current resume with sponsors and recruiters Progsu works with",
-  email_marketing: "Email me about Progsu events and opportunities",
-  sms_marketing: "Text me about Progsu events and opportunities",
+  recruiter_resume_sharing: "Share my profile & resume to recruiters",
+  email_marketing: "Email me about special events + opportunities",
+  sms_marketing: "Msg me so I don't miss important stuff",
 };
 
 // Per-key validation: each known consent type is optional but, when present, must

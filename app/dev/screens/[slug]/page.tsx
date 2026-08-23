@@ -1,18 +1,13 @@
 import { notFound } from "next/navigation";
 
-import {
-  OnbActionBar,
-  OnbIntro,
-  OnbPrimaryButton,
-  OnbSection,
-  OnbSurface,
-} from "@/app/onboarding/_components/shell";
+import { OnbIntro, OnbSection } from "@/app/onboarding/_components/shell";
 import { StepIndicator } from "@/app/onboarding/_components/step-indicator";
 import { VerifyEmailForm } from "@/app/onboarding/verify-email/verify-email-form";
 import { ProfileForm } from "@/app/onboarding/profile/profile-form";
 import { LinksForm } from "@/app/onboarding/links/links-form";
 import { ResumeUploader } from "@/app/onboarding/resume/resume-uploader";
 import { ConsentForm } from "@/app/onboarding/consent/consent-form";
+import { DoneCelebration } from "@/app/onboarding/done/done-celebration";
 import { WelcomeFlow } from "@/app/joined/[token]/welcome-flow";
 
 import { screenAt } from "../screens";
@@ -264,23 +259,9 @@ function render(slug: string, play: boolean) {
       );
 
     case "done":
-      return (
-        <OnbSection>
-          <OnbSurface>
-            <div className="flex flex-col items-center gap-5 text-center">
-              <span aria-hidden className="text-[56px] leading-none">
-                🥳
-              </span>
-              <OnbIntro title="Let’s gooo">Bringing you to your profile…</OnbIntro>
-            </div>
-          </OnbSurface>
-          <OnbActionBar>
-            <OnbPrimaryButton href="/dev/screens">
-              Go to my profile
-            </OnbPrimaryButton>
-          </OnbActionBar>
-        </OnbSection>
-      );
+      // The real component, timers and all: it plays and hands off to the
+      // gallery index the way it hands off to /profile in the funnel.
+      return <DoneCelebration />;
 
     default:
       notFound();

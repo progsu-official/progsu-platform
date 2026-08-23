@@ -206,3 +206,77 @@
     transition: none !important;
   }
 }
+
+/* ── the last beat ─────────────────────────────────────────────────
+   The done screen has no button any more: it plays, then leaves. Three
+   staggered arrivals and one exit, all on --onb-ease. No overshoot anywhere
+   — a celebration that springs reads as a toy, and DESIGN.md and the
+   detector both rule out bounce curves. */
+.onb .onb-done-pop {
+  animation: onb-done-pop 620ms var(--onb-ease) both;
+}
+
+.onb .onb-done-rise {
+  animation: onb-done-rise 520ms var(--onb-ease) both;
+  animation-delay: 180ms;
+}
+
+.onb .onb-done-rise-late {
+  animation: onb-done-rise 520ms var(--onb-ease) both;
+  animation-delay: 300ms;
+}
+
+/* The exit is what makes it read as a handoff rather than a page that
+   vanished: the whole group lifts, shrinks a touch and blurs out, so the
+   navigation that follows feels like the same motion continuing. */
+.onb .onb-done-leaving {
+  animation: onb-done-out 460ms var(--onb-ease) both;
+}
+
+@keyframes onb-done-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72) translateY(8px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes onb-done-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes onb-done-out {
+  from {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.97);
+    filter: blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb .onb-done-pop,
+  .onb .onb-done-rise,
+  .onb .onb-done-rise-late,
+  .onb .onb-done-leaving {
+    animation: none !important;
+  }
+}
