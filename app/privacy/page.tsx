@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v4
+          Draft · v5
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -135,6 +135,52 @@ export default function PrivacyPage() {
           Turning off visibility hides your card from the directory and from
           peer URL lookups immediately; previously-recorded audit rows are
           retained.
+        </p>
+
+        <h2 className="text-lg font-semibold">
+          Who can see that you are going to an event
+        </h2>
+        <p>
+          New in v5: event pages show the people who are going. If your
+          directory visibility is on, your name and avatar can appear in that
+          group, and your face links to your member card.
+        </p>
+        <p>
+          Event pages are public, so this group is visible to anyone with the
+          link, not only to signed-in members. This is the one place your
+          directory profile is shown to people outside Progsu, and it is worth
+          reading twice before you leave visibility on:
+        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            It shows the same name and avatar the member directory already
+            shows. No new field about you becomes visible.
+          </li>
+          <li>
+            What is new is the link between you and a specific event — that you
+            are going, or that you attended.
+          </li>
+          <li>
+            Only a handful of faces are shown; everyone else is part of the
+            total count, unnamed.
+          </li>
+          <li>
+            Draft, cancelled, and private-invite events never show an attendee
+            list to anyone who could not already see the event.
+          </li>
+        </ul>
+        <p>
+          Turning off directory visibility in your settings removes you from
+          this group immediately, on past and upcoming events alike. You stay
+          in the total count, because the count is just a number of people. If
+          you would rather RSVP without appearing anywhere, turn visibility off
+          before you RSVP.
+        </p>
+        <p>
+          Attendees from events we ran before this platform existed are
+          included in the total count only. We imported those guest lists from
+          our previous event tool; those people never created an account here
+          and are never named on an event page.
         </p>
 
         <h2 className="text-lg font-semibold">Shared event history with other members</h2>
