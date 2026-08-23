@@ -68,3 +68,7 @@ export function requireServerEnv() {
 export function requireCronSecret(): string {
   return required("CRON_SECRET", process.env.CRON_SECRET);
 }
+
+export function requireWalletWalletApiKey(): string {
+  return required("WALLETWALLET_API_KEY", process.env.WALLETWALLET_API_KEY);
+}

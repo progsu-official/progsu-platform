@@ -6,7 +6,6 @@ import {
   Heading,
   Hr,
   Html,
-  Img,
   Preview,
   Tailwind,
   Text,
@@ -21,10 +20,6 @@ export interface EventRsvpConfirmationEmailProps {
   eventUrl: string;
   siteUrl: string;
   siteName?: string;
-  // D12/§7.5: cid reference to an inline attachment (see sendEventRsvpConfirmation),
-  // NOT a data: URI, Gmail strips base64 data: images entirely. Optional so the
-  // worker-drain send path and plain-text callers don't need updating.
-  checkinQrCid?: string | null;
 }
 
 // Transactional: triggered by a member RSVPing to a Progsu event. Keep copy
@@ -51,7 +46,6 @@ export default function EventRsvpConfirmationEmail({
   eventUrl,
   siteUrl,
   siteName = "Progsu",
-  checkinQrCid,
 }: EventRsvpConfirmationEmailProps) {
   const when = formatStartsAt(startsAt);
   const where = location ?? "To be announced";
@@ -72,21 +66,10 @@ export default function EventRsvpConfirmationEmail({
               {when}.
             </Text>
             <Text className="text-slate-700">Location: {where}.</Text>
-
-            {checkinQrCid ? (
-              <>
-                <Img
-                  src={`cid:${checkinQrCid}`}
-                  width={160}
-                  height={160}
-                  alt="Your check-in QR code"
-                  className="rounded-md border border-slate-200"
-                />
-                <Text className="text-sm text-slate-600">
-                  Show this QR at the door and staff will scan you in.
-                </Text>
-              </>
-            ) : null}
+            <Text className="text-sm text-slate-600">
+              Your personal check-in QR is on your profile, staff can scan
+              it at any event, no ticket needed.
+            </Text>
 
             <Button
               href={eventUrl}

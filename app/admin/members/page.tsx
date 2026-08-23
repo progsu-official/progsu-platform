@@ -6,6 +6,7 @@ import { INTERESTED_ROLES, INTERESTED_ROLE_LABELS } from "@/lib/enums/roles";
 export const dynamic = "force-dynamic";
 
 type SearchParams = {
+  view?: string; // "members" | "legacy"
   q?: string;
   school?: string;
   grad_year?: string;
@@ -14,6 +15,8 @@ type SearchParams = {
   has_resume?: string; // "yes" | "no"
   open?: string; // "yes" | "no"
   archived?: string; // "yes" | "no"
+  claimed?: string; // "unclaimed" | "claimed" | "all" (legacy view only)
+  sms?: string; // "yes" | "no" | "unknown" (legacy view only)
   page?: string;
 };
 
@@ -32,7 +35,70 @@ export default async function AdminMembersPage({
 }) {
   const params = await searchParams;
   const admin = createAdminClient();
+  const view = params.view === "legacy" ? "legacy" : "members";
 
+  // Tab counts: cheap head-only counts, fetched regardless of which tab is
+  // active so the toggle itself always shows real numbers.
+  const [{ count: membersCount }, { count: legacyUnclaimedCount }] =
+    await Promise.all([
+      admin.from("profiles").select("*", { count: "exact", head: true }),
+      admin
+        .from("legacy_members")
+        .select("*", { count: "exact", head: true })
+        .is("claimed_at", null),
+    ]);
+
+  return (
+    <div className="space-y-4">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+        </div>
+      </header>
+
+      <nav className="flex gap-1 border-b" aria-label="Members view">
+        <Link
+          href="/admin/members"
+          className={`border-b-2 px-3 py-2 text-sm font-medium ${
+            view === "members"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Members ({membersCount ?? 0})
+        </Link>
+        <Link
+          href="/admin/members?view=legacy"
+          className={`border-b-2 px-3 py-2 text-sm font-medium ${
+            view === "legacy"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Legacy ({legacyUnclaimedCount ?? 0} not signed up)
+        </Link>
+      </nav>
+
+      {view === "legacy" ? (
+        <LegacySection admin={admin} params={params} />
+      ) : (
+        <MembersSection admin={admin} params={params} />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Members tab: real profiles.
+// ---------------------------------------------------------------------------
+
+async function MembersSection({
+  admin,
+  params,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  params: SearchParams;
+}) {
   const q = (params.q ?? "").trim();
   const school = (params.school ?? "").trim();
   const gradYear = Number.parseInt(params.grad_year ?? "", 10);
@@ -108,12 +174,7 @@ export default async function AdminMembersPage({
     .range(from, to);
 
   if (error) {
-    return (
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Members</h1>
-        <p className="text-sm text-destructive">Query error: {error.message}</p>
-      </div>
-    );
+    return <p className="text-sm text-destructive">Query error: {error.message}</p>;
   }
 
   // Only fetch current-resume info for the row ids we got back; saves a big join.
@@ -150,14 +211,9 @@ export default async function AdminMembersPage({
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
-          <p className="text-xs text-muted-foreground">
-            {count ?? 0} result{count === 1 ? "" : "s"}
-          </p>
-        </div>
-      </header>
+      <p className="text-xs text-muted-foreground">
+        {count ?? 0} result{count === 1 ? "" : "s"}
+      </p>
 
       <form className="flex flex-wrap gap-2 rounded-md border bg-muted/10 p-3 text-xs">
         <input
@@ -348,6 +404,191 @@ export default async function AdminMembersPage({
       </div>
 
       <Pagination page={page} totalPages={totalPages} searchParams={params} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Legacy tab: pre-signup staging data (Luma/Sheets/Tally import, 2026-08-16).
+// Defaults to unclaimed rows, people who haven't signed up yet, since a
+// claimed row already shows up under its real profile in the Members tab.
+// ---------------------------------------------------------------------------
+
+type LegacyRow = {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  personal_email: string | null;
+  campus_email: string | null;
+  phone_number: string | null;
+  sms_interest: boolean | null;
+  source: string;
+  source_detail: string | null;
+  imported_at: string;
+  claimed_at: string | null;
+  claimed_profile_id: string | null;
+};
+
+async function LegacySection({
+  admin,
+  params,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  params: SearchParams;
+}) {
+  const q = (params.q ?? "").trim();
+  const claimed = params.claimed ?? "unclaimed";
+  const sms = params.sms;
+  const page = Math.min(
+    Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1),
+    MAX_PAGE
+  );
+
+  let builder = admin
+    .from("legacy_members")
+    .select(
+      "id, full_name, first_name, last_name, personal_email, campus_email, phone_number, sms_interest, source, source_detail, imported_at, claimed_at, claimed_profile_id",
+      { count: "exact" }
+    );
+
+  if (q) {
+    const escaped = q.replace(/[%_]/g, (c) => `\\${c}`);
+    builder = builder.or(
+      `full_name.ilike.%${escaped}%,personal_email.ilike.%${escaped}%,campus_email.ilike.%${escaped}%`
+    );
+  }
+  if (claimed === "unclaimed") builder = builder.is("claimed_at", null);
+  else if (claimed === "claimed") builder = builder.not("claimed_at", "is", null);
+  if (sms === "yes") builder = builder.eq("sms_interest", true);
+  else if (sms === "no") builder = builder.eq("sms_interest", false);
+  else if (sms === "unknown") builder = builder.is("sms_interest", null);
+
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+  const { data: rows, count, error } = await builder
+    .order("imported_at", { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    return <p className="text-sm text-destructive">Query error: {error.message}</p>;
+  }
+
+  const totalPages = Math.min(
+    Math.ceil((count ?? 0) / PAGE_SIZE) || 1,
+    MAX_PAGE
+  );
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        {count ?? 0} result{count === 1 ? "" : "s"}. Pre-signup data imported
+        from the old master sheet and Luma exports, matched to a real profile
+        automatically on first Google sign-in.
+      </p>
+
+      <form className="flex flex-wrap gap-2 rounded-md border bg-muted/10 p-3 text-xs">
+        <input type="hidden" name="view" value="legacy" />
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Name or email…"
+          className="flex-1 rounded-md border border-input bg-background px-2 py-1"
+        />
+        <select
+          name="claimed"
+          defaultValue={claimed}
+          className="rounded-md border border-input bg-background px-2 py-1"
+        >
+          <option value="unclaimed">Not signed up yet</option>
+          <option value="claimed">Already signed up</option>
+          <option value="all">All</option>
+        </select>
+        <select
+          name="sms"
+          defaultValue={sms ?? ""}
+          className="rounded-md border border-input bg-background px-2 py-1"
+        >
+          <option value="">SMS interest?</option>
+          <option value="yes">Said yes</option>
+          <option value="no">Said no</option>
+          <option value="unknown">Never answered</option>
+        </select>
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+        >
+          Apply
+        </button>
+        <Link
+          href="/admin/members?view=legacy"
+          className="rounded-md border border-input px-3 py-1 text-xs font-medium"
+        >
+          Reset
+        </Link>
+      </form>
+
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/30 text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 font-medium">Name</th>
+              <th className="px-3 py-2 font-medium">Personal email</th>
+              <th className="px-3 py-2 font-medium">Campus email</th>
+              <th className="px-3 py-2 font-medium">Phone</th>
+              <th className="px-3 py-2 font-medium">SMS interest</th>
+              <th className="px-3 py-2 font-medium">Source</th>
+              <th className="px-3 py-2 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {((rows ?? []) as LegacyRow[]).map((r) => (
+              <tr key={r.id} className="hover:bg-muted/20">
+                <td className="px-3 py-2">
+                  {r.full_name || `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {r.personal_email ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {r.campus_email ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {r.phone_number ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-xs">
+                  {r.sms_interest === true
+                    ? "Yes"
+                    : r.sms_interest === false
+                      ? "No"
+                      : "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground" title={r.source_detail ?? undefined}>
+                  {r.source}
+                </td>
+                <td className="px-3 py-2 text-xs">
+                  {r.claimed_profile_id ? (
+                    <Link
+                      href={`/admin/members/${r.claimed_profile_id}`}
+                      className="text-primary hover:underline"
+                    >
+                      Signed up
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">Not signed up</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        searchParams={{ ...params, view: "legacy" }}
+      />
     </div>
   );
 }

@@ -12,10 +12,12 @@ export const dynamic = "force-dynamic";
 type ProfileRow = {
   first_name: string | null;
   last_name: string | null;
+  preferred_name: string | null;
   school: string | null;
   student_email_verified: boolean;
   major: string | null;
   major_other_text: string | null;
+  minor: string | null;
   phone_number: string | null;
 };
 
@@ -40,7 +42,7 @@ export default async function OnboardingProfilePage() {
       supabase
         .from("profiles")
         .select(
-          "first_name, last_name, school, student_email_verified, major, major_other_text, phone_number"
+          "first_name, last_name, preferred_name, school, student_email_verified, major, major_other_text, minor, phone_number"
         )
         .eq("id", user.id)
         .single<ProfileRow>(),
@@ -77,24 +79,26 @@ export default async function OnboardingProfilePage() {
       <ProfileForm
         intro={
           <OnbIntro title="let's get you set up">
-            the basics — takes about a minute.
+            the basics, takes about a minute.
           </OnbIntro>
         }
         notice={
           legacyMatch ? (
             <div className="rounded-[14px] border border-primary/25 bg-primary/[0.06] px-4 py-3 text-center text-sm text-primary">
-              we found you from a past progsu event and filled in what we had
-              — worth a quick check below.
+              we found you from a past progsu event and filled in what we had,
+              worth a quick check below.
             </div>
           ) : null
         }
         initial={{
-          // Test mode fills any still-empty field with a dummy value so the
-          // form submits on a single click.
+          // Test mode fills any still-empty required field with a dummy value
+          // so the form submits on a single click. Optional fields stay empty
+          // even in test mode, there's nothing to fill on their behalf.
           firstName:
             profile?.first_name || (env.ONBOARDING_TEST_MODE ? "Test" : ""),
           lastName:
             profile?.last_name || (env.ONBOARDING_TEST_MODE ? "Student" : ""),
+          preferredName: profile?.preferred_name ?? "",
           school:
             profile?.school ||
             (env.ONBOARDING_TEST_MODE ? schoolOptions[0] ?? "" : ""),
@@ -108,6 +112,7 @@ export default async function OnboardingProfilePage() {
               ? majorOptions.find((m) => m.slug !== "other")?.slug ?? ""
               : ""),
           majorOtherText: profile?.major_other_text ?? "",
+          minor: profile?.minor ?? "",
         }}
         majorOptions={majorOptions}
         schoolOptions={schoolOptions}

@@ -6,7 +6,7 @@ export function EventsCheckin() {
       <div className="wrap">
         <div className="events-grid">
           <TiltImageCard
-            imageUrl="/welcome/progsu-1.png"
+            imageUrl="/welcome/progsu-2.png"
             alt="Progsu"
             className="events-image"
           />
@@ -17,8 +17,8 @@ export function EventsCheckin() {
             <div className="sec-head">
               <h2>register in the app. scan your way in.</h2>
               <p>
-                get a unique qr code to check in at every event. when scanned, your attendance
-                tracks automatically to your profile.
+                get a unique QR code to check in at every event. add it to your apple wallet, and
+                your attendance tracks automatically to your profile.
               </p>
             </div>
           </div>

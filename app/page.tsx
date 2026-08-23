@@ -2,19 +2,16 @@ import type { Metadata } from "next";
 
 import { env } from "@/lib/env";
 
-import "./welcome.css";
+import "./welcome/welcome.css";
 
-import { Nav } from "./_components/nav";
-import { HeroScene } from "./_components/hero-scene";
-import { HowItWorks } from "./_components/how-it-works";
-import { EventsCheckin } from "./_components/events-checkin";
-import { ConsentDemo } from "./_components/consent-demo";
-import { FinalCta } from "./_components/final-cta";
-import { SiteFooter } from "./_components/site-footer";
+import { Nav } from "./welcome/_components/nav";
+import { HeroScene } from "./welcome/_components/hero-scene";
+import { HowItWorks } from "./welcome/_components/how-it-works";
+import { EventsCheckin } from "./welcome/_components/events-checkin";
+import { ConsentDemo } from "./welcome/_components/consent-demo";
+import { FinalCta } from "./welcome/_components/final-cta";
+import { SiteFooter } from "./welcome/_components/site-footer";
 
-// Served at `/`: `(welcome)` is a route group, so the folder name keeps the
-// page, its CSS and its _components together without becoming a URL segment.
-//
 // Public marketing page, no per-request auth data -- unlike the
 // dashboard/admin/events/members surfaces, this one doesn't need
 // `dynamic = "force-dynamic"` and is left to render statically.
@@ -25,7 +22,7 @@ export const metadata: Metadata = {
     "Join the GSU builders community. One login, a profile that grows with every event you attend.",
 };
 
-export default function WelcomePage() {
+export default function Home() {
   return (
     <div className="welcome-root">
       <Nav showEvents={env.FEATURE_EVENTS} />
