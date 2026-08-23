@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, BookOpen, Globe, Sparkles } from "lucide-react";
+import { ArrowUpRight, Globe, Sparkles } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
@@ -192,8 +192,13 @@ function HacklantaCard() {
 function WikiCard() {
   return (
     <InitiativeCard comingSoon>
-      <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-gradient-to-br from-muted/70 to-muted/10">
-        <BookOpen size={28} strokeWidth={1.5} className="text-muted-foreground/40" aria-hidden />
+      <div className="relative aspect-[16/9] overflow-hidden">
+        <Image
+          src="/wiki-preview.png"
+          alt="Progsu wiki — an open wiki for breaking into tech"
+          fill
+          className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        />
         <span className="absolute right-3 top-3">
           <CardBadge>Coming soon</CardBadge>
         </span>
