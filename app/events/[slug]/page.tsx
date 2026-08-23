@@ -286,7 +286,7 @@ export default async function MemberEventDetailPage({
         <div className="grid gap-8 lg:grid-cols-[19rem_1fr] lg:gap-12">
           {/* Left rail: cover art + hosts + crowd, Luma-style. */}
           <div className="space-y-5">
-            <div className="aspect-square w-full max-w-[19rem] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-muted to-primary/20 shadow-2xl shadow-black/40">
+            <div className="aspect-square w-full lg:max-w-[19rem] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-muted to-primary/20 shadow-2xl shadow-black/40">
               {coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
