@@ -50,6 +50,21 @@ const FIELD_ERROR_HEADINGS: Record<string, string> = {
   bio: "keep the bio to one line, 220 characters or fewer",
 };
 
+// The submit button lives in a fixed action bar, so a field error rendered
+// inline (e.g. class standing, up top) can land off-screen with nothing
+// visible happening from the user's scroll position. Scroll the erroring
+// field into view instead of leaving it silently unreachable.
+const FIELD_IDS: Record<string, string> = {
+  classStanding: "onboarding-class-standing",
+  gradTerm: "onboarding-grad-term",
+  gradYear: "onboarding-grad-year",
+  interestedRoles: "onboarding-interested-roles",
+  linkedinUrl: "onboarding-linkedin",
+  githubUrl: "onboarding-github",
+  portfolioUrl: "onboarding-portfolio",
+  bio: "onboarding-bio",
+};
+
 type Initial = {
   classStanding: string;
   gradYear: number | null;
@@ -109,6 +124,10 @@ export function LinksForm({ initial }: { initial: Initial }) {
           message: result.error.message,
           field: result.error.field ?? null,
         });
+        const id = result.error.field ? FIELD_IDS[result.error.field] : null;
+        document
+          .getElementById(id ?? "")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
       // Resume is next in the visible stepper (Profile -> Roles & Links ->
@@ -186,7 +205,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
               required
               error={error?.field === "interestedRoles" ? error.message : null}
             >
-              <div className="flex flex-wrap gap-2">
+              <div id="onboarding-interested-roles" className="flex flex-wrap gap-2">
                 {INTERESTED_ROLES.map((role) => {
                   const active = state.interestedRoles.includes(role);
                   const disabled = !active && state.interestedRoles.length >= 6;
@@ -275,9 +294,11 @@ export function LinksForm({ initial }: { initial: Initial }) {
             <div className="border-t border-border/60 pt-5">
               <Field
                 label="bio"
+                htmlFor="onboarding-bio"
                 error={error?.field === "bio" ? error.message : null}
               >
                 <Input
+                  id="onboarding-bio"
                   value={state.bio}
                   onChange={(e) => setField("bio", e.target.value.slice(0, 220))}
                   placeholder="full-stack dev, into ML and climbing"

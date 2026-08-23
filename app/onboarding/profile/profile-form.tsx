@@ -28,6 +28,18 @@ const FIELD_ERROR_HEADINGS: Record<string, string> = {
   majorOtherText: "tell us your major",
 };
 
+// The submit button lives in a fixed action bar, so an inline field error
+// can land off-screen with nothing visible happening from wherever the user
+// is scrolled. Scroll the erroring field into view instead.
+const FIELD_IDS: Record<string, string> = {
+  firstName: "onboarding-first-name",
+  lastName: "onboarding-last-name",
+  phoneNumber: "onboarding-phone",
+  school: "onboarding-school",
+  major: "onboarding-major",
+  majorOtherText: "onboarding-major-other",
+};
+
 type Initial = {
   firstName: string;
   lastName: string;
@@ -98,6 +110,10 @@ export function ProfileForm({
           message: result.error.message,
           field: result.error.field ?? null,
         });
+        const id = result.error.field ? FIELD_IDS[result.error.field] : null;
+        document
+          .getElementById(id ?? "")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
       // Roles & links comes next in the visible stepper (Profile -> Roles &
@@ -117,9 +133,11 @@ export function ProfileForm({
             <Field
               label="first name"
               required
+              htmlFor="onboarding-first-name"
               error={error?.field === "firstName" ? error.message : null}
             >
               <Input
+                id="onboarding-first-name"
                 value={state.firstName}
                 onChange={(e) => setField("firstName", e.target.value)}
                 autoComplete="given-name"
@@ -131,9 +149,11 @@ export function ProfileForm({
             <Field
               label="last name"
               required
+              htmlFor="onboarding-last-name"
               error={error?.field === "lastName" ? error.message : null}
             >
               <Input
+                id="onboarding-last-name"
                 value={state.lastName}
                 onChange={(e) => setField("lastName", e.target.value)}
                 autoComplete="family-name"
@@ -153,9 +173,11 @@ export function ProfileForm({
             <Field
               label="phone"
               required
+              htmlFor="onboarding-phone"
               error={error?.field === "phoneNumber" ? error.message : null}
             >
               <Input
+                id="onboarding-phone"
                 type="tel"
                 value={state.phoneNumber}
                 onChange={(e) => setField("phoneNumber", e.target.value)}
@@ -238,9 +260,11 @@ export function ProfileForm({
                 <Field
                   label="tell us your major"
                   required
+                  htmlFor="onboarding-major-other"
                   error={error?.field === "majorOtherText" ? error.message : null}
                 >
                   <Input
+                    id="onboarding-major-other"
                     value={state.majorOtherText}
                     onChange={(e) => setField("majorOtherText", e.target.value)}
                     maxLength={100}
