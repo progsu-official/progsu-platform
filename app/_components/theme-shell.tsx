@@ -54,7 +54,7 @@ export function ThemeShell({
       }}
     >
       <div
-        className={`${theme === "dark" ? "dark " : ""}relative min-h-screen bg-background text-foreground`}
+        className={`${theme === "dark" ? "dark " : ""}relative min-h-screen overflow-x-hidden bg-background text-foreground`}
       >
         {/* Gives the glass surfaces something to refract. Without it, a
             translucent card over a flat background just reads as a lighter
