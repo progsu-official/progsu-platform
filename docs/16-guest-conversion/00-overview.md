@@ -570,8 +570,8 @@ picked the next round number:
 
 ```
 20260823150000_phone_e164.sql
-20260823150000_self_event_history_includes_historical.sql
-20260823160000_claim_guest_by_token.sql
+20260823150001_self_event_history_includes_historical.sql
+20260823160001_claim_guest_by_token.sql
 20260823160000_can_view_event_allows_historical_archived.sql
 ```
 

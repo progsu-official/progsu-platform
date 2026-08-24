@@ -87,6 +87,9 @@ type UpcomingRow = {
   going_count: number | null;
   waitlisted_count: number | null;
   hosts: HostRef[];
+  // When set, the card links straight here (e.g. hacklanta.dev) instead of
+  // the internal /events/[slug] page.
+  external_url: string | null;
 };
 
 type HistoryRow = {
@@ -210,9 +213,10 @@ async function UpcomingTab({
     : await supabase
         .from("member_visible_events")
         .select(
-          "id, slug, title, starts_at, ends_at, location_text, cover_image_path, capacity, waitlist_enabled, going_count, waitlisted_count, hosts"
+          "id, slug, title, starts_at, ends_at, location_text, cover_image_path, capacity, waitlist_enabled, going_count, waitlisted_count, hosts, external_url, pinned"
         )
         .gte("ends_at", new Date().toISOString())
+        .order("pinned", { ascending: false })
         .order("starts_at", { ascending: true })
         .limit(50);
 
@@ -238,6 +242,7 @@ async function UpcomingTab({
       going_count: (r.going_count as number | null) ?? 0,
       waitlisted_count: (r.waitlisted_count as number | null) ?? 0,
       hosts: (r.hosts as HostRef[] | null) ?? [],
+      external_url: (r.external_url as string | null) ?? null,
     })
   );
   const coverUrls = await resolveCoverUrls(
@@ -259,7 +264,7 @@ async function UpcomingTab({
     <EventTimeline
       items={rows.map((ev, i) => ({
         key: ev.id,
-        href: `/events/${ev.slug}`,
+        href: ev.external_url ?? `/events/${ev.slug}`,
         title: ev.title,
         hosts: joinHosts(ev.hosts),
         startsAt: ev.starts_at,

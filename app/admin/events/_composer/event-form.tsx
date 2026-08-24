@@ -5,9 +5,11 @@ import { useEffect, useState, useTransition } from "react";
 import {
   BellRing,
   CalendarDays,
+  ExternalLink,
   EyeOff,
   Mail,
   Pencil,
+  Pin,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -97,6 +99,8 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
   );
   const [waitlist, setWaitlist] = useState(event?.waitlist_enabled ?? false);
   const [sensitive, setSensitive] = useState(event?.is_sensitive ?? false);
+  const [externalUrl, setExternalUrl] = useState(event?.external_url ?? "");
+  const [pinned, setPinned] = useState(event?.pinned ?? false);
   const [rsvpEmail, setRsvpEmail] = useState(event?.send_rsvp_email ?? true);
   const [reminderEmail, setReminderEmail] = useState(
     event?.send_reminder_email ?? true
@@ -213,6 +217,8 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
       capacity: capacity || null,
       waitlist_enabled: waitlist,
       is_sensitive: sensitive,
+      external_url: externalUrl || null,
+      pinned,
       send_rsvp_email: rsvpEmail,
       send_reminder_email: reminderEmail,
       hosts: hostsPayload,
@@ -481,6 +487,36 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
                 label="Sensitive event"
                 checked={sensitive}
                 onChange={setSensitive}
+                disabled={pending}
+              />
+            </OptionRow>
+            <OptionRow
+              icon={ExternalLink}
+              label="External event link"
+              hint={
+                error?.field === "external_url"
+                  ? error.message
+                  : "Card links straight here instead of this page (e.g. hacklanta.dev)"
+              }
+            >
+              <input
+                type="url"
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                disabled={pending}
+                placeholder="https://"
+                className="w-40 shrink-0 rounded-lg bg-white/[0.08] px-2 py-1 text-right text-[15px] text-white placeholder:text-white/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:w-56"
+              />
+            </OptionRow>
+            <OptionRow
+              icon={Pin}
+              label="Pin to top"
+              hint="Always shows first in Upcoming, regardless of date"
+            >
+              <Switch
+                label="Pin to top"
+                checked={pinned}
+                onChange={setPinned}
                 disabled={pending}
               />
             </OptionRow>
