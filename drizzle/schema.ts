@@ -415,6 +415,8 @@ export const events = pgTable("events", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	importSource: text("import_source"),
+	externalUrl: text("external_url"),
+	pinned: boolean().default(false).notNull(),
 }, (table) => [
 	index("events_discovery_idx").using("btree", table.startsAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = 'published'::event_status_t)`),
 	index("events_ends_at_idx").using("btree", table.endsAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = ANY (ARRAY['published'::event_status_t, 'cancelled'::event_status_t, 'archived'::event_status_t]))`),
@@ -440,6 +442,7 @@ export const events = pgTable("events", {
 	check("events_capacity_check", sql`(capacity IS NULL) OR (capacity >= 0)`),
 	check("events_cover_image_path_check", sql`(cover_image_path IS NULL) OR (length(cover_image_path) <= 500)`),
 	check("events_description_md_check", sql`(description_md IS NULL) OR (length(description_md) <= 20000)`),
+	check("events_external_url_check", sql`(external_url IS NULL) OR (external_url ~* '^https?://'::text)`),
 	check("events_import_source_check", sql`(import_source IS NULL) OR (import_source = 'legacy_luma_import'::text)`),
 	check("events_location_text_check", sql`(location_text IS NULL) OR (length(location_text) <= 500)`),
 	check("events_location_url_check", sql`(location_url IS NULL) OR (location_url ~* '^https?://'::text)`),
@@ -734,7 +737,9 @@ export const memberVisibleEvents = pgView("member_visible_events", {	id: uuid(),
 	goingCount: bigint("going_count", { mode: "number" }),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	waitlistedCount: bigint("waitlisted_count", { mode: "number" }),
-}).as(sql`SELECT id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, cover_image_path, is_sensitive, cancelled_at, cancellation_reason, COALESCE(( SELECT jsonb_agg(jsonb_build_object('display_name', h.display_name, 'sort_order', h.sort_order) ORDER BY h.sort_order, h.display_name) AS jsonb_agg FROM event_hosts h WHERE h.event_id = e.id), '[]'::jsonb) AS hosts, (( SELECT count(*) AS count FROM event_rsvps r WHERE r.event_id = e.id AND r.status = 'going'::rsvp_status_t)) + (( SELECT gc.going_count FROM event_guest_counts(e.id) gc(going_count, waitlisted_count))) + (( SELECT count(*) AS count FROM historical_event_attendances ha WHERE ha.event_id = e.id AND ha.approval_status ~~* 'approved'::text)) AS going_count, (( SELECT count(*) AS count FROM event_rsvps r WHERE r.event_id = e.id AND r.status = 'waitlisted'::rsvp_status_t)) + (( SELECT gc.waitlisted_count FROM event_guest_counts(e.id) gc(going_count, waitlisted_count))) AS waitlisted_count FROM events e WHERE status = 'published'::event_status_t AND (visibility = 'members'::event_visibility_t OR visibility = 'private_invite'::event_visibility_t AND (EXISTS ( SELECT 1 FROM event_invites ei WHERE ei.event_id = e.id AND ei.user_id = auth.uid() AND ei.revoked_at IS NULL)))`);
+	externalUrl: text("external_url"),
+	pinned: boolean(),
+}).as(sql`SELECT id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, cover_image_path, is_sensitive, cancelled_at, cancellation_reason, COALESCE(( SELECT jsonb_agg(jsonb_build_object('display_name', h.display_name, 'sort_order', h.sort_order) ORDER BY h.sort_order, h.display_name) AS jsonb_agg FROM event_hosts h WHERE h.event_id = e.id), '[]'::jsonb) AS hosts, (( SELECT count(*) AS count FROM event_rsvps r WHERE r.event_id = e.id AND r.status = 'going'::rsvp_status_t)) + (( SELECT gc.going_count FROM event_guest_counts(e.id) gc(going_count, waitlisted_count))) + (( SELECT count(*) AS count FROM historical_event_attendances ha WHERE ha.event_id = e.id AND ha.approval_status ~~* 'approved'::text)) AS going_count, (( SELECT count(*) AS count FROM event_rsvps r WHERE r.event_id = e.id AND r.status = 'waitlisted'::rsvp_status_t)) + (( SELECT gc.waitlisted_count FROM event_guest_counts(e.id) gc(going_count, waitlisted_count))) AS waitlisted_count, external_url, pinned FROM events e WHERE status = 'published'::event_status_t AND (visibility = 'members'::event_visibility_t OR visibility = 'private_invite'::event_visibility_t AND (EXISTS ( SELECT 1 FROM event_invites ei WHERE ei.event_id = e.id AND ei.user_id = auth.uid() AND ei.revoked_at IS NULL)))`);
 
 export const memberCards = pgView("member_cards", {	userId: uuid("user_id"),
 	profileSlug: text("profile_slug"),

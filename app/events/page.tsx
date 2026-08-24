@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, CalendarPlus, History, Sparkles } from "lucide-react";
+import { CalendarDays, CalendarPlus, History } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrls } from "@/lib/events/cover-url";
+import {
+  loadAttendeeFaces,
+  type AttendeeSummary,
+} from "@/lib/events/attendee-faces";
 import {
   getRequestOnboardingState,
   getRequestUser,
 } from "@/lib/auth/request-cache";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 
+import { AttendeeRow } from "./_components/attendee-row";
 import { EventCard, joinHosts } from "./_components/event-card";
+import { PinnedEventHero } from "./_components/pinned-hero";
 import {
   EVENT_TIME_ZONE,
-  formatTimeRange,
   zonedDayKey,
   zonedDayStartUtcMs,
 } from "./_components/event-date";
@@ -248,10 +253,18 @@ async function UpcomingTab({
       pinned: !!r.pinned,
     })
   );
-  const coverUrls = await resolveCoverUrls(
-    supabase,
-    rows.map((r) => r.cover_image_path)
-  );
+  // Covers and faces in one pass — both are keyed off the same row set and
+  // neither depends on the other.
+  const [coverUrls, attendees] = await Promise.all([
+    resolveCoverUrls(
+      supabase,
+      rows.map((r) => r.cover_image_path)
+    ),
+    loadAttendeeFaces(
+      supabase,
+      rows.map((r) => r.id)
+    ),
+  ]);
 
   if (rows.length === 0) {
     return (
@@ -267,6 +280,7 @@ async function UpcomingTab({
     <EventTimeline
       items={rows.map((ev, i) => ({
         key: ev.id,
+        slug: ev.slug,
         href: ev.external_url ?? `/events/${ev.slug}`,
         title: ev.title,
         hosts: joinHosts(ev.hosts),
@@ -275,7 +289,7 @@ async function UpcomingTab({
         location: ev.location_text,
         pinned: ev.pinned,
         coverUrl: coverUrls[i] ?? null,
-        footer: <CapacityLine ev={ev} />,
+        footer: <GoingLine ev={ev} attendees={attendees.get(ev.id)} />,
       }))}
     />
   );
@@ -509,10 +523,16 @@ async function PastTab({
     });
   }
 
-  const pastCoverUrls = await resolveCoverUrls(
-    supabase,
-    rows.map((r) => r.cover_image_path)
-  );
+  const [pastCoverUrls, pastAttendees] = await Promise.all([
+    resolveCoverUrls(
+      supabase,
+      rows.map((r) => r.cover_image_path)
+    ),
+    loadAttendeeFaces(
+      supabase,
+      rows.map((r) => r.id)
+    ),
+  ]);
 
   if (rows.length === 0) {
     return (
@@ -529,6 +549,7 @@ async function PastTab({
     <EventTimeline
       items={rows.map((ev, i) => ({
         key: ev.id,
+        slug: ev.slug,
         href: `/events/${ev.slug}`,
         title: ev.title,
         hosts: joinHosts(ev.hosts),
@@ -537,10 +558,12 @@ async function PastTab({
         location: ev.location_text,
         coverUrl: pastCoverUrls[i] ?? null,
         footer: (
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="tabular-nums text-muted-foreground">
-              {(ev.going_count ?? 0).toLocaleString()} went
-            </span>
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <AttendeeRow
+              faces={pastAttendees.get(ev.id)?.faces ?? []}
+              total={pastAttendees.get(ev.id)?.total ?? ev.going_count ?? 0}
+              label="went"
+            />
             {buildPastBadge(mine.get(ev.id))}
           </span>
         ),
@@ -578,6 +601,8 @@ function buildPastBadge(mine: MyPastRow | undefined) {
 
 type TimelineItem = {
   key: string;
+  /** Only read for pinned items — PinnedEventHero looks up a brand kit by it. */
+  slug?: string;
   href: string;
   title: string;
   hosts: string | null;
@@ -645,56 +670,24 @@ function EventTimeline({ items }: { items: TimelineItem[] }) {
       {pinnedItems.length > 0 ? (
         <div className="space-y-4">
           {pinnedItems.map((item) => (
-            <PinnedEventHero key={item.key} item={item} />
+            <PinnedEventHero
+              key={item.key}
+              item={{
+                href: item.href,
+                slug: item.slug ?? "",
+                title: item.title,
+                hosts: item.hosts,
+                startsAt: item.startsAt,
+                endsAt: item.endsAt,
+                location: item.location,
+                coverUrl: item.coverUrl,
+              }}
+            />
           ))}
         </div>
       ) : null}
       {groups.length > 0 ? <EventDayRail groups={groups} now={now} /> : null}
     </div>
-  );
-}
-
-// Featured promo card: bigger cover, bold CTA, its own visual language
-// (primary-tinted surface) so it reads as "we're pushing this" rather than
-// just another row in the day list.
-function PinnedEventHero({ item }: { item: TimelineItem }) {
-  const dateLabel = `${monthDayFormatter.format(new Date(item.startsAt))} · ${formatTimeRange(item.startsAt, item.endsAt)}`;
-  return (
-    <Link
-      href={item.href}
-      className="group flex flex-col gap-4 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5 shadow-lg shadow-primary/5 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-6 sm:p-6"
-    >
-      <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-muted to-primary/30 sm:h-32 sm:w-48">
-        {item.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.coverUrl}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <CalendarDays size={28} strokeWidth={1.5} className="text-muted-foreground/60" aria-hidden />
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
-            {item.title}
-          </h2>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-bold leading-none tracking-wide text-primary-foreground">
-            <Sparkles size={14} strokeWidth={2} aria-hidden />
-            Featured
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground">{dateLabel}</p>
-        {item.hosts ? <p className="text-sm text-muted-foreground">By {item.hosts}</p> : null}
-        <p className="text-sm font-semibold text-amber-500">
-          RSVPs open, slots are limited!
-        </p>
-      </div>
-    </Link>
   );
 }
 
@@ -757,22 +750,27 @@ function EventDayRail({
 // Presentational helpers
 // --------------------------------------------------------------------
 
-function CapacityLine({ ev }: { ev: UpcomingRow }) {
-  const going = ev.going_count ?? 0;
-  if (ev.capacity === null) {
-    return <span className="text-muted-foreground">{going} going</span>;
-  }
-  const full = going >= ev.capacity;
+// The feed row already carries a going count (member_visible_events /
+// public_upcoming_events fold live + guest + historical attendance), so the
+// faces RPC is only consulted for the avatars. Its total is preferred when
+// present because both are computed from the same fold and it is the one the
+// detail page shows — two surfaces disagreeing about "N going" is the exact
+// bug 20260824100000 fixed.
+function GoingLine({
+  ev,
+  attendees,
+}: {
+  ev: UpcomingRow;
+  attendees: AttendeeSummary | undefined;
+}) {
   return (
-    <span className="text-muted-foreground">
-      {going} of {ev.capacity} going
-      {full && ev.waitlist_enabled ? (
-        <>
-          {" · "}
-          <span>Waitlist: {ev.waitlisted_count ?? 0}</span>
-        </>
-      ) : null}
-    </span>
+    <AttendeeRow
+      faces={attendees?.faces ?? []}
+      total={attendees?.total ?? ev.going_count ?? 0}
+      label="going"
+      capacity={ev.capacity}
+      waitlisted={ev.waitlist_enabled ? (ev.waitlisted_count ?? 0) : 0}
+    />
   );
 }
 

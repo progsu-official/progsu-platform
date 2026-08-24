@@ -11,6 +11,7 @@ export default function EventsLoading() {
           <h1 className="text-4xl font-bold tracking-tight">Events</h1>
           <Skeleton className="h-10 w-64 rounded-full" />
         </header>
+        <Skeleton className="h-[19rem] w-full rounded-2xl sm:h-[23rem]" />
         <div className="space-y-4">
           {Array.from({ length: 3 }, (_, i) => (
             <div key={i} className="flex gap-4 rounded-2xl glass p-4">

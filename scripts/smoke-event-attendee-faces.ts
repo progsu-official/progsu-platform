@@ -167,12 +167,36 @@ async function main() {
     return row ?? { total_count: 0, faces: [] };
   }
 
+  async function facesBatch(
+    client: ReturnType<typeof anonClient>,
+    eventIds: string[],
+    limit = 5
+  ): Promise<Map<string, FacesRow>> {
+    const { data, error } = await client.rpc("event_attendee_faces_batch", {
+      p_event_ids: eventIds,
+      p_limit: limit,
+    });
+    if (error) throw new Error(`event_attendee_faces_batch: ${error.message}`);
+    const out = new Map<string, FacesRow>();
+    for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
+      out.set(raw.event_id as string, {
+        total_count: Number(raw.total_count ?? 0),
+        faces: (raw.faces as FacesRow["faces"]) ?? [],
+      });
+    }
+    return out;
+  }
+
   try {
     const visibleId = await seedUser("faces-visible", { discoverable: true });
     const hiddenId = await seedUser("faces-hidden", { discoverable: false });
     const outsiderId = await seedUser("faces-outsider", { discoverable: true });
 
     const eventId = await seedEvent("faces-open");
+    // Assigned inside the visibility blocks below, read again by the batch
+    // assertions at the end.
+    let draftId = "";
+    let privateId = "";
 
     // Both RSVP through the real write path so waitlist/capacity bookkeeping
     // matches production rows.
@@ -299,7 +323,7 @@ async function main() {
         throw new Error("anon got no faces on a published members event");
       }
 
-      const draftId = await seedEvent("faces-draft", { status: "draft" });
+      draftId = await seedEvent("faces-draft", { status: "draft" });
       const d = await faces(anonClient(), draftId);
       if (d.total_count !== 0 || d.faces.length !== 0) {
         throw new Error(
@@ -313,7 +337,7 @@ async function main() {
 
     // --- private_invite: empty for a non-invited member, not an error -----
     {
-      const privateId = await seedEvent("faces-private", {
+      privateId = await seedEvent("faces-private", {
         visibility: "private_invite",
       });
       const { error: inviteErr } = await admin.from("event_rsvps").insert({
@@ -353,6 +377,95 @@ async function main() {
       }
       console.log(
         "[smoke-event-attendee-faces] OK: cancelled RSVP drops out of the total"
+      );
+    }
+
+    // --- batch sibling: same numbers, and invisible events are omitted ----
+    //
+    // The list surfaces call event_attendee_faces_batch() instead of the
+    // single-event function (50 rows would be 50 round-trips). It has to
+    // agree with the single call on every visible event and drop the rest —
+    // returning a zero row for a private event would make a hidden event
+    // distinguishable from one that was never asked about.
+    {
+      const c = await signIn("faces-outsider");
+      const single = await faces(c, eventId);
+      const batch = await facesBatch(c, [eventId, privateId, draftId], 5);
+      await c.auth.signOut();
+
+      const mine = batch.get(eventId);
+      if (!mine) throw new Error("batch dropped a visible event");
+      if (mine.total_count !== single.total_count) {
+        throw new Error(
+          `batch total ${mine.total_count} != single total ${single.total_count}`
+        );
+      }
+      if (mine.faces.length !== single.faces.length) {
+        throw new Error(
+          `batch faces ${mine.faces.length} != single faces ${single.faces.length}`
+        );
+      }
+      if (batch.has(privateId)) {
+        throw new Error("batch returned a private_invite event to an outsider");
+      }
+      if (batch.has(draftId)) throw new Error("batch returned a draft event");
+      console.log(
+        "[smoke-event-attendee-faces] OK: batch matches single call and omits private/draft"
+      );
+    }
+
+    // --- p_limit caps faces without touching the total -------------------
+    {
+      const capped = await facesBatch(anonClient(), [eventId], 1);
+      const row = capped.get(eventId);
+      if (!row) throw new Error("batch dropped a published event for anon");
+      if (row.faces.length !== 1) {
+        throw new Error(`p_limit=1 returned ${row.faces.length} faces`);
+      }
+      if (row.total_count !== 4) {
+        throw new Error(`p_limit changed the total: ${row.total_count}`);
+      }
+      console.log(
+        "[smoke-event-attendee-faces] OK: p_limit caps faces, never the total"
+      );
+    }
+
+    // --- the list feeds count the same crowd the detail page does --------
+    //
+    // Regression guard for 20260824100000: 20260824000000 recreated both
+    // feeds to add external_url/pinned and dropped the guest + historical
+    // fold, so /events said "3 going" while the event's own page said 13.
+    {
+      const { data: anonRows, error: anonErr } = await anonClient().rpc(
+        "public_upcoming_events",
+        { p_limit: 50 }
+      );
+      if (anonErr) throw new Error(`public_upcoming_events: ${anonErr.message}`);
+      const anonRow = ((anonRows ?? []) as Array<Record<string, unknown>>).find(
+        (r) => r.id === eventId
+      );
+      if (!anonRow) throw new Error("seeded event missing from the anon feed");
+      if (Number(anonRow.going_count) !== 4) {
+        throw new Error(
+          `public_upcoming_events going_count = ${anonRow.going_count}, expected 4`
+        );
+      }
+
+      const c = await signIn("faces-visible");
+      const { data: mv, error: mvErr } = await c
+        .from("member_visible_events")
+        .select("going_count")
+        .eq("id", eventId)
+        .single();
+      await c.auth.signOut();
+      if (mvErr) throw new Error(`member_visible_events: ${mvErr.message}`);
+      if (Number((mv as { going_count: number }).going_count) !== 4) {
+        throw new Error(
+          `member_visible_events going_count = ${(mv as { going_count: number }).going_count}, expected 4`
+        );
+      }
+      console.log(
+        "[smoke-event-attendee-faces] OK: both list feeds fold guests + historical (4), same as the detail page"
       );
     }
 
