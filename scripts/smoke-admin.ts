@@ -135,7 +135,19 @@ async function main() {
       throw new Error(`admin home missing heading`);
     if (!/Members[\s\S]*\d/.test(homeBody))
       throw new Error(`admin home missing stats`);
-    console.log(`  ✓ admin GET /admin → 200 with stats`);
+    // The dashboard is one admin_platform_analytics() call feeding a page of
+    // charts; if the RPC errors the page still renders its header, so assert
+    // on panels that only exist when the payload arrived.
+    for (const panel of [
+      "Signups per week",
+      "Onboarding",
+      "Attendance by month",
+      "Class standing",
+    ]) {
+      if (!homeBody.includes(panel))
+        throw new Error(`admin home missing the "${panel}" panel`);
+    }
+    console.log(`  ✓ admin GET /admin → 200 with the analytics dashboard`);
 
     // 3. Members page shows Mabel.
     const members = await fetch("http://localhost:3000/admin/members", {
