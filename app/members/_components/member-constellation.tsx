@@ -316,13 +316,13 @@ export function MemberConstellation({
             x: panTarget.current.x + velocity.current.x,
             y: panTarget.current.y + velocity.current.y,
           });
-          velocity.current.x *= 0.93;
-          velocity.current.y *= 0.93;
+          velocity.current.x *= 0.95;
+          velocity.current.y *= 0.95;
         } else {
           velocity.current = { x: 0, y: 0 };
         }
       }
-      const ease = dragging.current ? 0.65 : 0.18;
+      const ease = dragging.current ? 0.35 : 0.12;
       pan.current.x += (panTarget.current.x - pan.current.x) * ease;
       pan.current.y += (panTarget.current.y - pan.current.y) * ease;
       paint();
@@ -411,7 +411,7 @@ export function MemberConstellation({
       e.currentTarget.setPointerCapture(e.pointerId);
     }
     const dt = Math.max(1, e.timeStamp - lastPoint.current.t);
-    velocity.current = { x: (dx / dt) * 14, y: (dy / dt) * 14 };
+    velocity.current = { x: (dx / dt) * 8, y: (dy / dt) * 8 };
     lastPoint.current = { x: e.clientX, y: e.clientY, t: e.timeStamp };
     panTarget.current = clampPan({
       x: panTarget.current.x + dx,
