@@ -326,6 +326,7 @@ export default async function MemberProfilePage({
               slug: ev.event_slug,
               title: ev.event_title,
               starts_at: ev.starts_at,
+              ends_at: ev.ends_at,
             }))}
             coverUrls={attendedCoverUrls}
           />

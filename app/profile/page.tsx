@@ -106,10 +106,10 @@ export default async function DashboardHome() {
     env.FEATURE_EVENTS
       ? supabase
           .from("self_event_history")
-          .select("event_id, slug, title, starts_at, cover_image_path")
+          .select("event_id, slug, title, starts_at, ends_at, location_text, cover_image_path")
           .eq("attended", true)
           .order("starts_at", { ascending: false })
-          .limit(6)
+          .limit(20)
       : Promise.resolve({ data: null }),
     env.FEATURE_EVENTS
       ? supabase
@@ -394,6 +394,8 @@ export default async function DashboardHome() {
 
       <ProfileCompletionBand completion={completion} />
 
+      {checkinCode ? <MyCheckinQr code={checkinCode} /> : null}
+
       {/* Full-bleed rather than in the left column: the cover-forward cards
           need the width to stay legible at three across. */}
       {env.FEATURE_EVENTS ? (
@@ -411,14 +413,23 @@ export default async function DashboardHome() {
             Events attended
           </h2>
           <AttendedEvents
-            events={(attendedList as Array<{ event_id: string; slug: string; title: string; starts_at: string }>).map(
-              (r) => ({
-                event_id: r.event_id,
-                slug: r.slug,
-                title: r.title,
-                starts_at: r.starts_at,
-              })
-            )}
+            events={(
+              attendedList as Array<{
+                event_id: string;
+                slug: string;
+                title: string;
+                starts_at: string;
+                ends_at: string;
+                location_text: string | null;
+              }>
+            ).map((r) => ({
+              event_id: r.event_id,
+              slug: r.slug,
+              title: r.title,
+              starts_at: r.starts_at,
+              ends_at: r.ends_at,
+              location_text: r.location_text,
+            }))}
             coverUrls={attendedCoverUrls}
           />
         </section>
@@ -476,8 +487,6 @@ export default async function DashboardHome() {
           )}
           </div>
       </div>
-
-      {checkinCode ? <MyCheckinQr code={checkinCode} /> : null}
     </div>
   );
 }
