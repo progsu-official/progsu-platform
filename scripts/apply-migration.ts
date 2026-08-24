@@ -51,8 +51,21 @@ async function main() {
 
     for (const file of files) {
       process.stdout.write(`  APPLY ${file} ... `);
+      const body = readFileSync(file, "utf8");
+      // supabase_migrations.schema_migrations is the CLI's applied-ledger. A
+      // file applied here but missing from it looks unapplied to any future
+      // `supabase db push`, which would replay it — survivable for our
+      // create-or-replace migrations, fatal for one with an `alter table add
+      // column`. Stamped in the same transaction as the DDL.
+      const { version, name } = parseName(file);
       try {
-        await sql.begin((tx) => tx.unsafe(readFileSync(file, "utf8")));
+        await sql.begin(async (tx) => {
+          await tx.unsafe(body);
+          await tx`
+            insert into supabase_migrations.schema_migrations (version, name, statements)
+            values (${version}, ${name}, ${sql.array([body])})
+            on conflict (version) do nothing`;
+        });
         console.log("ok (committed)");
       } catch (e) {
         console.log("FAILED");
@@ -65,6 +78,14 @@ async function main() {
 }
 
 class Rollback extends Error {}
+
+// supabase/migrations/20260824100000_some_name.sql -> 20260824100000 + some_name
+function parseName(file: string): { version: string; name: string } {
+  const base = file.split("/").pop()!.replace(/\.sql$/, "");
+  const m = /^(\d{14})_(.+)$/.exec(base);
+  if (!m) throw new Error(`migration filename must be YYYYMMDDHHMMSS_name.sql: ${file}`);
+  return { version: m[1], name: m[2] };
+}
 
 main().catch((e) => {
   console.error("\n" + (e?.message ?? e));
