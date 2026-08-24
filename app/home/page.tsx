@@ -1,20 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, Globe, MapPin, Sparkles } from "lucide-react";
+import { ArrowUpRight, Globe, Sparkles } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import { resolveCoverUrl } from "@/lib/events/cover-url";
 
-import { joinHosts, type HostRef } from "../events/_components/event-card";
-import { EVENT_TIME_ZONE, zonedDayStartUtcMs } from "../events/_components/event-date";
+import { CountdownTimer } from "./countdown-timer";
 
 // Visitor-facing hub: works signed-in or signed-out (layout handles both).
-// "Up next" is a live event preview off the same RPC the public events list
-// uses. The grid below it is initiatives, not internal navigation — Events
+// The grid below the header is initiatives, not internal navigation — Events
 // and Members already have their own nav items, so they don't get a card
 // here too.
 export default async function HomePage() {
-  const nextEvent = await loadNextEvent();
+  const pinnedEvent = await loadPinnedEvent();
 
   return (
     <div className="space-y-8 py-8">
@@ -24,6 +21,10 @@ export default async function HomePage() {
           What Progsu is doing right now
         </p>
       </header>
+
+      {pinnedEvent ? (
+        <CountdownTimer startsAt={pinnedEvent.starts_at} label={pinnedEvent.title} />
+      ) : null}
 
       <section className="space-y-6">
         <h2
@@ -45,15 +46,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {nextEvent ? (
-        <section className={`space-y-3 ${STAGGER} delay-[290ms]`}>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Coming up
-          </h2>
-          <NextEventHero event={nextEvent} />
-        </section>
-      ) : null}
     </div>
   );
 }
@@ -66,131 +58,18 @@ export default async function HomePage() {
 const STAGGER =
   "animate-in fade-in-0 slide-in-from-bottom-2 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] fill-mode-both motion-reduce:animate-none";
 
-type NextEvent = {
-  slug: string;
-  title: string;
-  starts_at: string;
-  ends_at: string;
-  location_text: string | null;
-  hosts: HostRef[] | null;
-  coverUrl: string | null;
-};
-
-const heroMonthFormatter = new Intl.DateTimeFormat(undefined, {
-  timeZone: EVENT_TIME_ZONE,
-  month: "short",
-});
-const heroDayFormatter = new Intl.DateTimeFormat(undefined, {
-  timeZone: EVENT_TIME_ZONE,
-  day: "numeric",
-});
-const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
-  timeZone: EVENT_TIME_ZONE,
-  weekday: "short",
-});
-
-// "in 3 days" / "this weekend" / "tomorrow" / "today", zone-anchored via
-// zonedDayStartUtcMs so this can't drift a day off from the big date block
-// sitting right next to it.
-function describeCountdown(startsAt: string, now: Date): string {
-  const start = new Date(startsAt);
-  const diffDays = Math.round(
-    (zonedDayStartUtcMs(start) - zonedDayStartUtcMs(now)) / 86_400_000
-  );
-  if (diffDays <= 0) return "today";
-  if (diffDays === 1) return "tomorrow";
-  if (diffDays <= 6) {
-    const weekday = weekdayFormatter.format(start);
-    if (weekday === "Sat" || weekday === "Sun") return "this weekend";
-  }
-  return `in ${diffDays} days`;
-}
-
-// The one section with real, live data — sized and typeset to visually lead
-// the page instead of reading as the same weight as the marketing tiles
-// below it. Same composition as the initiative cards below (image block,
-// then a content panel), just a bigger, more confident sibling of them.
-function NextEventHero({ event }: { event: NextEvent }) {
-  const start = new Date(event.starts_at);
-  const hosts = joinHosts(event.hosts);
-  return (
-    <InitiativeCard href={`/events/${event.slug}`}>
-      <div className="relative min-h-[100px] overflow-hidden bg-gradient-to-br from-muted to-primary/20 sm:min-h-[140px]">
-        {event.coverUrl ? (
-          // Plain img, not next/image: Supabase signed cover URLs are
-          // per-request-unique and the storage host isn't configured under
-          // images.remotePatterns, same reasoning as EventCard's cover tile.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={event.coverUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <CalendarDays
-              size={40}
-              strokeWidth={1.5}
-              className="text-muted-foreground/60"
-              aria-hidden
-            />
-          </div>
-        )}
-        <div className="absolute left-3 top-3 flex flex-col items-center rounded-xl border border-border/40 bg-background/85 px-3 py-1.5 leading-none backdrop-blur-md sm:left-4 sm:top-4">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {heroMonthFormatter.format(start)}
-          </span>
-          <span className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            {heroDayFormatter.format(start)}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-col gap-1.5 p-3 sm:p-4">
-        <CardBadge>
-          <CalendarDays size={11} strokeWidth={2} />
-          {describeCountdown(event.starts_at, new Date())}
-        </CardBadge>
-        <p className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
-          {event.title}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Progsu&apos;s next event, RSVP to save your spot.
-        </p>
-        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {hosts ? <span>By {hosts}</span> : null}
-          {event.location_text ? (
-            <span className="flex items-center gap-1.5">
-              <MapPin size={14} strokeWidth={1.75} aria-hidden className="shrink-0" />
-              {event.location_text}
-            </span>
-          ) : null}
-        </p>
-      </div>
-    </InitiativeCard>
-  );
-}
-
 // Anon-safe: same public_upcoming_events() RPC the signed-out /events list
-// uses (see app/events/page.tsx), so this stays correct without hardcoding
-// a slug — whatever's soonest shows up here.
-async function loadNextEvent() {
+// uses, filtered to whichever event is pinned (Hacklanta right now).
+async function loadPinnedEvent() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("public_upcoming_events", {
-    p_limit: 1,
+    p_limit: 50,
   });
-  if (error || !data || data.length === 0) return null;
-
-  const row = data[0] as {
-    slug: string;
-    title: string;
-    starts_at: string;
-    ends_at: string;
-    location_text: string | null;
-    cover_image_path: string | null;
-    hosts: HostRef[] | null;
-  };
-  const coverUrl = await resolveCoverUrl(supabase, row.cover_image_path);
-  return { ...row, coverUrl };
+  if (error || !data) return null;
+  const pinned = (
+    data as Array<{ title: string; starts_at: string; pinned: boolean }>
+  ).find((r) => r.pinned);
+  return pinned ?? null;
 }
 
 // Shared card shell so all three initiative tiles share the same glass/hover

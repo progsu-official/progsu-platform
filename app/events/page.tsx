@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowUpRight, CalendarDays, CalendarPlus, History, Sparkles } from "lucide-react";
+import { CalendarDays, CalendarPlus, History, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -662,7 +662,7 @@ function PinnedEventHero({ item }: { item: TimelineItem }) {
   return (
     <Link
       href={item.href}
-      className="group flex flex-col overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-center sm:gap-6 sm:p-6"
+      className="group flex flex-col overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-6 sm:p-6"
     >
       <div className="relative h-36 w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-muted to-primary/30 sm:h-28 sm:w-40">
         {item.coverUrl ? (
@@ -675,19 +675,15 @@ function PinnedEventHero({ item }: { item: TimelineItem }) {
         )}
       </div>
       <div className="mt-4 min-w-0 flex-1 space-y-1.5 sm:mt-0">
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-semibold uppercase leading-none tracking-wide text-primary">
-          <Sparkles size={11} strokeWidth={2} aria-hidden />
-          Featured
-        </span>
         <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
           {item.title}
         </h2>
         <p className="text-sm text-muted-foreground">{dateLabel}</p>
         {item.hosts ? <p className="text-sm text-muted-foreground">By {item.hosts}</p> : null}
       </div>
-      <span className="mt-4 inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform duration-300 group-hover:translate-x-0.5 sm:mt-0 sm:self-center">
-        View event
-        <ArrowUpRight size={16} strokeWidth={2} aria-hidden />
+      <span className="mt-4 inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-primary/15 px-3.5 py-1.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary sm:mt-0">
+        <Sparkles size={14} strokeWidth={2} aria-hidden />
+        Featured
       </span>
     </Link>
   );
