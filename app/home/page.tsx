@@ -155,9 +155,10 @@ function HacklantaCard() {
         </div>
         <p className="text-sm text-muted-foreground">
           Progsu&apos;s biggest event of the year, a weekend hackathon where
-          you build, ship, and pitch in front of real sponsors. Team
-          formation and sponsor challenges get announced closer to the date,
-          so check back.
+          you build, ship, and pitch in front of real sponsors.
+        </p>
+        <p className="text-sm font-semibold text-amber-500">
+          RSVPs open — slots are limited!
         </p>
         <CardVisitLink label="Visit hacklanta.dev" />
       </div>
