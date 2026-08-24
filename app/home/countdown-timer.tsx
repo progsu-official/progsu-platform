@@ -52,7 +52,7 @@ export function CountdownTimer({
         </p>
         <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-500">
           <Zap size={12} strokeWidth={2.5} aria-hidden />
-          Slots are limited, sign up now!
+          slots are limited, sign up now!
         </p>
       </div>
       <div className="flex items-baseline gap-2.5 sm:gap-5">
