@@ -25,35 +25,35 @@ export default async function HomePage() {
         </p>
       </header>
 
+      <section className="space-y-6">
+        <h2
+          className={`text-3xl font-bold tracking-tight text-foreground sm:text-5xl ${STAGGER} delay-0`}
+        >
+          More from Progsu
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className={`sm:col-span-2 ${STAGGER} delay-[90ms]`}>
+            <HacklantaCard />
+          </div>
+          <div className="flex flex-col gap-4">
+            <div className={`${STAGGER} delay-[170ms]`}>
+              <WikiCard />
+            </div>
+            <div className={`${STAGGER} delay-[230ms]`}>
+              <ProgsuSiteCard />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {nextEvent ? (
-        <section className={`space-y-3 ${STAGGER} delay-0`}>
+        <section className={`space-y-3 ${STAGGER} delay-[290ms]`}>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Coming up
           </h2>
           <NextEventHero event={nextEvent} />
         </section>
       ) : null}
-
-      <section className="space-y-6">
-        <h2
-          className={`text-3xl font-bold tracking-tight text-foreground sm:text-5xl ${STAGGER} delay-[90ms]`}
-        >
-          More from Progsu
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className={`sm:col-span-2 ${STAGGER} delay-[170ms]`}>
-            <HacklantaCard />
-          </div>
-          <div className="flex flex-col gap-4">
-            <div className={`${STAGGER} delay-[230ms]`}>
-              <WikiCard />
-            </div>
-            <div className={`${STAGGER} delay-[290ms]`}>
-              <ProgsuSiteCard />
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
@@ -115,7 +115,7 @@ function NextEventHero({ event }: { event: NextEvent }) {
   const hosts = joinHosts(event.hosts);
   return (
     <InitiativeCard href={`/events/${event.slug}`}>
-      <div className="relative min-h-[140px] overflow-hidden bg-gradient-to-br from-muted to-primary/20 sm:min-h-[210px]">
+      <div className="relative min-h-[100px] overflow-hidden bg-gradient-to-br from-muted to-primary/20 sm:min-h-[140px]">
         {event.coverUrl ? (
           // Plain img, not next/image: Supabase signed cover URLs are
           // per-request-unique and the storage host isn't configured under
@@ -145,12 +145,12 @@ function NextEventHero({ event }: { event: NextEvent }) {
           </span>
         </div>
       </div>
-      <div className="flex flex-col gap-2 p-4 sm:p-5">
+      <div className="flex flex-col gap-1.5 p-3 sm:p-4">
         <CardBadge>
           <CalendarDays size={11} strokeWidth={2} />
           {describeCountdown(event.starts_at, new Date())}
         </CardBadge>
-        <p className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+        <p className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
           {event.title}
         </p>
         <p className="text-sm text-muted-foreground">

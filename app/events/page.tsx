@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, CalendarPlus, History } from "lucide-react";
+import { ArrowUpRight, CalendarDays, CalendarPlus, History, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
@@ -14,6 +14,7 @@ import { onboardingPathFor } from "@/lib/auth/onboarding";
 import { EventCard, joinHosts } from "./_components/event-card";
 import {
   EVENT_TIME_ZONE,
+  formatTimeRange,
   zonedDayKey,
   zonedDayStartUtcMs,
 } from "./_components/event-date";
@@ -90,6 +91,7 @@ type UpcomingRow = {
   // When set, the card links straight here (e.g. hacklanta.dev) instead of
   // the internal /events/[slug] page.
   external_url: string | null;
+  pinned: boolean;
 };
 
 type HistoryRow = {
@@ -243,6 +245,7 @@ async function UpcomingTab({
       waitlisted_count: (r.waitlisted_count as number | null) ?? 0,
       hosts: (r.hosts as HostRef[] | null) ?? [],
       external_url: (r.external_url as string | null) ?? null,
+      pinned: !!r.pinned,
     })
   );
   const coverUrls = await resolveCoverUrls(
@@ -270,6 +273,7 @@ async function UpcomingTab({
         startsAt: ev.starts_at,
         endsAt: ev.ends_at,
         location: ev.location_text,
+        pinned: ev.pinned,
         coverUrl: coverUrls[i] ?? null,
         footer: <CapacityLine ev={ev} />,
       }))}
@@ -581,6 +585,7 @@ type TimelineItem = {
   endsAt: string;
   location: string | null;
   cancelled?: boolean;
+  pinned?: boolean;
   coverUrl: string | null;
   footer?: React.ReactNode;
 };
@@ -616,10 +621,15 @@ function dayLabels(day: Date, now: Date): [string, string] {
 
 // Groups items by calendar day (preserving incoming order) and renders the
 // Luma-style rail: day labels on the left, dotted spine, cards on the right.
+// Pinned items skip the rail entirely — they're not "next in line", they're
+// promoted, so they render as their own hero(es) above it instead of a
+// ribbon bolted onto a regular row (see 2026-08-23 design pass).
 function EventTimeline({ items }: { items: TimelineItem[] }) {
+  const pinnedItems = items.filter((item) => item.pinned);
+  const restItems = items.filter((item) => !item.pinned);
   const now = new Date();
   const groups: Array<{ dayKey: string; day: Date; items: TimelineItem[] }> = [];
-  for (const item of items) {
+  for (const item of restItems) {
     const day = new Date(item.startsAt);
     const dayKey = zonedDayKey(day);
     const last = groups[groups.length - 1];
@@ -630,6 +640,66 @@ function EventTimeline({ items }: { items: TimelineItem[] }) {
     }
   }
 
+  return (
+    <div className="space-y-8">
+      {pinnedItems.length > 0 ? (
+        <div className="space-y-4">
+          {pinnedItems.map((item) => (
+            <PinnedEventHero key={item.key} item={item} />
+          ))}
+        </div>
+      ) : null}
+      {groups.length > 0 ? <EventDayRail groups={groups} now={now} /> : null}
+    </div>
+  );
+}
+
+// Featured promo card: bigger cover, bold CTA, its own visual language
+// (primary-tinted surface) so it reads as "we're pushing this" rather than
+// just another row in the day list.
+function PinnedEventHero({ item }: { item: TimelineItem }) {
+  const dateLabel = `${monthDayFormatter.format(new Date(item.startsAt))} · ${formatTimeRange(item.startsAt, item.endsAt)}`;
+  return (
+    <Link
+      href={item.href}
+      className="group flex flex-col overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-center sm:gap-6 sm:p-6"
+    >
+      <div className="relative h-36 w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-muted to-primary/30 sm:h-28 sm:w-40">
+        {item.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <CalendarDays size={26} strokeWidth={1.5} className="text-muted-foreground/60" aria-hidden />
+          </div>
+        )}
+      </div>
+      <div className="mt-4 min-w-0 flex-1 space-y-1.5 sm:mt-0">
+        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-semibold uppercase leading-none tracking-wide text-primary">
+          <Sparkles size={11} strokeWidth={2} aria-hidden />
+          Featured
+        </span>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
+          {item.title}
+        </h2>
+        <p className="text-sm text-muted-foreground">{dateLabel}</p>
+        {item.hosts ? <p className="text-sm text-muted-foreground">By {item.hosts}</p> : null}
+      </div>
+      <span className="mt-4 inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform duration-300 group-hover:translate-x-0.5 sm:mt-0 sm:self-center">
+        View event
+        <ArrowUpRight size={16} strokeWidth={2} aria-hidden />
+      </span>
+    </Link>
+  );
+}
+
+function EventDayRail({
+  groups,
+  now,
+}: {
+  groups: Array<{ dayKey: string; day: Date; items: TimelineItem[] }>;
+  now: Date;
+}) {
   return (
     <section className="relative">
       <div
