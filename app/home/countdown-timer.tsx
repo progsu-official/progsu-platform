@@ -67,6 +67,9 @@ export function CountdownTimer({
           </div>
         ))}
       </div>
+      <p className="text-sm font-semibold text-amber-500">
+        Slots are limited, sign up now!
+      </p>
     </div>
   );
 }

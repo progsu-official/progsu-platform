@@ -82,7 +82,7 @@ export default async function EventsLayout({
           {showResumeNudge ? <ResumeNudge /> : null}
         </div>
       ) : null}
-      <main className="mx-auto max-w-5xl px-4 pb-8">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-8">{children}</main>
       <SiteFooter />
     </ThemeShell>
   );

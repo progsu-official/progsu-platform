@@ -60,7 +60,7 @@ export function ThemeShell({
             translucent card over a flat background just reads as a lighter
             card. */}
         <div aria-hidden className="ambient-field" />
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10 flex min-h-screen flex-col">{children}</div>
       </div>
     </ThemeContext.Provider>
   );
