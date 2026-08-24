@@ -679,7 +679,7 @@ function PinnedEventHero({ item }: { item: TimelineItem }) {
         )}
       </div>
       <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
             {item.title}
           </h2>

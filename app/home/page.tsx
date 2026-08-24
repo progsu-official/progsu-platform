@@ -137,8 +137,8 @@ function HacklantaCard() {
         />
       </div>
       <div className="flex flex-col gap-2 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <p className="min-w-0 flex-1 text-xl font-bold tracking-tight text-foreground">Hacklanta II</p>
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xl font-bold tracking-tight text-foreground">Hacklanta II</p>
           {/* One segmented pill instead of a badge + a loose date tag side by
               side — the divider gives them a shared edge instead of floating
               independently at slightly different heights. */}
