@@ -59,7 +59,7 @@ export function CountdownTimer({
         {units.map((u, i) => (
           <div key={u.unit} className="flex items-baseline gap-2.5 sm:gap-5">
             <div className="flex flex-col items-center">
-              <span className="text-4xl font-black tabular-nums tracking-tight text-foreground sm:text-6xl">
+              <span className="text-5xl font-black tabular-nums tracking-tight text-foreground dark:text-white sm:text-7xl">
                 {String(u.value).padStart(2, "0")}
               </span>
               <span className="text-[10px] font-medium tracking-wide text-muted-foreground">
