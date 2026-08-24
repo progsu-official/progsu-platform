@@ -111,6 +111,11 @@ const eventBaseShape = {
   send_rsvp_email: z.coerce.boolean().optional().default(true),
   send_reminder_email: z.coerce.boolean().optional().default(true),
   cover_image_path: optionalText(500),
+  // When set, /events cards link straight out here instead of the internal
+  // event page — for flagship events with their own site (e.g. Hacklanta).
+  external_url: optionalUrl,
+  // Sorts first in the Upcoming feed regardless of starts_at.
+  pinned: z.coerce.boolean().optional().default(false),
   hosts: z.array(hostSchema).default([]),
 } as const;
 
@@ -142,6 +147,8 @@ export const updateEventSchema = z
     send_rsvp_email: z.coerce.boolean().optional(),
     send_reminder_email: z.coerce.boolean().optional(),
     cover_image_path: eventBaseShape.cover_image_path,
+    external_url: eventBaseShape.external_url,
+    pinned: z.coerce.boolean().optional(),
     hosts: z.array(hostSchema).optional(),
   })
   .strict()

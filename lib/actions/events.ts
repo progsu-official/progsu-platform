@@ -144,6 +144,8 @@ export async function createEvent(
     send_rsvp_email: data.send_rsvp_email,
     send_reminder_email: data.send_reminder_email,
     cover_image_path: data.cover_image_path,
+    external_url: data.external_url,
+    pinned: data.pinned,
     hosts: data.hosts.map((h, i) => ({
       display_name: h.display_name,
       profile_id: h.profile_id,

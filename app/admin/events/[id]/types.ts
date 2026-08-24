@@ -26,6 +26,8 @@ export type EventRecord = {
   capacity: number | null;
   waitlist_enabled: boolean;
   is_sensitive: boolean;
+  external_url: string | null;
+  pinned: boolean;
   cover_image_path: string | null;
   send_rsvp_email: boolean;
   send_reminder_email: boolean;

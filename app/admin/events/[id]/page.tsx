@@ -68,7 +68,7 @@ export default async function AdminEventDetailPage({
   const { data: event } = await admin
     .from("events")
     .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source"
+      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned"
     )
     .eq("id", id)
     .maybeSingle();
@@ -105,6 +105,8 @@ export default async function AdminEventDetailPage({
     created_at: event.created_at as string,
     updated_at: event.updated_at as string,
     import_source: (event.import_source as string | null) ?? null,
+    external_url: (event.external_url as string | null) ?? null,
+    pinned: !!event.pinned,
     hosts: (hosts ?? []).map((h) => ({
       display_name: h.display_name as string,
       profile_id: (h.profile_id as string | null) ?? null,
