@@ -106,7 +106,7 @@ function InitiativeCard({
 // photo, not just on glass.
 function CardBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase leading-none tracking-wide text-primary backdrop-blur-sm dark:border-primary/25 dark:bg-primary/15">
+    <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold leading-none tracking-wide text-primary backdrop-blur-sm dark:border-primary/25 dark:bg-primary/15">
       {children}
     </span>
   );
@@ -143,7 +143,7 @@ function HacklantaCard() {
               side — the divider gives them a shared edge instead of floating
               independently at slightly different heights. */}
           <div className="inline-flex w-fit shrink-0 items-center overflow-hidden rounded-full border border-primary/20 bg-primary/10 backdrop-blur-sm dark:border-primary/25 dark:bg-primary/15">
-            <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[10px] font-semibold uppercase leading-none tracking-wide text-primary">
+            <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[10px] font-semibold leading-none tracking-wide text-primary">
               <Sparkles size={12} strokeWidth={2} />
               Flagship hackathon
             </span>

@@ -47,7 +47,7 @@ export function CountdownTimer({
   return (
     <div className="flex flex-col items-center gap-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-6 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground">
           Countdown to {label}
         </p>
         <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-500">
@@ -59,10 +59,10 @@ export function CountdownTimer({
         {units.map((u, i) => (
           <div key={u.unit} className="flex items-baseline gap-2.5 sm:gap-5">
             <div className="flex flex-col items-center">
-              <span className="font-mono text-4xl font-black tabular-nums tracking-tight text-foreground sm:text-6xl">
+              <span className="text-4xl font-black tabular-nums tracking-tight text-foreground sm:text-6xl">
                 {String(u.value).padStart(2, "0")}
               </span>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              <span className="text-[10px] font-medium tracking-wide text-muted-foreground">
                 {u.unit}
               </span>
             </div>

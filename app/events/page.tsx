@@ -683,7 +683,7 @@ function PinnedEventHero({ item }: { item: TimelineItem }) {
           <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
             {item.title}
           </h2>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-bold uppercase leading-none tracking-wide text-primary-foreground">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-bold leading-none tracking-wide text-primary-foreground">
             <Sparkles size={14} strokeWidth={2} aria-hidden />
             Featured
           </span>
