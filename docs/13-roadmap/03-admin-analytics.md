@@ -1,9 +1,64 @@
 # 03 — Admin event analytics
 
-Status: Planned. Detailed plan ready; awaits engineer attention.
+Status: **Partially shipped.** §1 (per-event tab) shipped as
+`admin_event_analytics_for()` + `app/admin/events/[id]/analytics-tab.tsx`. §2
+(cross-event rollup) shipped in a different shape than planned — see "What
+actually shipped" below. What remains is the §6.1 follow-up backlog.
 Priority: Nice-to-have. Does not block R3 GA.
 Created: 2026-04-22
-Target surface: `/admin/events/[id]?tab=analytics` and a cross-event rollup at `/admin/events/analytics`.
+Last updated: 2026-08-24
+Target surface: `/admin/events/[id]?tab=analytics`, and — instead of the
+planned `/admin/events/analytics` — the `/admin` Overview page.
+
+## What actually shipped (2026-08-24)
+
+The cross-event rollup landed on **`/admin` Overview** rather than a separate
+`/admin/events/analytics` page, and it is a *platform* dashboard rather than
+an events-only one: the question officers asked was "how is the platform
+doing", and member growth is half that answer.
+
+- `admin_platform_analytics(p_weeks, p_months)` — migrations `20260824110000`
+  and `20260824120000`. One jsonb blob: member counts, the
+  signup → verify → consent → onboarded funnel, a dense weekly signup series,
+  event volume and attendance by month, best-attended events, and roster
+  composition (class standing, interests, schools).
+- `app/admin/overview-dashboard.tsx` renders it; `app/admin/page.tsx` fetches
+  and hands off, the same split this doc's §1 established for the per-event
+  tab.
+- `app/admin/_components/charts.tsx` — `ColumnChart`, `BarList`, `Funnel`,
+  `Panel`. No chart library, per §5. See DESIGN.md §10 for the rules they
+  follow.
+- `scripts/smoke-admin-platform-analytics.ts` covers the admin gate, the
+  payload shape, series density and ordering, argument clamping, and the
+  member/consent/archive deltas.
+
+Deliberate divergences from the plan below:
+
+- **No audit row.** §4 concluded analytics is safe to ship without a privacy
+  change *because* every number is an aggregate; the audit row was for
+  consistency with `admin_event_roster_for()`, which exposes per-member rows.
+  Overview is the admin landing page, so an audit row per call would log one
+  row per admin navigation and say only "someone looked at a member count".
+  Per-event analytics keeps its audit row; this one does not.
+- **No time-window tiles (30/90/365).** The weekly and monthly series carry
+  the same information continuously and read better than three static cards.
+  `new_7d` / `new_30d` / `new_90d` are in the payload if tiles are ever
+  wanted.
+- **No feature flag.** §6 pre-flight suggested `FEATURE_EVENTS_ANALYTICS`.
+  Overview is admin-only and already existed; flagging the page that admins
+  land on would mean shipping a blank landing page.
+- **`events_ends_at_idx` was already added** by an earlier migration; the
+  dashboard filters on `starts_at`, which `events_status_starts_at_idx`
+  covers.
+
+Still open from §6.1: capacity-reached timestamp, tile drill-downs, a
+materialised summary (the RPC runs ~350 ms of server time at ~200 members and
+~25 events — revisit past ~2,000 members), and the most-active-members
+leaderboard.
+
+---
+
+## Original plan (2026-04-22)
 
 ## 0. Intro — why analytics
 

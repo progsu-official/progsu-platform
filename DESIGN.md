@@ -212,8 +212,16 @@ ambient field behind it.
   the `Georgia` fallback in `tailwind.config.ts` is load-bearing. If you use
   `font-serif` on a new route, load the font on that route.
 
-There is no third family. No monospace as a "technical" costume — mono is for
-code and identifiers only.
+There is no third family **in the app's own voice**. No monospace as a
+"technical" costume — mono is for code and identifiers only.
+
+The one licensed exception is a **branded event poster** (§6). A pinned event
+with a campaign of its own paints that campaign's typeface inside its card —
+Hacklanta '26 carries Teko, loaded in `app/events/_components/pinned-hero.tsx`
+with `preload: false` so the file only ships on a page that renders one. The
+face is scoped to a CSS variable used inside that component and nowhere else.
+This is not a licence to add a fourth family to the app; it is the app hosting
+someone else's artwork.
 
 ### Scale
 
@@ -264,13 +272,36 @@ if JS is slow the user sees nothing.
 
 ## 6 · Surface families
 
-Almost all UI should be one of these three. A fourth is a smell.
+Almost all UI should be Card, Grouped rows, or Popover. Invent a fifth and
+it is a smell. Branded poster is listed here because it shipped, not because
+the shape generalises — it exists to host one pinned campaign per feed.
 
 ### Card
 
 `rounded-2xl glass p-5`. Optional `text-xs font-semibold uppercase
 tracking-wide text-muted-foreground` eyebrow heading. Used by Education,
 Resume, the completion band, event cards.
+
+### Branded poster
+
+The pinned event at the top of `/events`. Full-bleed campaign artwork, edge to
+edge, no thumbnail-beside-text row — a pinned event is not "next in line", it
+is the thing being pushed, so it skips the day rail entirely.
+
+Two variants, both in `app/events/_components/pinned-hero.tsx`:
+
+- **Branded** — the event's slug has an entry in `BRAND_KITS`, and the card
+  paints that campaign's own background, wordmark, stickers, typeface and
+  palette. This is the only place raw hex colors are correct on an app
+  surface: the poster is fixed dark in **both** app themes by design, so
+  theme tokens would actively break it. Keep the values traceable to the
+  campaign's design kit and keep them in the constants at the top of the file.
+- **Cover** — everything else. The event's own cover image full-bleed under an
+  ink scrim, with the app's normal type voice. No kit needed, so a newly
+  pinned event looks deliberate on day one.
+
+Adding a campaign is one `BRAND_KITS` entry plus its assets under
+`public/<campaign>/`. It is not a new component and it is not a migration.
 
 ### Grouped rows
 
@@ -335,7 +366,40 @@ Non-negotiable, checked on the built result rather than intended:
 
 ---
 
-## 10 · Anti-patterns
+## 10 · Charts
+
+Admin is the only place with charts, and there is **no chart library** —
+`docs/13-roadmap/03-admin-analytics.md` §5 settled that: every shape this
+product needs is a bar, and recharts/nivo/d3 is 40–150 kB of JS to draw a
+rectangle. `app/admin/_components/charts.tsx` holds all three primitives
+(`ColumnChart`, `BarList`, `Funnel`) plus the `Panel` shell. They are server
+components made of divs, so they cost nothing on the client and appear in the
+first paint.
+
+The rules that keep them honest:
+
+- **One hue.** Bars are `bg-primary`, varied by opacity when a list needs a
+  top-to-bottom read. A categorical rainbow implies a meaning the categories
+  do not have.
+- **Every bar sits in a track.** `bg-muted/40` behind the fill, always. Without
+  it an empty bucket disappears and the series reads as a shape that never
+  happened — a signup chart with the quiet weeks dropped shows steady growth
+  where there were two spikes and a flat summer.
+- **Dense series come from the database.** `generate_series` in the RPC, not
+  a gap-filling loop in the page. The query owns the shape of time.
+- **Numbers first, share second.** `209` then `99%`, in both `BarList` and
+  `Funnel`, and always `tabular-nums`.
+- **One `role="img"` per chart** with a label that summarises the whole series
+  ("Signups per week over 26 weeks: 231 total, peaking at 127 the week of Apr
+  27"). Individual bars are `aria-hidden` with a `title` for pointer users —
+  announcing 26 bars one by one is worse than not announcing them.
+- **Axis density is a function of bucket count.** Twelve or fewer buckets label
+  every column; more than that collapses to first / middle / last, because a
+  clipped `Aug …` under a bar is worse than no label.
+
+---
+
+## 11 · Anti-patterns
 
 Fast reference. Each of these has actually shipped here and been corrected.
 
@@ -350,5 +414,5 @@ Fast reference. Each of these has actually shipped here and been corrected.
 | `fixed` overlay inside a `sticky` column | Trapped in the stacking context, siblings paint over it |
 | Reading a ref during render for layout math | Null on first pass; the wrong value sticks until something else re-renders |
 | Selecting a not-yet-migrated column in the main profile query | One missing column blanks the entire surface |
-| Raw Tailwind palette colors | Don't follow the theme |
+| Raw Tailwind palette colors | Don't follow the theme (a branded poster, §6, is the one surface that must not) |
 | A page title at `text-lg` | The screen has no anchor |
