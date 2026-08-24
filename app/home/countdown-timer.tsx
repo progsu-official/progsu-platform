@@ -47,7 +47,7 @@ export function CountdownTimer({
   return (
     <div className="flex flex-col items-center gap-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-6 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground">
+        <p className="text-lg font-bold tracking-tight text-foreground dark:text-white sm:text-xl">
           Countdown to {label}
         </p>
         <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-500">
