@@ -662,32 +662,38 @@ function PinnedEventHero({ item }: { item: TimelineItem }) {
   return (
     <Link
       href={item.href}
-      className="group flex flex-col overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-6 sm:p-6"
+      className="group flex flex-col gap-4 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5 shadow-lg shadow-primary/5 transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:flex-row sm:items-start sm:gap-6 sm:p-6"
     >
-      <div className="relative h-36 w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-muted to-primary/30 sm:h-28 sm:w-40">
+      <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-muted to-primary/30 sm:h-32 sm:w-48">
         {item.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
+          <img
+            src={item.coverUrl}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <CalendarDays size={26} strokeWidth={1.5} className="text-muted-foreground/60" aria-hidden />
+            <CalendarDays size={28} strokeWidth={1.5} className="text-muted-foreground/60" aria-hidden />
           </div>
         )}
       </div>
-      <div className="mt-4 min-w-0 flex-1 space-y-1.5 sm:mt-0">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
-          {item.title}
-        </h2>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
+            {item.title}
+          </h2>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-bold uppercase leading-none tracking-wide text-primary-foreground">
+            <Sparkles size={14} strokeWidth={2} aria-hidden />
+            Featured
+          </span>
+        </div>
         <p className="text-sm text-muted-foreground">{dateLabel}</p>
         {item.hosts ? <p className="text-sm text-muted-foreground">By {item.hosts}</p> : null}
         <p className="text-sm font-semibold text-amber-500">
-          RSVPs open — slots are limited!
+          RSVPs open, slots are limited!
         </p>
       </div>
-      <span className="mt-4 inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-primary/15 px-3.5 py-1.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary sm:mt-0">
-        <Sparkles size={14} strokeWidth={2} aria-hidden />
-        Featured
-      </span>
     </Link>
   );
 }

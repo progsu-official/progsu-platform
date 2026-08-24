@@ -137,8 +137,8 @@ function HacklantaCard() {
         />
       </div>
       <div className="flex flex-col gap-2 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-xl font-bold tracking-tight text-foreground">Hacklanta II</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="min-w-0 flex-1 text-xl font-bold tracking-tight text-foreground">Hacklanta II</p>
           {/* One segmented pill instead of a badge + a loose date tag side by
               side — the divider gives them a shared edge instead of floating
               independently at slightly different heights. */}
@@ -155,10 +155,12 @@ function HacklantaCard() {
         </div>
         <p className="text-sm text-muted-foreground">
           Progsu&apos;s biggest event of the year, a weekend hackathon where
-          you build, ship, and pitch in front of real sponsors.
+          you build, ship, and pitch in front of real sponsors. Past
+          Hacklanta events have led to real internship offers. This is a
+          genuine opportunity, not just a resume line.
         </p>
         <p className="text-sm font-semibold text-amber-500">
-          RSVPs open — slots are limited!
+          RSVPs open, slots are limited!
         </p>
         <CardVisitLink label="Visit hacklanta.dev" />
       </div>
@@ -209,7 +211,7 @@ function ProgsuSiteCard() {
       </div>
       <div className="flex flex-1 flex-col gap-2 p-5">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-base font-medium text-foreground">Progsu</p>
+          <p className="text-base font-medium text-foreground">Progsu Official</p>
           <CardBadge>
             <Globe size={11} strokeWidth={2} />
             Official site

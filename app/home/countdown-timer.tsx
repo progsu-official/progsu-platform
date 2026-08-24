@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Zap } from "lucide-react";
 
 function getRemaining(targetMs: number) {
   const diff = Math.max(0, targetMs - Date.now());
@@ -15,8 +16,8 @@ function getRemaining(targetMs: number) {
 }
 
 // Ticks client-side only (useEffect, not useState's initializer) so the
-// server-rendered markup has no numbers to mismatch against on hydration —
-// a live second-by-second clock, computed on the server, would already be
+// server-rendered markup has no numbers to mismatch against on hydration.
+// A live second-by-second clock computed on the server would already be
 // stale by the time it reaches the browser.
 export function CountdownTimer({
   startsAt,
@@ -44,10 +45,16 @@ export function CountdownTimer({
   ];
 
   return (
-    <div className="flex flex-col items-center gap-3 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-6 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-        Countdown to {label}
-      </p>
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-6 text-center">
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Countdown to {label}
+        </p>
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-500">
+          <Zap size={12} strokeWidth={2.5} aria-hidden />
+          Slots are limited, sign up now!
+        </p>
+      </div>
       <div className="flex items-baseline gap-2.5 sm:gap-5">
         {units.map((u, i) => (
           <div key={u.unit} className="flex items-baseline gap-2.5 sm:gap-5">
@@ -67,9 +74,6 @@ export function CountdownTimer({
           </div>
         ))}
       </div>
-      <p className="text-sm font-semibold text-amber-500">
-        Slots are limited, sign up now!
-      </p>
     </div>
   );
 }
