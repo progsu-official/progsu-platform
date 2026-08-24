@@ -680,6 +680,9 @@ function PinnedEventHero({ item }: { item: TimelineItem }) {
         </h2>
         <p className="text-sm text-muted-foreground">{dateLabel}</p>
         {item.hosts ? <p className="text-sm text-muted-foreground">By {item.hosts}</p> : null}
+        <p className="text-sm font-semibold text-amber-500">
+          RSVPs open — slots are limited!
+        </p>
       </div>
       <span className="mt-4 inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-primary/15 px-3.5 py-1.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary sm:mt-0">
         <Sparkles size={14} strokeWidth={2} aria-hidden />
