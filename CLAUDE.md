@@ -18,6 +18,7 @@ Read these **in this order** when you need context:
 5. `docs/10-r2-member-card-spec.md` and `docs/11-r3-shared-events-spec.md` — detailed specs for the peer-visibility features
 6. `docs/12-events-pilot-runbook.md` — step-by-step Phase A/B/C rollout
 7. `docs/13-roadmap/` — post-R3 planned work
+8. `docs/17-campaign-links.md` — referral/campaign links, and the privacy line they hold
 
 ## Hard rules
 
@@ -41,7 +42,9 @@ These are not negotiable. Breaking them has caused real bugs or created real ris
 
 9. **Service-role clients are server-only.** `createAdminClient()` in `lib/supabase/admin.ts` has a `server-only` import that throws if you import it from a client component. Respect this.
 
-10. **Constant-time compare for secrets.** `CRON_SECRET`, OTP tokens. See `app/api/cron/event-notifications/route.ts` for the pattern.
+10. **`revoke ... from public` does not lock a function down.** Supabase ships `alter default privileges in schema public grant all on functions to anon, authenticated, service_role`, so every new function in `public` arrives with EXECUTE already granted to `anon` and `authenticated` as explicit per-role grants. The PUBLIC pseudo-role and those roles are different grantees — revoking the first leaves the second untouched. A function meant for `service_role` only needs an explicit `revoke all on function ... from anon, authenticated`. This shipped as a real hole in `20260824150000` and was caught by a smoke that asserted the refusal; write that assertion.
+
+11. **Constant-time compare for secrets.** `CRON_SECRET`, OTP tokens. See `app/api/cron/event-notifications/route.ts` for the pattern.
 
 ## Architectural conventions
 

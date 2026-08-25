@@ -1,4 +1,4 @@
-import { pgTable, index, unique, pgPolicy, check, text, boolean, timestamp, uniqueIndex, foreignKey, uuid, integer, bigint, inet, jsonb, bigserial, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, unique, pgPolicy, check, text, boolean, timestamp, foreignKey, uuid, uniqueIndex, integer, bigint, inet, jsonb, bigserial, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const attendanceMethodT = pgEnum("attendance_method_t", ['admin_click', 'self_code', 'qr_token'])
@@ -10,6 +10,7 @@ export const eventNotificationStatusT = pgEnum("event_notification_status_t", ['
 export const eventStatusT = pgEnum("event_status_t", ['draft', 'published', 'cancelled', 'archived'])
 export const eventVisibilityT = pgEnum("event_visibility_t", ['members', 'private_invite'])
 export const interestedRoleT = pgEnum("interested_role_t", ['software_engineering', 'data_science', 'data_engineering', 'machine_learning', 'product_management', 'ui_ux_design', 'devops_sre', 'cybersecurity', 'research', 'consulting', 'quant_finance', 'other'])
+export const referralHitKindT = pgEnum("referral_hit_kind_t", ['click', 'rsvp', 'signup'])
 export const resumeStatusT = pgEnum("resume_status_t", ['pending', 'active', 'deleted'])
 export const rsvpStatusT = pgEnum("rsvp_status_t", ['going', 'waitlisted', 'declined', 'cancelled'])
 export const verificationMethodT = pgEnum("verification_method_t", ['email_otp', 'admin_manual'])
@@ -28,6 +29,31 @@ export const schoolDomains = pgTable("school_domains", {
 	pgPolicy("school_domains_select_auth", { as: "permissive", for: "select", to: ["authenticated"], using: sql`true` }),
 	pgPolicy("school_domains_write_admin", { as: "permissive", for: "all", to: ["authenticated"] }),
 	check("school_domains_school_slug_check", sql`school_slug ~ '^[a-z0-9\-]+$'::text`),
+]);
+
+export const referralLinks = pgTable("referral_links", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	eventId: uuid("event_id").notNull(),
+	slug: text().notNull(),
+	label: text().notNull(),
+	createdBy: uuid("created_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("referral_links_event_idx").using("btree", table.eventId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [profiles.id],
+			name: "referral_links_created_by_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "referral_links_event_id_fkey"
+		}).onDelete("cascade"),
+	unique("referral_links_slug_key").on(table.slug),
+	check("referral_links_label_len", sql`(char_length(TRIM(BOTH FROM label)) >= 1) AND (char_length(TRIM(BOTH FROM label)) <= 80)`),
+	check("referral_links_slug_format", sql`slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'::text`),
 ]);
 
 export const profiles = pgTable("profiles", {
@@ -104,6 +130,23 @@ END`),
 	check("profiles_note_check", sql`(note IS NULL) OR ((length(note) <= 80) AND (note !~ '[\r\n]'::text))`),
 	check("profiles_phone_number_check", sql`(phone_number IS NULL) OR (phone_number ~ '^\+?[0-9\-\(\) ]{7,20}$'::text)`),
 	check("profiles_portfolio_url_check", sql`(portfolio_url IS NULL) OR (portfolio_url ~* '^https?://'::text)`),
+]);
+
+export const referralLinkHits = pgTable("referral_link_hits", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity({ name: "referral_link_hits_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
+	linkId: uuid("link_id").notNull(),
+	kind: referralHitKindT().notNull(),
+	isNewVisitor: boolean("is_new_visitor").default(true).notNull(),
+	occurredAt: timestamp("occurred_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("referral_link_hits_link_kind_idx").using("btree", table.linkId.asc().nullsLast().op("uuid_ops"), table.kind.asc().nullsLast().op("uuid_ops")),
+	index("referral_link_hits_link_time_idx").using("btree", table.linkId.asc().nullsLast().op("uuid_ops"), table.occurredAt.desc().nullsFirst().op("uuid_ops")),
+	foreignKey({
+			columns: [table.linkId],
+			foreignColumns: [referralLinks.id],
+			name: "referral_link_hits_link_id_fkey"
+		}).onDelete("cascade"),
 ]);
 
 export const consentVersions = pgTable("consent_versions", {

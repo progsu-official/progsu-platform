@@ -47,6 +47,12 @@ export const env = {
     process.env.FEATURE_PUBLIC_PROFILE_EVENTS
   ),
 
+  // Campaign links (/r/<slug> + the Links tab on an event). Off closes the
+  // redirect route and hides the tab; existing links stop resolving and send
+  // visitors to /events, which is the correct behaviour for a kill switch on
+  // a surface strangers reach from a printed flyer.
+  FEATURE_REFERRAL_LINKS: parseBool(process.env.FEATURE_REFERRAL_LINKS),
+
   // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,
   // no OTP email is sent, the code is always 000000, and OTP rate limits are
   // skipped. Hard-gated on NODE_ENV like DEV_AUTO_LOGIN so it can never be

@@ -4,6 +4,8 @@ import { ArrowLeft, MapPin, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { env } from "@/lib/env";
+import { listReferralLinks } from "@/lib/actions/referrals";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { EVENT_TIME_ZONE, formatTimeRange } from "@/app/events/_components/event-date";
 import { EventDescription } from "@/app/events/[slug]/_components/event-description";
@@ -14,6 +16,7 @@ import { DetailsTab } from "./details-tab";
 import { GuestsTab } from "./guests-tab";
 import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
+import { LinksTab } from "./links-tab";
 import { TabNav } from "./tab-nav";
 import type { EventRecord, GuestRsvpRow, RosterRow } from "./types";
 
@@ -40,17 +43,26 @@ export const dynamic = "force-dynamic";
 // Access (invite-by-email) and Notifications (email toggles) were folded in
 // here and into the Details composer respectively — see guests-tab.tsx and
 // event-form.tsx.
-type TabKey = "details" | "attendees" | "analytics" | "activity";
+type TabKey = "details" | "attendees" | "analytics" | "links" | "activity";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "details", label: "Details" },
   { key: "attendees", label: "Attendees" },
   { key: "analytics", label: "Analytics" },
+  { key: "links", label: "Links" },
   { key: "activity", label: "Activity" },
 ];
 
+// Flag off hides the tab entirely, matching how the admin nav drops Events
+// when FEATURE_EVENTS is off. resolveTab reads from the same filtered list, so
+// a hand-typed ?tab=links falls back to Details rather than rendering a
+// surface the kill switch is meant to have closed.
+function visibleTabs(): Array<{ key: TabKey; label: string }> {
+  return TABS.filter((t) => t.key !== "links" || env.FEATURE_REFERRAL_LINKS);
+}
+
 function resolveTab(raw: string | undefined): TabKey {
-  return (TABS.find((t) => t.key === raw)?.key ?? "details") as TabKey;
+  return (visibleTabs().find((t) => t.key === raw)?.key ?? "details") as TabKey;
 }
 
 export default async function AdminEventDetailPage({
@@ -317,7 +329,7 @@ export default async function AdminEventDetailPage({
           </div>
         </div>
 
-        <TabNav tabs={TABS} active={tab} eventId={ev.id} />
+        <TabNav tabs={visibleTabs()} active={tab} eventId={ev.id} />
 
         <section className="mt-4">
           {tab === "details" ? (
@@ -325,6 +337,7 @@ export default async function AdminEventDetailPage({
           ) : null}
           {tab === "attendees" ? <GuestsTabServer eventId={ev.id} event={ev} /> : null}
           {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
+          {tab === "links" ? <LinksTabServer eventId={ev.id} /> : null}
           {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
         </section>
       </div>
@@ -475,6 +488,18 @@ async function AnalyticsTabServer({ eventId }: { eventId: string }) {
     );
   }
   return <AnalyticsTab data={data as Record<string, unknown>} />;
+}
+
+async function LinksTabServer({ eventId }: { eventId: string }) {
+  const result = await listReferralLinks(eventId);
+  return (
+    <LinksTab
+      eventId={eventId}
+      links={result.ok ? result.data : []}
+      origin={env.NEXT_PUBLIC_SITE_URL}
+      error={result.ok ? null : result.error.message}
+    />
+  );
 }
 
 async function ActivityTabServer({ eventId }: { eventId: string }) {

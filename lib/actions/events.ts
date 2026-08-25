@@ -15,6 +15,7 @@ import {
   sendEventRsvpConfirmation,
   sendGuestRsvpConfirmation,
 } from "@/lib/email/events";
+import { recordReferralConversion } from "@/lib/events/referral-record";
 import { type ActionResult, err, ok } from "./result";
 import {
   SMS_CONSENT_COPY,
@@ -646,6 +647,15 @@ export async function rsvpToEvent(
   // only when the event has send_rsvp_email = true. Don't await — the user
   // shouldn't wait for SMTP before seeing their RSVP succeed.
   const previousStatus = priorRsvp?.status ?? null;
+
+  // Campaign attribution, on the transition into 'going' rather than on every
+  // save — otherwise a member toggling their answer inflates the campaign that
+  // brought them. Awaited, unlike the email below, because it writes a dedupe
+  // flag back to the cookie and a lost flag double-counts.
+  if (status === "going" && previousStatus !== "going") {
+    await recordReferralConversion("rsvp");
+  }
+
   if (
     status === "going" &&
     previousStatus !== "going" &&
@@ -710,6 +720,13 @@ export async function guestRsvpToEvent(
   // caller can't read `events` (RLS is authenticated-only) and the helper
   // already fetches the row on the service-role client. Repeat submits are
   // deduped by sendEmail's idempotencyKey rather than a prior-status read.
+  // No prior-status read exists on this path (an anon caller cannot read
+  // event_guest_rsvps), so the cookie flag is the only thing stopping a repeat
+  // submit from counting twice.
+  if (status === "going") {
+    await recordReferralConversion("rsvp");
+  }
+
   if (status === "going") {
     void sendGuestRsvpConfirmation({
       eventId: parsed.data.eventId,

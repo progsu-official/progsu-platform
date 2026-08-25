@@ -30,6 +30,9 @@ const PUBLIC_PREFIXES = [
   "/auth/callback",
   "/tickets",
   "/joined",
+  // Campaign short links. Strangers reach these from a printed flyer with no
+  // session; the handler redirects to the event page, which is itself public.
+  "/r",
   // /dev/screens renders every funnel screen from dummy props with no session.
   // Gated on NODE_ENV here as well as in its own layout, so the path does not
   // even exist as a public prefix in a deployment.

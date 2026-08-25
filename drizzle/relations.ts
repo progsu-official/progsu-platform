@@ -1,10 +1,23 @@
 import { relations } from "drizzle-orm/relations";
-import { profiles, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, events, eventNotificationJobs, legacyMembers, profileVisibilitySettings, domainRequests, eventGuestRsvps, historicalEventAttendances, eventHosts, eventInvites, eventGuestAttendances, eventAttendances, eventRsvps } from "./schema";
+import { profiles, referralLinks, events, referralLinkHits, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, eventNotificationJobs, legacyMembers, profileVisibilitySettings, domainRequests, eventGuestRsvps, historicalEventAttendances, eventHosts, eventInvites, eventGuestAttendances, eventAttendances, eventRsvps } from "./schema";
 
 // auth.users relation intentionally omitted — auth schema is filtered out of
 // introspection. FKs to auth.users.id still live in Postgres.
 
+export const referralLinksRelations = relations(referralLinks, ({one, many}) => ({
+	profile: one(profiles, {
+		fields: [referralLinks.createdBy],
+		references: [profiles.id]
+	}),
+	event: one(events, {
+		fields: [referralLinks.eventId],
+		references: [events.id]
+	}),
+	referralLinkHits: many(referralLinkHits),
+}));
+
 export const profilesRelations = relations(profiles, ({many}) => ({
+	referralLinks: many(referralLinks),
 	emailVerificationCodes: many(emailVerificationCodes),
 	resumes: many(resumes),
 	consents: many(consents),
@@ -44,6 +57,35 @@ export const profilesRelations = relations(profiles, ({many}) => ({
 		relationName: "eventAttendances_userId_profiles_id"
 	}),
 	eventRsvps: many(eventRsvps),
+}));
+
+export const eventsRelations = relations(events, ({one, many}) => ({
+	referralLinks: many(referralLinks),
+	eventNotificationJobs: many(eventNotificationJobs),
+	profile_createdBy: one(profiles, {
+		fields: [events.createdBy],
+		references: [profiles.id],
+		relationName: "events_createdBy_profiles_id"
+	}),
+	profile_updatedBy: one(profiles, {
+		fields: [events.updatedBy],
+		references: [profiles.id],
+		relationName: "events_updatedBy_profiles_id"
+	}),
+	eventGuestRsvps: many(eventGuestRsvps),
+	historicalEventAttendances: many(historicalEventAttendances),
+	eventHosts: many(eventHosts),
+	eventInvites: many(eventInvites),
+	eventGuestAttendances: many(eventGuestAttendances),
+	eventAttendances: many(eventAttendances),
+	eventRsvps: many(eventRsvps),
+}));
+
+export const referralLinkHitsRelations = relations(referralLinkHits, ({one}) => ({
+	referralLink: one(referralLinks, {
+		fields: [referralLinkHits.linkId],
+		references: [referralLinks.id]
+	}),
 }));
 
 export const emailVerificationCodesRelations = relations(emailVerificationCodes, ({one}) => ({
@@ -102,27 +144,6 @@ export const eventNotificationJobsRelations = relations(eventNotificationJobs, (
 		fields: [eventNotificationJobs.userId],
 		references: [profiles.id]
 	}),
-}));
-
-export const eventsRelations = relations(events, ({one, many}) => ({
-	eventNotificationJobs: many(eventNotificationJobs),
-	profile_createdBy: one(profiles, {
-		fields: [events.createdBy],
-		references: [profiles.id],
-		relationName: "events_createdBy_profiles_id"
-	}),
-	profile_updatedBy: one(profiles, {
-		fields: [events.updatedBy],
-		references: [profiles.id],
-		relationName: "events_updatedBy_profiles_id"
-	}),
-	eventGuestRsvps: many(eventGuestRsvps),
-	historicalEventAttendances: many(historicalEventAttendances),
-	eventHosts: many(eventHosts),
-	eventInvites: many(eventInvites),
-	eventGuestAttendances: many(eventGuestAttendances),
-	eventAttendances: many(eventAttendances),
-	eventRsvps: many(eventRsvps),
 }));
 
 export const legacyMembersRelations = relations(legacyMembers, ({one, many}) => ({

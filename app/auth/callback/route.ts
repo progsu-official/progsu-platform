@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 import { isPublicEventDetailPath } from "@/lib/events/public-path";
 import { GUEST_CLAIM_COOKIE } from "@/lib/events/guest-claim";
+import { recordReferralConversion } from "@/lib/events/referral-record";
 
 // OAuth callback for Supabase Auth. The user returns here from Google with a `code`
 // query param; we exchange it for a session, then route them to their next step.
@@ -76,6 +77,15 @@ export async function GET(request: NextRequest) {
       console.error("[auth] guest identity claim failed:", claimErr.message);
     }
   }
+
+  // Campaign attribution for a signup. Supabase stamps created_at when the
+  // account is first provisioned, so a fresh timestamp is what separates
+  // "signed up just now" from "signed in again" — every later callback for
+  // this user falls outside the window and records nothing. The cookie write
+  // this performs is picked up by the store.getAll() loop below.
+  const signedUpJustNow =
+    Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
+  if (signedUpJustNow) await recordReferralConversion("signup");
 
   // Admins always go to the admin surface; they bypass member onboarding (D8).
   const state = await loadOnboardingState(supabase, user.id);
