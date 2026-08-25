@@ -21,12 +21,14 @@ import {
 
 import {
   BarList,
-  ColumnChart,
   Funnel,
   Panel,
   type BarDatum,
-  type ColumnDatum,
 } from "./_components/charts";
+import {
+  TimeSeriesChart,
+  type ColumnDatum,
+} from "./_components/time-series-chart";
 
 // Shape of admin_platform_analytics() (migrations 20260824110000 +
 // 20260824120000). One RPC, all aggregate, admin-gated inside the function.
@@ -120,13 +122,9 @@ export function OverviewDashboard({ data }: { data: Analytics }) {
           </div>
 
           <div>
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Signups per week
-              </h2>
-              <p className="text-xs text-muted-foreground">Last 26 weeks</p>
-            </div>
-            <ColumnChart
+            <TimeSeriesChart
+              label="Signups per week"
+              hint="Last 26 weeks"
               unit="signups"
               data={weeklyColumns(a.signups_weekly)}
               ariaLabel={weeklySummary(a.signups_weekly)}
@@ -255,7 +253,7 @@ export function OverviewDashboard({ data }: { data: Analytics }) {
         title="Attendance by month"
         hint={`${a.events.attendance.toLocaleString()} people across ${a.events.past.toLocaleString()} events`}
       >
-        <ColumnChart
+        <TimeSeriesChart
           unit="attendees"
           data={monthlyColumns(a.events_monthly)}
           ariaLabel={monthlySummary(a.events_monthly)}

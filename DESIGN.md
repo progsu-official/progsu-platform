@@ -96,7 +96,7 @@ status chips, and those are always paired with a `dark:` variant.
 | Context | Theme |
 |---|---|
 | Member surfaces (`/profile`, `/events`, `/members`) | Light default, `.dark` applied by `ThemeShell` from the `progsu-theme` cookie |
-| Admin (`/admin/*`) | Light only, no toggle |
+| Admin (`/admin/*`) | Fixed dark, no toggle — `.dark` is hard-coded on the shell in `app/admin/layout.tsx` |
 | Onboarding | Fixed light, folk-style shell (`app/onboarding/onboarding.css` + `_components/shell.tsx`) |
 | Login | Fixed dark |
 | Event composer (`/admin/events/new`) | Its own themed background, see §7 |
@@ -371,10 +371,25 @@ Non-negotiable, checked on the built result rather than intended:
 Admin is the only place with charts, and there is **no chart library** —
 `docs/13-roadmap/03-admin-analytics.md` §5 settled that: every shape this
 product needs is a bar, and recharts/nivo/d3 is 40–150 kB of JS to draw a
-rectangle. `app/admin/_components/charts.tsx` holds all three primitives
-(`ColumnChart`, `BarList`, `Funnel`) plus the `Panel` shell. They are server
-components made of divs, so they cost nothing on the client and appear in the
-first paint.
+rectangle. `app/admin/_components/charts.tsx` holds the static primitives
+(`BarList`, `Funnel`) plus the `Panel` shell. They are server components made
+of divs, so they cost nothing on the client and appear in the first paint.
+
+`time-series-chart.tsx` is the one exception, and the line where it sits is
+worth stating: **a shape people interrogate earns client JS; a shape they read
+does not.** Nobody points at a ranked list — you read "Sophomores, 62" off it
+and move on. But on 26 weekly buckets the question is always *which* week that
+spike was, and the answer has to be reachable. So `TimeSeriesChart` is a client
+component with a real tooltip and a bar/line toggle; `BarList` and `Funnel`
+stay free. Shared visual constants live in `chart-tokens.ts` so the two sides
+of that boundary can't drift.
+
+Still no chart library on either side. The line view is a hand-rolled polyline
+over the same scale the bars use — toggling changes the form and never the
+story. It stretches a `0 0 100 100` viewBox with `preserveAspectRatio="none"`,
+which means the stroke needs `vector-effect="non-scaling-stroke"` and the
+hover dot has to be an HTML element, since an SVG circle would render as an
+ellipse under that distortion.
 
 The rules that keep them honest:
 
@@ -391,8 +406,13 @@ The rules that keep them honest:
   `Funnel`, and always `tabular-nums`.
 - **One `role="img"` per chart** with a label that summarises the whole series
   ("Signups per week over 26 weeks: 231 total, peaking at 127 the week of Apr
-  27"). Individual bars are `aria-hidden` with a `title` for pointer users —
-  announcing 26 bars one by one is worse than not announcing them.
+  27"). Individual bars are `aria-hidden` — announcing 26 bars one by one is
+  worse than not announcing them.
+- **Interactive charts owe a keyboard path to the same numbers.** A tooltip
+  that only a mouse can reach hides data. `TimeSeriesChart` is focusable and
+  arrow keys step through buckets into an `aria-live` region — but that region
+  stays empty until a key is actually pressed, so pointer hover never narrates
+  itself and a reader passing through still gets one sentence, not twenty-six.
 - **Axis density is a function of bucket count.** Twelve or fewer buckets label
   every column; more than that collapses to first / middle / last, because a
   clipped `Aug …` under a bar is worse than no label.
