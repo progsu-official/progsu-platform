@@ -173,7 +173,7 @@ export function buildRsvpAlert(alert: RsvpAlert, now: Date): WebhookMessage {
           field("Where", event.locationText ?? "TBA"),
           field("Came from", alert.campaign ? alert.campaign.label : "Direct"),
         ],
-        footer: { text: "Progsu · progsu.com" },
+        footer: { text: "Progsu · members.progsu.com" },
         timestamp: now.toISOString(),
       },
     ],

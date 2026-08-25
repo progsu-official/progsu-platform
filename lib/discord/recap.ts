@@ -127,7 +127,7 @@ export function buildDailyRecapMessage({
           field("Campaigns", campaignList(stats.campaigns), false),
         ],
         image: { url: `attachment://${chartFileName}` },
-        footer: { text: "Daily recap · progsu.com" },
+        footer: { text: "Daily recap · members.progsu.com" },
         timestamp: now.toISOString(),
       },
     ],

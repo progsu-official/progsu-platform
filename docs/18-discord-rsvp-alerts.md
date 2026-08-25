@@ -40,7 +40,7 @@ connection, no slash commands — a webhook URL in an env var and a `fetch`.
 │ Starts        Where                 Came from
 │ in 6 days     Student Center East   Library flyer (2nd floor)
 │
-│ Progsu · progsu.com                              today at 14:22
+│ Progsu · members.progsu.com                      today at 14:22
 └
 ```
 
@@ -169,7 +169,7 @@ covers 9am to 9am, always.
 │ GSU CS Discord post — 3 RSVPs from 38 clicks        /r/gsu-cs-discord
 │
 │ [ 14-day bar chart ]
-│ Daily recap · progsu.com                         today at 10:00
+│ Daily recap · members.progsu.com                 today at 10:00
 └
 ```
 

@@ -23,7 +23,7 @@ So the next semester's posters get printed on a hunch.
 One link per channel, per event:
 
 ```
-progsu.com/r/library-flyer   ->  302  ->  /events/fall-kickoff-carnival
+members.progsu.com/r/library-flyer  ->  307  ->  /events/fall-kickoff-carnival
 ```
 
 The redirect is where the click is recorded and where an attribution cookie is

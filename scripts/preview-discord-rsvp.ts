@@ -34,7 +34,7 @@ const inDays = (days: number, hour: number) => {
 
 const kickoff = {
   title: "Fall Kickoff Carnival",
-  url: "https://progsu.com/events/fall-kickoff-carnival",
+  url: "https://members.progsu.com/events/fall-kickoff-carnival",
   startsAt: inDays(6, 18),
   locationText: "Student Center East, Ballroom",
   capacity: 120,
@@ -42,7 +42,7 @@ const kickoff = {
 
 const workshop = {
   title: "Ship It Night: Deploy Your First App",
-  url: "https://progsu.com/events/ship-it-night",
+  url: "https://members.progsu.com/events/ship-it-night",
   startsAt: inDays(2, 19),
   locationText: "Aderhold 205",
   capacity: 30,
