@@ -236,7 +236,6 @@ async function main() {
     // Alice's slug is auto-generated on opt-in; discover it.
     const aliceSlug = await slugFor(aliceId);
     const bobSlug = await slugFor(bobId);
-    const erinSlug = await slugFor(erinId);
 
     // --- Scenario 1: self-view (alice views own card) ---------------------
     {

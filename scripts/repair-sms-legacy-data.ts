@@ -78,7 +78,20 @@ async function main() {
   console.log(`\n=== SMS legacy data repair (${DRY ? "DRY RUN" : "EXECUTE"}) ===\n`);
 
   // ---- load current state -------------------------------------------------
-  const rows: any[] = [];
+  // Mirrors the select below. Typed rather than `any[]` so the index maps and
+  // every `r.` downstream are checked -- this script writes to prod.
+  type LegacyRow = {
+    id: string;
+    full_name: string | null;
+    personal_email: string | null;
+    campus_email: string | null;
+    phone_number: string | null;
+    phone_e164: string | null;
+    sms_interest: boolean | null;
+    sms_consent_at: string | null;
+  };
+
+  const rows: LegacyRow[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await s.from("legacy_members")
       .select("id,full_name,personal_email,campus_email,phone_number,phone_e164,sms_interest,sms_consent_at")
@@ -87,8 +100,8 @@ async function main() {
     rows.push(...data!);
     if (data!.length < 1000) break;
   }
-  const emailIdx = new Map<string, any>();
-  const phoneIdx = new Map<string, any>();
+  const emailIdx = new Map<string, LegacyRow>();
+  const phoneIdx = new Map<string, LegacyRow>();
   for (const r of rows) {
     if (r.personal_email) emailIdx.set(r.personal_email.toLowerCase(), r);
     if (r.campus_email) emailIdx.set(r.campus_email.toLowerCase(), r);
@@ -156,7 +169,7 @@ async function main() {
 
   // ---- 5. school domains --------------------------------------------------
   const { data: sd } = await s.from("school_domains").select("domain");
-  const have = new Set((sd ?? []).map((r: any) => r.domain));
+  const have = new Set((sd ?? []).map((r: { domain: string }) => r.domain));
   const newDomains = NEW_SCHOOL_DOMAINS.filter((d) => !have.has(d.domain));
   console.log(`\n5. school_domains`);
   console.log(`     rows to add:          ${newDomains.length}`);
