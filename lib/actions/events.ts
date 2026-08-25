@@ -15,7 +15,12 @@ import {
   sendEventRsvpConfirmation,
   sendGuestRsvpConfirmation,
 } from "@/lib/email/events";
-import { recordReferralConversion } from "@/lib/events/referral-record";
+import {
+  readReferralSlug,
+  recordReferralConversion,
+} from "@/lib/events/referral-record";
+import { notifyRsvpInBackground } from "@/lib/discord/notify-rsvp";
+import type { RsvpAlertKind } from "@/lib/discord/rsvp-alert";
 import { type ActionResult, err, ok } from "./result";
 import {
   SMS_CONSENT_COPY,
@@ -598,6 +603,23 @@ function revalidateMemberEventPaths(slug?: string) {
 
 type EffectiveRsvpStatus = "going" | "waitlisted" | "declined" | "cancelled";
 
+// Which RSVP transitions are worth announcing in Discord, and as what.
+//
+// Edges, not states: re-saving 'going' is not news, and a member who declines
+// an event they were never going to is not either. The three that are news
+// are someone joining, someone landing on the waitlist, and a seat opening
+// back up — that last one is the cue for whoever is watching the waitlist.
+function rsvpAlertKindFor(
+  previous: EffectiveRsvpStatus | null,
+  next: EffectiveRsvpStatus
+): RsvpAlertKind | null {
+  if (next === previous) return null;
+  if (next === "going") return "going";
+  if (next === "waitlisted") return "waitlisted";
+  if (previous === "going") return "cancelled";
+  return null;
+}
+
 export async function rsvpToEvent(
   eventId: string,
   desired: RsvpDesired,
@@ -669,6 +691,22 @@ export async function rsvpToEvent(
     });
   }
 
+  // Discord announcement. The cookie read has to happen here rather than
+  // inside the notifier: notifyRsvpInBackground is deliberately not awaited,
+  // and cookies() is only readable while the request is still alive.
+  const alertKind = rsvpAlertKindFor(
+    previousStatus as EffectiveRsvpStatus | null,
+    status
+  );
+  if (alertKind) {
+    notifyRsvpInBackground({
+      eventId: parsed.data.eventId,
+      kind: alertKind,
+      userId: user.id,
+      campaignSlug: await readReferralSlug(),
+    });
+  }
+
   // We don't have the slug here (RPC only returns status); revalidate the
   // /events list + dashboard unconditionally and let the detail page
   // revalidate via its own server render on the next visit.
@@ -733,6 +771,19 @@ export async function guestRsvpToEvent(
       guestEmail: parsed.data.email,
     }).catch((e) => {
       console.error("[events] guest rsvp confirmation send failed:", e);
+    });
+  }
+
+  // No prior-status read exists on this path, so unlike the member path there
+  // is no transition to test here. The notifier does the equivalent check
+  // itself, by refusing to announce a guest row that already existed before
+  // this request — see FRESH_RSVP_MS.
+  if (status === "going" || status === "waitlisted") {
+    notifyRsvpInBackground({
+      eventId: parsed.data.eventId,
+      kind: status,
+      guestEmail: parsed.data.email,
+      campaignSlug: await readReferralSlug(),
     });
   }
 

@@ -53,6 +53,20 @@ export const env = {
   // a surface strangers reach from a printed flyer.
   FEATURE_REFERRAL_LINKS: parseBool(process.env.FEATURE_REFERRAL_LINKS),
 
+  // Discord RSVP announcements. Off is the shipped default and must stay off
+  // until the privacy_policy v7 re-acceptance cascade has run — this posts
+  // member names into a channel the whole server reads, which is exactly the
+  // peer-visible surface CLAUDE.md hard rule #8 covers. Turning it off stops
+  // every post; the notifier checks this before it reads anything.
+  FEATURE_DISCORD_RSVP_ALERTS: parseBool(
+    process.env.FEATURE_DISCORD_RSVP_ALERTS
+  ),
+
+  // The daily recap is a separate flag on purpose. It counts RSVPs and never
+  // names one, so it is not a peer-visible surface and does not wait on the
+  // v7 cascade — it can run today while the per-RSVP alert above stays off.
+  FEATURE_DISCORD_RECAP: parseBool(process.env.FEATURE_DISCORD_RECAP),
+
   // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,
   // no OTP email is sent, the code is always 000000, and OTP rate limits are
   // skipped. Hard-gated on NODE_ENV like DEV_AUTO_LOGIN so it can never be

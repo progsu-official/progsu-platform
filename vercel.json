@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/event-notifications",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/discord-recap",
+      "schedule": "0 14 * * *"
     }
   ]
 }

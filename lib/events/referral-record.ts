@@ -62,3 +62,21 @@ export async function recordReferralConversion(kind: ReferralFlag): Promise<void
     console.error("[referral] conversion record threw:", e);
   }
 }
+
+/**
+ * The campaign slug this browser is currently attributed to, or null.
+ *
+ * Read-only sibling of recordReferralConversion above: the Discord alert wants
+ * to name the campaign, and that is a display concern rather than a counting
+ * one, so it must not touch the dedupe flags. Same swallow-everything posture
+ * — a slug we cannot read is simply no campaign.
+ */
+export async function readReferralSlug(): Promise<string | null> {
+  if (!env.FEATURE_REFERRAL_LINKS) return null;
+  try {
+    const store = await cookies();
+    return parseReferralCookie(store.get(REFERRAL_COOKIE)?.value)?.slug ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v6
+          Draft · v7
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -222,6 +222,56 @@ export default function PrivacyPage() {
           included in the total count only. We imported those guest lists from
           our previous event tool; those people never created an account here
           and are never named on an event page.
+        </p>
+
+        <h2 className="text-lg font-semibold">
+          RSVP announcements in our Discord
+        </h2>
+        <p>
+          New in v7: when you RSVP to an event, we post a short announcement in
+          the Progsu Discord server. It names you by first name and last
+          initial &mdash; &quot;Natasha K.&quot; &mdash; along with the event
+          you are going to and how many people are going in total.
+        </p>
+        <p>
+          Everyone in the Progsu Discord can read that channel. This is a
+          different audience from the rest of the platform, so it is worth
+          being specific about what is and is not in it:
+        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            Your full last name, email address, phone number, and profile
+            details are never posted. Neither is your avatar.
+          </li>
+          <li>
+            Events marked sensitive, private-invite events, and unpublished
+            drafts are never announced at all, to anyone.
+          </li>
+          <li>
+            If you registered as a guest without an account, the same rule
+            applies to you: first name and last initial, nothing else you
+            typed into the form.
+          </li>
+          <li>
+            We post when you RSVP, when you land on a waitlist, and when you
+            cancel an RSVP you had. We do not post anything else about you.
+          </li>
+        </ul>
+        <p>
+          <strong>Campaign links.</strong> If you reached the event through one
+          of our short links &mdash; a QR code on a flyer, a link in a class
+          announcement &mdash; the announcement also names which one. This is
+          the only place we connect a person to the campaign that reached them.
+          Our database deliberately does not store that connection: it counts
+          how many people a flyer brought, and it has nowhere to record which
+          people. The Discord announcement is the exception, it is not written
+          down anywhere else, and it exists so that whoever put up the poster
+          knows it worked.
+        </p>
+        <p>
+          If you would rather not appear in that channel, tell a Progsu officer
+          and we will stop announcing your RSVPs. There is no toggle for this
+          in your settings yet.
         </p>
 
         <h2 className="text-lg font-semibold">Shared event history with other members</h2>

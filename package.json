@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "PWDEBUG=1 playwright test"
+    "test:e2e:debug": "PWDEBUG=1 playwright test",
+    "discord:rsvp": "tsx scripts/preview-discord-rsvp.ts",
+    "discord:recap": "NODE_OPTIONS=--conditions=react-server tsx scripts/preview-discord-recap.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

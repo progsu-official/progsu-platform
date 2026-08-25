@@ -66,6 +66,20 @@ Why the line sits there:
 If per-person attribution is ever genuinely wanted, it is a new table and a
 consent bump. Do not widen this one.
 
+**Amended 2026-08-25.** The Discord RSVP alert
+(`docs/18-discord-rsvp-alerts.md`) names the campaign in the same message as
+the member who came through it. The table below is unchanged and stays
+unchanged — nothing new is stored — but the join the schema refuses to hold is
+now composed in application code and posted to a channel. That is a real
+widening of the surface, covered by the `privacy_policy` v7 bump in
+`20260825130000`, not by a generous reading of this section. If you are adding
+a third place that pairs a person with a campaign, it needs its own bump too.
+
+The daily recap in the same doc is *not* such a place. It names campaigns and
+counts their conversions, which is exactly what this table is for, and it
+never names a person — which is why it runs behind its own flag with no
+consent bump attached.
+
 ## 4 · Access model
 
 Both tables are RLS-on with **zero policies**, so PostgREST refuses every
