@@ -7,6 +7,12 @@ import { loadOnboardingState, onboardingPathFor } from "@/lib/auth/onboarding";
 import { isPublicEventDetailPath } from "@/lib/events/public-path";
 import { GUEST_CLAIM_COOKIE } from "@/lib/events/guest-claim";
 import { recordReferralConversion } from "@/lib/events/referral-record";
+import {
+  REFERRAL_COOKIE,
+  REFERRAL_TTL_SECONDS,
+  parseReferralCookie,
+  serializeReferralCookie,
+} from "@/lib/events/referral";
 
 // OAuth callback for Supabase Auth. The user returns here from Google with a `code`
 // query param; we exchange it for a session, then route them to their next step.
@@ -124,5 +130,23 @@ export async function GET(request: NextRequest) {
     response.cookies.set(c.name, c.value);
   }
   if (claimToken) response.cookies.delete(GUEST_CLAIM_COOKIE);
+
+  // getAll() hands back name/value only, so the loop above silently drops
+  // maxAge, path, httpOnly and secure from every cookie it forwards. For the
+  // referral cookie that turns a 30-day attribution window into a session
+  // cookie: someone who signs up through a campaign link today and RSVPs after
+  // closing their browser would come back unattributed. Re-set it with its
+  // real options.
+  const ref = parseReferralCookie(store.get(REFERRAL_COOKIE)?.value);
+  if (ref) {
+    response.cookies.set(REFERRAL_COOKIE, serializeReferralCookie(ref), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: REFERRAL_TTL_SECONDS,
+    });
+  }
+
   return response;
 }

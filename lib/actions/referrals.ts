@@ -9,7 +9,7 @@ import { env } from "@/lib/env";
 import {
   createReferralLinkSchema,
   setReferralLinkArchivedSchema,
-  type ReferralLinkRow,
+  type ReferralDashboard,
 } from "./referrals-schemas";
 import { type ActionResult, err, ok } from "./result";
 
@@ -48,22 +48,35 @@ function mapPgError(error: { code?: string | null; message?: string } | null) {
   return err("INTERNAL", msg);
 }
 
+const EMPTY_DASHBOARD: ReferralDashboard = {
+  links: [],
+  totals: { links: 0, active: 0, clicks: 0, visitors: 0, rsvps: 0, signups: 0 },
+  daily: [],
+  days: 30,
+};
+
 export async function listReferralLinks(
   eventId: string
-): Promise<ActionResult<ReferralLinkRow[]>> {
-  // Flag off returns empty rather than an error: to an officer that is
-  // indistinguishable from "no links yet", which is what a kill switch should
-  // look like. Same contract as getSharedEventsForViewer.
-  if (!env.FEATURE_REFERRAL_LINKS) return ok([]);
+): Promise<ActionResult<ReferralDashboard>> {
+  // Flag off returns an empty dashboard rather than an error: to an officer
+  // that is indistinguishable from "no links yet", which is what a kill switch
+  // should look like. Same contract as getSharedEventsForViewer.
+  if (!env.FEATURE_REFERRAL_LINKS) return ok(EMPTY_DASHBOARD);
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("admin_referral_links_for", {
     p_event_id: eventId,
+    p_days: 30,
   });
   if (error) return mapPgError(error);
 
-  const payload = (data ?? {}) as { links?: ReferralLinkRow[] };
-  return ok(payload.links ?? []);
+  const payload = (data ?? {}) as Partial<ReferralDashboard>;
+  return ok({
+    links: payload.links ?? [],
+    totals: payload.totals ?? EMPTY_DASHBOARD.totals,
+    daily: payload.daily ?? [],
+    days: payload.days ?? 30,
+  });
 }
 
 export async function createReferralLink(

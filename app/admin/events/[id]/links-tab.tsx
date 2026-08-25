@@ -18,7 +18,13 @@ import {
   createReferralLink,
   setReferralLinkArchived,
 } from "@/lib/actions/referrals";
-import type { ReferralLinkRow } from "@/lib/actions/referrals-schemas";
+import type {
+  ReferralDashboard,
+  ReferralDay,
+  ReferralLinkRow,
+} from "@/lib/actions/referrals-schemas";
+import { BarList, Funnel, Panel } from "@/app/admin/_components/charts";
+import { TimeSeriesChart } from "@/app/admin/_components/time-series-chart";
 
 // Campaign links for one event.
 //
@@ -34,17 +40,19 @@ import type { ReferralLinkRow } from "@/lib/actions/referrals-schemas";
 
 export function LinksTab({
   eventId,
-  links,
+  data,
   origin,
   error,
 }: {
   eventId: string;
-  links: ReferralLinkRow[];
+  data: ReferralDashboard;
   origin: string;
   error: string | null;
 }) {
+  const { links, totals, daily, days } = data;
   const active = links.filter((l) => !l.archived_at);
   const archived = links.filter((l) => l.archived_at);
+  const anyActivity = totals.clicks > 0;
 
   return (
     <div className="space-y-6">
@@ -63,6 +71,63 @@ export function LinksTab({
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Couldn&apos;t load campaign links: {error}
         </div>
+      ) : null}
+
+      {anyActivity ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Panel
+            title="Campaign funnel"
+            hint={`${totals.visitors.toLocaleString()} people reached this event through a link`}
+          >
+            <Funnel
+              ariaLabel={`Campaign funnel: ${totals.visitors} visitors, ${totals.rsvps} RSVPs, ${totals.signups} signups`}
+              steps={[
+                {
+                  key: "visitors",
+                  label: "Visitors",
+                  value: totals.visitors,
+                  note: `${totals.clicks.toLocaleString()} clicks in total — the gap is people opening the same link twice.`,
+                },
+                { key: "rsvps", label: "RSVP'd", value: totals.rsvps },
+                {
+                  key: "signups",
+                  label: "Made an account",
+                  value: totals.signups,
+                  note: "Counted only for people whose account did not exist before they followed a link.",
+                },
+              ]}
+            />
+          </Panel>
+
+          <Panel title="Activity" hint={`Last ${days} days`}>
+            <TimeSeriesChart
+              unit="visitors"
+              height="h-32"
+              data={dailyColumns(daily)}
+              ariaLabel={dailySummary(daily)}
+            />
+          </Panel>
+        </div>
+      ) : null}
+
+      {anyActivity && active.length > 1 ? (
+        <Panel title="Which channel worked" hint="Ranked by RSVPs">
+          <BarList
+            tone="stepped"
+            ariaLabel="Links ranked by RSVPs"
+            data={[...links]
+              .sort((a, b) => b.rsvps - a.rsvps)
+              .map((l) => ({
+                key: l.id,
+                label: l.label,
+                value: l.rsvps,
+                hint:
+                  l.visitors > 0
+                    ? `${Math.round((l.rsvps / l.visitors) * 100)}% of ${l.visitors.toLocaleString()}`
+                    : "no visitors yet",
+              }))}
+          />
+        </Panel>
       ) : null}
 
       <CreateForm eventId={eventId} origin={origin} />
@@ -350,4 +415,38 @@ function Stat({
       </dd>
     </div>
   );
+}
+
+const dayLabel = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+function dailyColumns(rows: ReferralDay[]) {
+  return rows.map((r) => {
+    const label = dayLabel.format(new Date(`${r.day}T00:00:00Z`));
+    const parts = [`${r.clicks} click${r.clicks === 1 ? "" : "s"}`];
+    if (r.rsvps > 0) parts.push(`${r.rsvps} RSVP${r.rsvps === 1 ? "" : "s"}`);
+    if (r.signups > 0) {
+      parts.push(`${r.signups} signup${r.signups === 1 ? "" : "s"}`);
+    }
+    return {
+      key: r.day,
+      label,
+      title: label,
+      // Visitors is the headline rather than clicks: it is the number that
+      // maps to people, and the tooltip carries the rest.
+      value: r.visitors,
+      note: parts.join(" · "),
+    };
+  });
+}
+
+function dailySummary(rows: ReferralDay[]): string {
+  if (rows.length === 0) return "Campaign activity: no data";
+  const visitors = rows.reduce((sum, r) => sum + r.visitors, 0);
+  const rsvps = rows.reduce((sum, r) => sum + r.rsvps, 0);
+  const peak = rows.reduce((best, r) => (r.visitors > best.visitors ? r : best), rows[0]);
+  return `Campaign activity over ${rows.length} days: ${visitors} visitors and ${rsvps} RSVPs, peaking at ${peak.visitors} visitors on ${dayLabel.format(new Date(`${peak.day}T00:00:00Z`))}`;
 }

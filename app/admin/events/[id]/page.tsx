@@ -490,12 +490,19 @@ async function AnalyticsTabServer({ eventId }: { eventId: string }) {
   return <AnalyticsTab data={data as Record<string, unknown>} />;
 }
 
+const EMPTY_REFERRAL_DASHBOARD = {
+  links: [],
+  totals: { links: 0, active: 0, clicks: 0, visitors: 0, rsvps: 0, signups: 0 },
+  daily: [],
+  days: 30,
+};
+
 async function LinksTabServer({ eventId }: { eventId: string }) {
   const result = await listReferralLinks(eventId);
   return (
     <LinksTab
       eventId={eventId}
-      links={result.ok ? result.data : []}
+      data={result.ok ? result.data : EMPTY_REFERRAL_DASHBOARD}
       origin={env.NEXT_PUBLIC_SITE_URL}
       error={result.ok ? null : result.error.message}
     />

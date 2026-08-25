@@ -406,7 +406,71 @@ async function main() {
       links.every((l) => l.slug !== draftSlug),
       "a link from another event leaked into this event's read"
     );
-    console.log("[smoke-referral-links] OK: admin read is scoped and counted");
+    // The dashboard payload (20260825120000): funnel totals and a dense daily
+    // series. Density is the assertion that matters -- a campaign chart built
+    // from only the days that had a hit shows steady interest where there was
+    // one spike and a week of nothing.
+    {
+      const dash = payload as {
+        totals: Record<string, number>;
+        daily: Array<{ day: string; clicks: number; visitors: number; rsvps: number; signups: number }>;
+        days: number;
+      };
+
+      assert(dash.totals, "dashboard payload has no totals");
+      assert(
+        dash.totals.clicks === 3 && dash.totals.visitors === 2,
+        `totals click/visitor mismatch: ${JSON.stringify(dash.totals)}`
+      );
+      assert(
+        dash.totals.rsvps === 1 && dash.totals.signups === 1,
+        `totals conversion mismatch: ${JSON.stringify(dash.totals)}`
+      );
+      assert(
+        dash.totals.links >= 2 && dash.totals.active >= 2,
+        `totals link count mismatch: ${JSON.stringify(dash.totals)}`
+      );
+
+      assert(dash.days === 30, `expected 30 days, got ${dash.days}`);
+      assert(
+        dash.daily.length === 30,
+        `daily series is not dense: ${dash.daily.length} rows for 30 days`
+      );
+      for (let i = 1; i < dash.daily.length; i++) {
+        const prev = new Date(`${dash.daily[i - 1].day}T00:00:00Z`).getTime();
+        const cur = new Date(`${dash.daily[i].day}T00:00:00Z`).getTime();
+        assert(
+          cur - prev === 86400000,
+          `daily series has a gap at ${dash.daily[i].day}`
+        );
+      }
+      // Everything this smoke recorded happened just now, so it all lands in
+      // the final bucket and the earlier ones must be real zeros.
+      const today = dash.daily[dash.daily.length - 1];
+      assert(
+        today.clicks === 3 && today.rsvps === 1 && today.signups === 1,
+        `today's bucket is wrong: ${JSON.stringify(today)}`
+      );
+
+      // p_days clamps rather than trusting the caller.
+      const { data: wide } = await adminClient.rpc("admin_referral_links_for", {
+        p_event_id: eventId,
+        p_days: 9999,
+      });
+      assert(
+        (wide as { days: number }).days === 180,
+        "p_days did not clamp to 180"
+      );
+      const { data: narrow } = await adminClient.rpc("admin_referral_links_for", {
+        p_event_id: eventId,
+        p_days: 0,
+      });
+      assert(
+        (narrow as { days: number }).days === 1,
+        "p_days did not clamp to 1"
+      );
+    }
+    console.log("[smoke-referral-links] OK: dashboard totals and dense daily series");
 
     // -----------------------------------------------------------------
     // Archiving

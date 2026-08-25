@@ -38,6 +38,32 @@ export const setReferralLinkArchivedSchema = z.object({
 
 export type CreateReferralLinkInput = z.input<typeof createReferralLinkSchema>;
 
+/** Funnel across every link on the event. */
+export type ReferralTotals = {
+  links: number;
+  active: number;
+  clicks: number;
+  visitors: number;
+  rsvps: number;
+  signups: number;
+};
+
+/** One dense day of campaign activity. Empty days are real zeros. */
+export type ReferralDay = {
+  day: string;
+  clicks: number;
+  visitors: number;
+  rsvps: number;
+  signups: number;
+};
+
+export type ReferralDashboard = {
+  links: ReferralLinkRow[];
+  totals: ReferralTotals;
+  daily: ReferralDay[];
+  days: number;
+};
+
 /** One row of admin_referral_links_for(). All aggregate — see the migration. */
 export type ReferralLinkRow = {
   id: string;
