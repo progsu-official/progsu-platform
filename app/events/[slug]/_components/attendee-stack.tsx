@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { User } from "lucide-react";
 
 import { Avatar } from "@/app/_components/avatar";
 
@@ -26,6 +27,22 @@ export type AttendeeFace = {
 // The RPC caps at 50 (20260823100000). Two events on prod have more
 // discoverable attendees than that; everyone past the cap folds into +N.
 const MAX_VISIBLE = 50;
+
+// Everyone else going who has no face to show — almost entirely guests, who
+// RSVP with a name and email and never create a profile. On the kickoff event
+// that is 26 of the 31 going, and rendering them as a single "+27" chip made a
+// full room look like four people and a rounding error.
+//
+// They render as anonymous tiles: a person glyph, no name, no initial. Guests
+// were promised in privacy v6 that they "do not appear on the public attendee
+// list", and an initial is still an appearance. A countable silhouette is not
+// — it says how many, which the "31 going" heading already said out loud.
+//
+// Upcoming events only. Social proof is a reason to RSVP, and a past event
+// does not need one; more to the point the imported legacy events carry 200-400
+// profile-less attendees each, and a wall of identical blanks under a 2025
+// tournament is noise, not proof.
+const MAX_ANONYMOUS = 40;
 
 export function AttendeeStack({
   faces,
@@ -69,6 +86,9 @@ export function AttendeeStack({
   const visible = faces.slice(0, MAX_VISIBLE);
   const remainder = Math.max(0, total - visible.length);
   const verb = past ? "attended" : "are going";
+
+  const anonymous = past ? 0 : Math.min(remainder, MAX_ANONYMOUS);
+  const overflow = remainder - anonymous;
 
   return (
     <section className="space-y-3">
@@ -119,24 +139,40 @@ export function AttendeeStack({
             );
           })}
 
-          {remainder > 0 ? (
+          {Array.from({ length: anonymous }, (_, i) => (
+            <li
+              key={`anon-${i}`}
+              aria-hidden
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground"
+            >
+              <User className="h-4 w-4" strokeWidth={1.75} />
+            </li>
+          ))}
+          {anonymous > 0 ? (
+            <li className="sr-only">
+              and {anonymous.toLocaleString()} more {verb} without a Progsu
+              profile
+            </li>
+          ) : null}
+
+          {overflow > 0 ? (
             <li
               // The explanation lives on hover rather than in a caption: at
               // 19rem the rail has no room for a sentence, and the tile reads
               // correctly without one.
-              title={`${remainder.toLocaleString()} more ${verb} without a Progsu profile`}
+              title={`${overflow.toLocaleString()} more ${verb} without a Progsu profile`}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground"
             >
               {/* "+999" for 4,000 people would be a lie, and four digits do
                   not fit in 32px. Round to thousands past the limit. */}
               <span aria-hidden>
                 +
-                {remainder > 999
-                  ? `${Math.floor(remainder / 1000)}k`
-                  : remainder.toLocaleString()}
+                {overflow > 999
+                  ? `${Math.floor(overflow / 1000)}k`
+                  : overflow.toLocaleString()}
               </span>
               <span className="sr-only">
-                and {remainder.toLocaleString()} more {verb} without a Progsu
+                and {overflow.toLocaleString()} more {verb} without a Progsu
                 profile
               </span>
             </li>
