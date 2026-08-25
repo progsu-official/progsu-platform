@@ -54,3 +54,9 @@ pnpm-workspace.yaml
 
 # service account keys
 .secrets/
+
+# Throwaway probe scripts run against prod from the repo root (they live here
+# rather than /tmp only because module resolution needs node_modules).
+/.diag.ts
+/.mklink.ts
+/.scratch-*.ts
