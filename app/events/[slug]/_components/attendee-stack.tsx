@@ -7,8 +7,14 @@ import { Avatar } from "@/app/_components/avatar";
 // Two separate numbers on purpose. `total` counts everyone — live RSVPs,
 // guest RSVPs, and imported historical attendance — while `faces` only ever
 // holds members with a discoverable platform profile. On a backfilled event
-// that gap is most of the crowd (231 attended, 8 have accounts here), which
-// is exactly the "and N others" shape, not a bug to reconcile.
+// that gap is most of the crowd (231 attended, 38 have accounts here), which
+// is exactly what the trailing +N tile is for, not a bug to reconcile.
+//
+// This is a wall, not a stack: at up to 50 faces the overlapping row it used
+// to be stops working. Overlap is a negative left margin, and once the row
+// wraps that margin lands on the first face of every new line too, pulling it
+// out of the left edge. The compact 4-face version on list rows still
+// overlaps, because it never wraps.
 
 export type AttendeeFace = {
   user_id: string;
@@ -17,21 +23,9 @@ export type AttendeeFace = {
   profile_slug: string | null;
 };
 
-const MAX_VISIBLE = 5;
-
-function namesCaption(names: string[], total: number): string | null {
-  if (names.length === 0) return null;
-
-  const shown = names.slice(0, 2);
-  const others = total - shown.length;
-
-  if (others <= 0) {
-    return shown.length === 1 ? shown[0] : `${shown[0]} and ${shown[1]}`;
-  }
-  return `${shown.join(", ")} and ${others.toLocaleString()} other${
-    others === 1 ? "" : "s"
-  }`;
-}
+// The RPC caps at 50 (20260823100000). Two events on prod have more
+// discoverable attendees than that; everyone past the cap folds into +N.
+const MAX_VISIBLE = 50;
 
 export function AttendeeStack({
   faces,
@@ -39,14 +33,29 @@ export function AttendeeStack({
   past,
   waitlistedCount,
   waitlistEnabled,
-  linkProfiles,
+  canViewProfiles,
+  nudge = null,
 }: {
   faces: AttendeeFace[];
   total: number;
   past: boolean;
   waitlistedCount: number;
   waitlistEnabled: boolean;
-  linkProfiles: boolean;
+  /**
+   * Whether this viewer can actually open a member card. Not the same as
+   * "is signed in": can_view_member_card() requires the *viewer* to be fully
+   * onboarded, so a member who still owes the current privacy policy gets a
+   * 404 on every card. Linking anyway is how the stack came to be full of
+   * dead ends. Faces stay inert instead.
+   */
+  canViewProfiles: boolean;
+  /**
+   * Where a signed-in viewer goes to earn that access, when they can't yet.
+   * Inert faces with no explanation are only marginally better than dead
+   * links — the viewer still can't tell the difference between "nobody is
+   * clickable" and "this page is broken".
+   */
+  nudge?: { href: string; label: string } | null;
 }) {
   if (total === 0) {
     // Only worth saying on an event someone can still act on. A past event
@@ -58,14 +67,12 @@ export function AttendeeStack({
   }
 
   const visible = faces.slice(0, MAX_VISIBLE);
-  const names = faces
-    .map((f) => f.display_name?.trim())
-    .filter((n): n is string => !!n);
-  const caption = namesCaption(names, total);
+  const remainder = Math.max(0, total - visible.length);
+  const verb = past ? "attended" : "are going";
 
   return (
-    <section className="space-y-2.5">
-      <h2 className="text-sm font-semibold tabular-nums text-foreground">
+    <section className="space-y-3">
+      <h2 className="text-base font-semibold tabular-nums text-foreground">
         {total.toLocaleString()} {past ? "went" : "going"}
         {waitlistEnabled && waitlistedCount > 0 ? (
           <span className="font-normal text-muted-foreground">
@@ -75,41 +82,77 @@ export function AttendeeStack({
         ) : null}
       </h2>
 
-      {visible.length > 0 ? (
-        <div className="flex items-center -space-x-2">
+      {visible.length > 0 || remainder > 0 ? (
+        <ul className="flex flex-wrap gap-1.5">
           {visible.map((f) => {
             const name = f.display_name?.trim() || "Member";
-            // ring-background, not a border: overlapping circles need the
-            // page colour punched between them or the stack reads as one
-            // blurred mass at this size.
             const avatar = (
               <Avatar
                 src={f.avatar_url}
                 name={name}
-                className="h-8 w-8 rounded-full ring-2 ring-background"
+                className="h-8 w-8 rounded-full"
+                textClassName="text-[11px]"
               />
             );
 
-            return linkProfiles && f.profile_slug ? (
-              <Link
-                key={f.user_id}
-                href={`/members/${f.profile_slug}`}
-                title={name}
-                className="rounded-full transition-transform hover:z-10 hover:-translate-y-0.5"
-              >
-                {avatar}
-              </Link>
-            ) : (
-              <span key={f.user_id} title={name} className="rounded-full">
-                {avatar}
-              </span>
+            return (
+              <li key={f.user_id}>
+                {canViewProfiles && f.profile_slug ? (
+                  <Link
+                    href={`/members/${f.profile_slug}`}
+                    title={name}
+                    // Focus ring is not optional just because hover is the
+                    // primary affordance — DESIGN.md §9. rounded-full so the
+                    // ring traces the avatar rather than boxing it.
+                    className="block rounded-full transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    {avatar}
+                    <span className="sr-only">{name}</span>
+                  </Link>
+                ) : (
+                  <span title={name} className="block rounded-full">
+                    {avatar}
+                    <span className="sr-only">{name}</span>
+                  </span>
+                )}
+              </li>
             );
           })}
-        </div>
+
+          {remainder > 0 ? (
+            <li
+              // The explanation lives on hover rather than in a caption: at
+              // 19rem the rail has no room for a sentence, and the tile reads
+              // correctly without one.
+              title={`${remainder.toLocaleString()} more ${verb} without a Progsu profile`}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground"
+            >
+              {/* "+999" for 4,000 people would be a lie, and four digits do
+                  not fit in 32px. Round to thousands past the limit. */}
+              <span aria-hidden>
+                +
+                {remainder > 999
+                  ? `${Math.floor(remainder / 1000)}k`
+                  : remainder.toLocaleString()}
+              </span>
+              <span className="sr-only">
+                and {remainder.toLocaleString()} more {verb} without a Progsu
+                profile
+              </span>
+            </li>
+          ) : null}
+        </ul>
       ) : null}
 
-      {caption ? (
-        <p className="text-xs text-muted-foreground">{caption}</p>
+      {!canViewProfiles && nudge && visible.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          <Link
+            href={nudge.href}
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            {nudge.label}
+          </Link>
+        </p>
       ) : null}
     </section>
   );

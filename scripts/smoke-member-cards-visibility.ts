@@ -169,7 +169,13 @@ async function main() {
         share_attended_events: false,
       },
     });
-    const carolId = await seedUser("carol-private");
+    // Explicit opt-out, not an absent row. handle_new_user() creates a
+    // visibility row at signup and discoverable defaults to true
+    // (20260820120000, restored in 20260824140000), so "seed nothing" now
+    // produces a *discoverable* member -- the opposite of what carol is for.
+    const carolId = await seedUser("carol-private", {
+      visibilitySettings: { discoverable: false },
+    });
     const daveId = await seedUser("dave-unonboarded", { onboarded: false });
     const erinId = await seedUser("erin-opt-in", {
       visibilitySettings: {
@@ -269,8 +275,10 @@ async function main() {
     }
 
     // --- Scenario 3: peer views non-discoverable target (bob → carol) ----
-    //     Carol has no visibility row at all → slug resolution returns null.
-    //     We can't use carol's slug (she has none); attempt a fake slug.
+    //     Carol opted out, so she has no slug to resolve -- the mint trigger
+    //     only fires for discoverable rows. A fake slug stands in, which is
+    //     also the real attack: probing for a member who does not want to be
+    //     found must be indistinguishable from probing for nobody.
     {
       const bobClient = await signIn("bob-opt-in-no-events");
       const { data } = await bobClient.rpc("member_card_for_viewer", {
@@ -624,24 +632,154 @@ async function main() {
     }
 
     // --- list_member_cards basic sanity ----------------------------------
+    //
+    // Searched per fixture rather than asserted against one unfiltered page.
+    // list_member_cards orders by (last_discoverability_change_at desc nulls
+    // last, user_id), and set_profile_visibility only stamps that column when
+    // discoverable actually *changes* -- so ever since 20260820120000 made
+    // discoverable default to true, seeding a fixture with {discoverable:
+    // true} is a no-op that leaves the timestamp null. Those rows sort behind
+    // every real member, and an unfiltered page of 50 stopped containing them
+    // once the directory passed 50 people. Searching is also just a better
+    // test: it does not silently start passing or failing with the size of
+    // prod's directory.
     {
       const erinClient = await signIn("erin-opt-in");
-      const { data, error } = await erinClient.rpc("list_member_cards", {
-        p_viewer_id: erinId,
-        p_cursor_ts: null,
-        p_cursor_user: null,
-        p_limit: 50,
-        p_search: null,
-      });
-      if (error) throw new Error(`list_member_cards: ${error.message}`);
-      const rows = (data ?? []) as Array<{ user_id: string }>;
-      const ids = new Set(rows.map((r) => r.user_id));
-      if (!ids.has(aliceId)) throw new Error(`list missing alice`);
-      if (!ids.has(bobId)) throw new Error(`list missing bob`);
-      if (!ids.has(erinId)) throw new Error(`list missing erin (self)`);
-      if (ids.has(carolId)) throw new Error(`list included carol (not discoverable)`);
+
+      async function listSearch(term: string): Promise<Set<string>> {
+        const { data, error } = await erinClient.rpc("list_member_cards", {
+          p_viewer_id: erinId,
+          p_cursor_ts: null,
+          p_cursor_user: null,
+          p_limit: 50,
+          p_search: term,
+        });
+        if (error) throw new Error(`list_member_cards(${term}): ${error.message}`);
+        return new Set(
+          ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
+        );
+      }
+
+      if (!(await listSearch("alice-opt-in")).has(aliceId)) {
+        throw new Error(`list missing alice`);
+      }
+      if (!(await listSearch("bob-opt-in")).has(bobId)) {
+        throw new Error(`list missing bob`);
+      }
+      if (!(await listSearch("erin-opt-in")).has(erinId)) {
+        throw new Error(`list missing erin (self)`);
+      }
+      if ((await listSearch("carol-private")).has(carolId)) {
+        throw new Error(`list included carol (not discoverable)`);
+      }
       console.log(
-        `[smoke-member-cards-visibility] OK: list_member_cards returns only discoverable rows (${rows.length} shown)`
+        `[smoke-member-cards-visibility] OK: list_member_cards returns only discoverable rows`
+      );
+    }
+
+    // --- Scenario 18: every discoverable member has a slug ---------------
+    //
+    // 20260820140000 listed 164 existing members in the directory with a
+    // direct SQL flip, which skipped set_profile_visibility()'s auto-slug and
+    // left them addressable by nothing. 20260824130000 minted the missing
+    // slugs and put a trigger on the table so no future write can reopen the
+    // gap. This asserts the invariant against the whole table, not a fixture:
+    // the failure mode was a bulk migration, and only a global check catches
+    // the next one.
+    {
+      const { data, error } = await admin
+        .from("profile_visibility_settings")
+        .select("user_id")
+        .eq("discoverable", true)
+        .is("profile_slug", null);
+      if (error) throw new Error(`slug invariant query: ${error.message}`);
+      const orphans = (data ?? []) as Array<{ user_id: string }>;
+      if (orphans.length > 0) {
+        throw new Error(
+          `${orphans.length} discoverable members have no profile_slug (e.g. ${orphans[0].user_id})`
+        );
+      }
+      console.log(
+        `[smoke-member-cards-visibility] OK: no discoverable member is missing a slug`
+      );
+    }
+
+    // --- Scenario 19: the trigger closes the direct-SQL path -------------
+    //
+    // Carol is discoverable=false, so she has no slug. Flipping her with a
+    // service-role update -- exactly what a migration does, bypassing every
+    // RPC -- must still leave her with one.
+    {
+      // Force the exact pre-regression shape -- discoverable with no slug --
+      // rather than relying on whatever carol happens to hold, so this keeps
+      // testing the trigger even if the fixture changes again.
+      const { error: resetErr } = await admin
+        .from("profile_visibility_settings")
+        .update({ discoverable: false, profile_slug: null })
+        .eq("user_id", carolId);
+      if (resetErr) throw new Error(`reset carol: ${resetErr.message}`);
+      const { error: flipErr } = await admin
+        .from("profile_visibility_settings")
+        .update({ discoverable: true })
+        .eq("user_id", carolId);
+      if (flipErr) throw new Error(`flip carol: ${flipErr.message}`);
+      const { data, error: readErr } = await admin
+        .from("profile_visibility_settings")
+        .select("profile_slug")
+        .eq("user_id", carolId)
+        .single();
+      if (readErr) throw new Error(`read carol: ${readErr.message}`);
+      const minted = (data as { profile_slug: string | null } | null)?.profile_slug;
+      if (!minted) {
+        throw new Error(`direct SQL flip to discoverable left carol without a slug`);
+      }
+      if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(minted)) {
+        // Must satisfy set_profile_slug()'s own validator, or a member could
+        // hold a slug they are not allowed to re-type when renaming.
+        throw new Error(`minted slug is not a legal slug: ${minted}`);
+      }
+      // Deliberately NOT first-last: the card shows first names only, and a
+      // flip nobody asked for must not publish a last name.
+      if (minted.includes("smoke")) {
+        throw new Error(`minted slug leaked last_name: ${minted}`);
+      }
+      await admin
+        .from("profile_visibility_settings")
+        .update({ discoverable: false })
+        .eq("user_id", carolId);
+      console.log(
+        `[smoke-member-cards-visibility] OK: direct SQL flip mints a legal, last-name-free slug (${minted})`
+      );
+    }
+
+    // --- Scenario 20: signup always creates a visibility row -------------
+    //
+    // 20260823150400 replaced handle_new_user() with a body that predated the
+    // visibility insert 20260820120000 had added, and silently un-listed every
+    // account created for the next two days. Nothing failed: a missing row
+    // reads as "not discoverable" everywhere, so the directory just quietly
+    // stopped growing. Asserted on a user this run created, so it fails on the
+    // next carry-forward rather than the next time someone counts the members.
+    {
+      const { data, error } = await admin
+        .from("profile_visibility_settings")
+        .select("user_id, discoverable")
+        .eq("user_id", daveId)
+        .maybeSingle();
+      if (error) throw new Error(`signup visibility row: ${error.message}`);
+      const row = data as { discoverable: boolean } | null;
+      if (!row) {
+        throw new Error(
+          `handle_new_user did not create a profile_visibility_settings row`
+        );
+      }
+      if (row.discoverable !== true) {
+        throw new Error(
+          `signup visibility row is not discoverable by default (got ${row.discoverable})`
+        );
+      }
+      console.log(
+        `[smoke-member-cards-visibility] OK: signup creates a discoverable visibility row`
       );
     }
 

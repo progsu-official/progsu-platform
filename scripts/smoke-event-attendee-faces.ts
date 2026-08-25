@@ -224,8 +224,19 @@ async function main() {
       if (ids.has(hiddenId)) {
         throw new Error("opted-out member leaked into faces");
       }
+      // Every face has to be openable. A face is only in this list because the
+      // member is discoverable, and since 20260824130000 a discoverable member
+      // always has a slug -- so a null here means the wall has grown dead
+      // avatars again, which is what it looked like when four fifths of the
+      // crowd rendered as inert <span>s.
+      const slugless = r.faces.filter((f) => !f.profile_slug);
+      if (slugless.length > 0) {
+        throw new Error(
+          `${slugless.length} face(s) have no profile_slug and cannot be linked`
+        );
+      }
       console.log(
-        "[smoke-event-attendee-faces] OK: opted-out member counted (2) but not named (1 face)"
+        "[smoke-event-attendee-faces] OK: opted-out member counted (2) but not named (1 face), every face linkable"
       );
     }
 

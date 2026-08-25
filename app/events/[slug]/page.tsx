@@ -211,7 +211,7 @@ export default async function MemberEventDetailPage({
   // seats in a room that has already happened. RLS on event_rsvps is
   // self-only, so the faces can only come from a SECURITY DEFINER helper.
   const { data: attendeeRaw } = await supabase
-    .rpc("event_attendee_faces", { p_event_id: event.id, p_limit: 12 })
+    .rpc("event_attendee_faces", { p_event_id: event.id, p_limit: 50 })
     .maybeSingle();
   const attendees = attendeeRaw as {
     total_count: number;
@@ -230,6 +230,25 @@ export default async function MemberEventDetailPage({
     onboardingState && !onboardingState.isAdmin && !onboardingState.fullyOnboarded
       ? onboardingPathFor(onboardingState.nextStep)
       : null;
+
+  // Why the attendee wall isn't clickable for this viewer. can_view_member_card
+  // gates on the *viewer* being fully onboarded, and unlike the RSVP nudge
+  // above there is no admin exemption in that predicate — an officer who owes
+  // the current privacy policy gets the same empty directory a member does, so
+  // this deliberately doesn't skip admins.
+  const attendeeNudgeHref =
+    onboardingState && !onboardingState.fullyOnboarded
+      ? onboardingPathFor(onboardingState.nextStep)
+      : null;
+  const attendeeNudge = attendeeNudgeHref
+    ? {
+        href: attendeeNudgeHref,
+        label:
+          onboardingState?.nextStep === "consent"
+            ? "Re-accept the privacy policy to open profiles"
+            : "Finish your profile to open profiles",
+      }
+    : null;
 
   const coverUrl = await resolveCoverUrl(supabase, event.cover_image_path);
   const nowMs = Date.now();
@@ -366,7 +385,8 @@ export default async function MemberEventDetailPage({
               past={isPast}
               waitlistedCount={waitlistedCount ?? 0}
               waitlistEnabled={event.waitlist_enabled}
-              linkProfiles={!!user}
+              canViewProfiles={!!onboardingState?.fullyOnboarded}
+              nudge={attendeeNudge}
             />
           </div>
 
