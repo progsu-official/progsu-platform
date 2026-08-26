@@ -91,6 +91,7 @@ helpers:
 | `create_referral_link(event, slug, label)` | `authenticated`, `service_role` | re-checks `is_admin` internally; runs on the officer's own client so `auth.uid()` names them in the audit row |
 | `archive_referral_link(id, archived)` | `authenticated`, `service_role` | reversible |
 | `admin_referral_links_for(event)` | `authenticated`, `service_role` | aggregate read, no audit row — see §5 |
+| `admin_referral_links_all(days)` | `authenticated`, `service_role` | cross-event sibling for `/admin/links`; same aggregate-only, no-audit posture |
 | `record_referral_click(slug, is_new_visitor)` | `service_role` only | resolves + counts in one call |
 | `record_referral_conversion(slug, kind)` | `service_role` only | refuses `'click'` |
 
@@ -105,6 +106,34 @@ already granted EXECUTE to `anon` and `authenticated` as explicit per-role
 grants, which a revoke from PUBLIC does not touch. For minutes, on a feature
 behind an off flag, any browser could have inflated a campaign's numbers.
 `20260824160000` closes it, and it is now CLAUDE.md hard rule #10.
+
+## 4.5 · Where officers actually do this
+
+Two surfaces, same helpers, different questions:
+
+| | Route | Answers |
+|---|---|---|
+| Links tab | `/admin/events/<id>?tab=links` | how did *this event's* campaigns do |
+| Campaign links | `/admin/links` | which *channel* works for us |
+
+The second exists because the first structurally cannot answer it. Channel
+comparison spans every event we have ever promoted, and a comparison drawn
+from one event is exactly the hunch §1 set out to replace.
+
+`/admin/links` carries the create form (event picker, name, optional custom
+slug), the funnel across every link, a channel ranking, a dense daily series
+with 7/30/90-day ranges, per-event grouping, copy-to-clipboard, and
+archive/restore. `admin_referral_links_all()` returns all of it plus the event
+pick list in one round trip, so the page is a single RPC.
+
+**The ranking sorts by RSVPs, then visitors — never clicks.** A flyer with 9
+RSVPs from 60 clicks beat a Discord post with 200 clicks and 2, and ranking by
+clicks says the opposite. That ordering is the argument the page exists to
+make.
+
+The nav entry hides when either `FEATURE_REFERRAL_LINKS` or `FEATURE_EVENTS`
+is off, matching the route's own gate — campaign links live on events, so the
+page is meaningless without them.
 
 ## 5 · Counting rules
 
@@ -164,9 +193,9 @@ behaviour for a kill switch on a surface strangers reach from print.
 
 ## 8 · Not built
 
-- **A cross-event roll-up.** Links live on the event they promote. If
-  comparing campaigns across events becomes a real question, that is a
-  top-level `/admin/links` page reading the same helpers.
+- ~~**A cross-event roll-up.**~~ Built 2026-08-26. `/admin/links`, migration
+  `20260826120000_referral_links_all.sql`, gated on the same flag and
+  `notFound()` at the route edge like every other feature surface.
 - **Time series per link.** `referral_link_hits.occurred_at` is recorded and
   indexed, so "clicks per day for this campaign" is a query away — nothing
   renders it yet.

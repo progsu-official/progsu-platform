@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import {
   createReferralLinkSchema,
   setReferralLinkArchivedSchema,
+  type ReferralCampaignDashboard,
   type ReferralDashboard,
 } from "./referrals-schemas";
 import { type ActionResult, err, ok } from "./result";
@@ -79,6 +80,42 @@ export async function listReferralLinks(
   });
 }
 
+const EMPTY_CAMPAIGNS: ReferralCampaignDashboard = {
+  links: [],
+  totals: EMPTY_DASHBOARD.totals,
+  daily: [],
+  events: [],
+  days: 30,
+};
+
+/**
+ * Every campaign across every event, for /admin/links.
+ *
+ * Same flag contract as the per-event read: off returns an empty dashboard
+ * rather than an error, because to an officer that is indistinguishable from
+ * "no links yet", which is what a kill switch should look like.
+ */
+export async function listAllReferralLinks(
+  days = 30
+): Promise<ActionResult<ReferralCampaignDashboard>> {
+  if (!env.FEATURE_REFERRAL_LINKS) return ok(EMPTY_CAMPAIGNS);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_referral_links_all", {
+    p_days: days,
+  });
+  if (error) return mapPgError(error);
+
+  const payload = (data ?? {}) as Partial<ReferralCampaignDashboard>;
+  return ok({
+    links: payload.links ?? [],
+    totals: payload.totals ?? EMPTY_CAMPAIGNS.totals,
+    daily: payload.daily ?? [],
+    events: payload.events ?? [],
+    days: payload.days ?? days,
+  });
+}
+
 export async function createReferralLink(
   input: unknown
 ): Promise<ActionResult<{ slug: string }>> {
@@ -106,6 +143,7 @@ export async function createReferralLink(
   if (!row?.slug) return err("INTERNAL", "Link created but slug missing.");
 
   revalidatePath(`/admin/events/${parsed.data.eventId}`);
+  revalidatePath("/admin/links");
   return ok({ slug: row.slug });
 }
 
@@ -132,5 +170,6 @@ export async function setReferralLinkArchived(
   if (error) return mapPgError(error);
 
   revalidatePath(`/admin/events/${parsed.data.eventId}`);
+  revalidatePath("/admin/links");
   return ok({ archived: parsed.data.archived });
 }

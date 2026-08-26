@@ -59,7 +59,10 @@ export default async function AdminLayout({
             </span>
           </Link>
 
-          <AdminNav showEvents={env.FEATURE_EVENTS} />
+          <AdminNav
+            showEvents={env.FEATURE_EVENTS}
+            showLinks={env.FEATURE_REFERRAL_LINKS}
+          />
 
           <AdminAvatarMenu
             displayName={displayName}

@@ -78,3 +78,33 @@ export type ReferralLinkRow = {
   signups: number;
   last_hit_at: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Cross-event campaign dashboard (/admin/links)
+// ---------------------------------------------------------------------------
+
+/** A link plus the event it promotes. Payload of admin_referral_links_all(). */
+export type ReferralCampaignRow = ReferralLinkRow & {
+  event_id: string;
+  event_title: string;
+  event_slug: string;
+  event_starts_at: string;
+  event_status: string;
+};
+
+/** An event a campaign can be attached to, for the create form's picker. */
+export type ReferralEventOption = {
+  id: string;
+  title: string;
+  slug: string;
+  starts_at: string;
+  status: string;
+};
+
+export type ReferralCampaignDashboard = {
+  links: ReferralCampaignRow[];
+  totals: ReferralTotals;
+  daily: ReferralDay[];
+  events: ReferralEventOption[];
+  days: number;
+};
