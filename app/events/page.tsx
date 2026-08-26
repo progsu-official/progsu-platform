@@ -162,7 +162,7 @@ export default async function MemberEventsPage({
     const { tab: rawAnonTab } = await searchParams;
     const anonTab = resolveTab(rawAnonTab, ANON_TABS);
     return (
-      <div className="mx-auto max-w-3xl space-y-8">
+      <div className="mx-auto max-w-3xl space-y-8 py-8">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-4xl font-bold tracking-tight">Events</h1>
           <TabNav tab={anonTab} tabs={ANON_TABS} />
@@ -185,7 +185,7 @@ export default async function MemberEventsPage({
   const tab = resolveTab(rawTab);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8 py-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-4xl font-bold tracking-tight">Events</h1>
         <TabNav tab={tab} tabs={TABS} />

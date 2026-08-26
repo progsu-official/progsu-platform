@@ -29,7 +29,7 @@ export default async function HomePage() {
         <section className={`space-y-3 ${STAGGER} delay-0`}>
           <div className="flex justify-end">
             <div className="inline-flex items-center gap-3 px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
                 featured
               </span>
               <span aria-hidden className="h-4 w-px bg-white/30" />
@@ -217,7 +217,7 @@ function OfferTile({
           <p className="text-base font-bold tracking-tight text-white drop-shadow-lg">
             {name}
           </p>
-          <p className="line-clamp-1 text-xs text-white/70">{caption}</p>
+          <p className="line-clamp-2 text-xs text-white/70">{caption}</p>
           <CardVisitLink label={visitLabel} light />
         </div>
       </div>
@@ -267,7 +267,11 @@ function UpcomingEventCard({ event }: { event: HomeEvent }) {
         </div>
       }
       name={event.title.toLowerCase()}
-      caption={event.location_text?.toLowerCase() ?? "location tbd"}
+      caption={
+        event.slug === "fall-kickoff-carnival"
+          ? "free macbook + $1,000 in prizes, games, food, and fun"
+          : event.location_text?.toLowerCase() ?? "location tbd"
+      }
       visitLabel="view event"
     />
   );

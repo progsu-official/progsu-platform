@@ -26,7 +26,7 @@ export function CountdownTimer({ target }: { target: string }) {
   }, [targetMs]);
 
   return (
-    <span className="font-black tracking-wide text-primary tabular-nums sm:text-lg">
+    <span className="text-xs font-black tracking-wide text-primary tabular-nums sm:text-lg">
       {parts.days} days {parts.hours} hrs {parts.minutes} min {parts.seconds} secs
     </span>
   );

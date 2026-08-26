@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 
 type HeroEvent = {
   slug: string;
@@ -51,15 +51,15 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
             />
           </div>
         )}
-        {/* Scrim: solid enough over the bottom half to fully bury whatever's
-            underneath (event art often has its own baked-in title/date
-            text), fading out only in the top third so the art still reads. */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 from-15% via-black/70 via-45% to-transparent to-85%" />
-        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
+        {/* Lighter scrim: just enough for the overlay text to read (helped
+            along by the drop-shadow on the text itself), without flattening
+            the art into a black box. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-4 pr-24 sm:p-6 sm:pr-28">
           <p className="text-2xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl">
             {event.title.toLowerCase()}
           </p>
-          <p className="mt-1 text-sm text-white/80">
+          <p className="mt-1 line-clamp-2 text-sm text-white/80">
             progsu&apos;s biggest event of the year, rsvp now, slots are limited.
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
@@ -99,12 +99,14 @@ function VideoSlide({ videoId }: { videoId: string }) {
   );
 }
 
-const SLIDE_COUNT = 2;
+const REAL_SLIDES = 2; // event, video
 
 // Two-slide carousel in the same card: the featured event art first, the
-// recap video right after it. Slides sit side by side and translate on a
-// smooth transition when the dots/arrows switch between them; the event
-// slide still opens the event's site in a new tab like a normal link.
+// recap video right after it. Motion only ever goes forward/right — with
+// only 2 real slides, looping back to the event slide via a plain index
+// wrap would animate backwards, so the track is actually 3-wide (event,
+// video, event-again) and silently snaps from the duplicate back to
+// position 0 once the forward transition finishes.
 export function HeroCarousel({
   event,
   hosts,
@@ -114,46 +116,85 @@ export function HeroCarousel({
   hosts: string | null;
   videoId: string;
 }) {
-  const [slide, setSlide] = useState(0);
+  const [trackPos, setTrackPos] = useState(0); // 0, 1, or 2 (2 = duplicate of 0)
+  const [animated, setAnimated] = useState(true);
+  const activeDot = trackPos % REAL_SLIDES;
+
+  // No-ops while sitting on the duplicate slide, waiting for the snap-back
+  // below — otherwise a click landing in that ~700ms window would push past
+  // the end of the track.
+  const advance = () => {
+    setAnimated(true);
+    setTrackPos((p) => (p >= REAL_SLIDES ? p : p + 1));
+  };
+
+  // Auto-advance every 15s. Restarts on every step (manual or auto) so a
+  // manual click gets a fresh window instead of an immediate second jump.
+  useEffect(() => {
+    const id = setInterval(advance, 15_000);
+    return () => clearInterval(id);
+  }, [trackPos]);
+
+  // Landed on the duplicate slide: once the transition finishes, snap back
+  // to the real position 0 with the transition disabled for that one frame
+  // so the reset is invisible (the duplicate is pixel-identical to slide 0).
+  useEffect(() => {
+    if (trackPos !== REAL_SLIDES) return;
+    const id = setTimeout(() => {
+      setAnimated(false);
+      setTrackPos(0);
+    }, 700);
+    return () => clearTimeout(id);
+  }, [trackPos]);
+
+  // Re-enable the transition on the next frame after an instant snap.
+  useEffect(() => {
+    if (animated) return;
+    const id = requestAnimationFrame(() => setAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, [animated]);
 
   return (
-    <div className="relative min-h-[420px] overflow-hidden rounded-2xl glass sm:min-h-[560px]">
-      {[0, 1].map((i) => (
-        <div
-          key={i}
-          className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-          style={{ transform: `translateX(${(i - slide) * 100}%)` }}
-        >
-          {i === 0 ? <EventSlide event={event} hosts={hosts} /> : <VideoSlide videoId={videoId} />}
-        </div>
-      ))}
-
-      <button
-        type="button"
-        aria-label="previous slide"
-        onClick={() => setSlide((s) => (s + SLIDE_COUNT - 1) % SLIDE_COUNT)}
-        className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70"
+    <div className="relative h-[420px] overflow-hidden rounded-2xl glass sm:h-[560px]">
+      <div
+        className="flex h-full"
+        style={{
+          width: `${(REAL_SLIDES + 1) * 100}%`,
+          transform: `translateX(-${(trackPos * 100) / (REAL_SLIDES + 1)}%)`,
+          transition: animated ? "transform 700ms cubic-bezier(0.16,1,0.3,1)" : "none",
+        }}
       >
-        <ChevronLeft size={18} />
-      </button>
+        <div className="h-full w-full shrink-0" style={{ width: `${100 / (REAL_SLIDES + 1)}%` }}>
+          <EventSlide event={event} hosts={hosts} />
+        </div>
+        <div className="h-full w-full shrink-0" style={{ width: `${100 / (REAL_SLIDES + 1)}%` }}>
+          <VideoSlide videoId={videoId} />
+        </div>
+        <div className="h-full w-full shrink-0" style={{ width: `${100 / (REAL_SLIDES + 1)}%` }}>
+          <EventSlide event={event} hosts={hosts} />
+        </div>
+      </div>
+
       <button
         type="button"
         aria-label="next slide"
-        onClick={() => setSlide((s) => (s + 1) % SLIDE_COUNT)}
+        onClick={advance}
         className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70"
       >
         <ChevronRight size={18} />
       </button>
 
       <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-2">
-        {Array.from({ length: SLIDE_COUNT }).map((_, i) => (
+        {Array.from({ length: REAL_SLIDES }).map((_, i) => (
           <button
             key={i}
             type="button"
             aria-label={`go to slide ${i + 1}`}
-            onClick={() => setSlide(i)}
+            onClick={() => {
+              if (i !== activeDot) advance();
+            }}
             className={`h-1.5 w-6 rounded-full transition-colors ${
-              i === slide ? "bg-white" : "bg-white/30"
+              i === activeDot ? "bg-white" : "bg-white/30"
             }`}
           />
         ))}
