@@ -64,9 +64,15 @@ const FALLOFF_EXP = 1.3;
 // per-member interval and fetch three-quarters through the buffer instead of
 // half, so there's roughly 2x the round-trip margin before the queue could
 // run dry.
+//
+// 2026-08-26: still perceptible at the rim. Same lever, pushed further: the
+// fetch-ahead trigger (FETCH_AHEAD_RATIO below) now fires with ~90% of the
+// buffer still queued instead of 75%, so the next page's RPC round trip has
+// most of a page's reveal time to land, not a quarter of one.
 const FOLLOW_PAGE_SIZE = 24;
-const REVEAL_EVERY_MS = 40;
+const REVEAL_EVERY_MS = 32;
 const INITIAL_STAGGER_MS = 16;
+const FETCH_AHEAD_RATIO = 0.9;
 
 function hexSpiral(count: number) {
   const cells: Array<[number, number]> = [[0, 0]];
@@ -301,7 +307,7 @@ export function MemberConstellation({
     // Fetch ahead of the reveal: once the buffer runs low near the rim, the
     // next page should already be in flight — the ticker never waits on the
     // network, and the network never dumps into a fat queue.
-    if (nearRim && revealQueue.current.length < FOLLOW_PAGE_SIZE * 0.75) {
+    if (nearRim && revealQueue.current.length < FOLLOW_PAGE_SIZE * FETCH_AHEAD_RATIO) {
       void loadMoreRef.current();
     }
   }, [positions, viewport.w, viewport.h, cell, hullRadius]);
@@ -377,7 +383,7 @@ export function MemberConstellation({
     const fits =
       hullRadius * 2 + cell * 2 <=
       Math.max(viewport.w || 0, viewport.h || 0);
-    if (fits && revealQueue.current.length < FOLLOW_PAGE_SIZE * 0.75) {
+    if (fits && revealQueue.current.length < FOLLOW_PAGE_SIZE * FETCH_AHEAD_RATIO) {
       void loadMore();
     }
   }, [members.length, viewport.w, viewport.h, hullRadius, cell, loadMore]);
