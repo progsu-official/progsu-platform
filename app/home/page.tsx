@@ -1,48 +1,66 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Globe, Sparkles } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Globe, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveCoverUrl } from "@/lib/events/cover-url";
 
+import { joinHosts, type HostRef } from "../events/_components/event-card";
+import { EVENT_TIME_ZONE } from "../events/_components/event-date";
 import { CountdownTimer } from "./countdown-timer";
+import { HeroCarousel } from "./hero-carousel";
+
+const HACKLANTA_RECAP_VIDEO_ID = "OltQSnt5CHc";
 
 // Visitor-facing hub: works signed-in or signed-out (layout handles both).
 // The grid below the header is initiatives, not internal navigation — Events
 // and Members already have their own nav items, so they don't get a card
 // here too.
 export default async function HomePage() {
-  const pinnedEvent = await loadPinnedEvent();
+  const { pinnedEvent, nextEvent } = await loadHomeEvents();
 
   return (
     <div className="space-y-8 py-8">
       <header>
-        <h1 className="text-4xl font-bold tracking-tight">Home</h1>
-        <p className="mt-1 text-muted-foreground">
-          What Progsu is doing right now
-        </p>
+        <h1 className="text-4xl font-bold tracking-tight">home</h1>
       </header>
 
       {pinnedEvent ? (
-        <CountdownTimer startsAt={pinnedEvent.starts_at} label={pinnedEvent.title} />
+        <section className={`space-y-3 ${STAGGER} delay-0`}>
+          <div className="flex justify-end">
+            <div className="inline-flex items-center gap-3 rounded-lg bg-black px-3 py-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                featured
+              </span>
+              <span aria-hidden className="h-4 w-px bg-white/30" />
+              <CountdownTimer target={pinnedEvent.starts_at} />
+            </div>
+          </div>
+          <HeroCarousel
+            event={pinnedEvent}
+            hosts={joinHosts(pinnedEvent.hosts)}
+            videoId={HACKLANTA_RECAP_VIDEO_ID}
+          />
+        </section>
       ) : null}
 
       <section className="space-y-6">
         <h2
-          className={`text-3xl font-bold tracking-tight text-foreground sm:text-5xl ${STAGGER} delay-0`}
+          className={`text-3xl font-bold tracking-tight text-foreground sm:text-5xl ${STAGGER} delay-[90ms]`}
         >
-          More from Progsu
+          more from progsu
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className={`sm:col-span-2 ${STAGGER} delay-[90ms]`}>
-            <HacklantaCard />
-          </div>
-          <div className="flex flex-col gap-4">
+          {nextEvent ? (
             <div className={`${STAGGER} delay-[170ms]`}>
-              <WikiCard />
+              <UpcomingEventCard event={nextEvent} />
             </div>
-            <div className={`${STAGGER} delay-[230ms]`}>
-              <ProgsuSiteCard />
-            </div>
+          ) : null}
+          <div className={`${STAGGER} delay-[230ms]`}>
+            <WikiCard />
+          </div>
+          <div className={`${STAGGER} delay-[290ms]`}>
+            <ProgsuSiteCard />
           </div>
         </div>
       </section>
@@ -58,18 +76,53 @@ export default async function HomePage() {
 const STAGGER =
   "animate-in fade-in-0 slide-in-from-bottom-2 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] fill-mode-both motion-reduce:animate-none";
 
+type UpcomingEventRow = {
+  slug: string;
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  location_text: string | null;
+  cover_image_path: string | null;
+  hosts: HostRef[] | null;
+  external_url: string | null;
+  going_count: number;
+  pinned: boolean;
+};
+
+type HomeEvent = UpcomingEventRow & { coverUrl: string | null };
+
+const monthFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
+  month: "short",
+});
+const dayFormatter = new Intl.DateTimeFormat(undefined, {
+  timeZone: EVENT_TIME_ZONE,
+  day: "numeric",
+});
+
 // Anon-safe: same public_upcoming_events() RPC the signed-out /events list
-// uses, filtered to whichever event is pinned (Hacklanta right now).
-async function loadPinnedEvent() {
+// uses. Pinned event (Hacklanta right now) leads as the hero; the first
+// non-pinned upcoming event fills the "more from progsu" slot — so this
+// stays correct without hardcoding a slug as events come and go.
+async function loadHomeEvents() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("public_upcoming_events", {
     p_limit: 50,
   });
-  if (error || !data) return null;
-  const pinned = (
-    data as Array<{ title: string; starts_at: string; pinned: boolean }>
-  ).find((r) => r.pinned);
-  return pinned ?? null;
+  if (error || !data) return { pinnedEvent: null, nextEvent: null };
+
+  const rows = data as UpcomingEventRow[];
+  const pinnedRow = rows.find((r) => r.pinned) ?? null;
+  const nextRow = rows.find((r) => !r.pinned) ?? null;
+  const withCover = async (row: UpcomingEventRow | null) =>
+    row
+      ? { ...row, coverUrl: await resolveCoverUrl(supabase, row.cover_image_path) }
+      : null;
+  const [pinnedEvent, nextEvent] = await Promise.all([
+    withCover(pinnedRow),
+    withCover(nextRow),
+  ]);
+  return { pinnedEvent, nextEvent };
 }
 
 // Shared card shell so all three initiative tiles share the same glass/hover
@@ -102,8 +155,8 @@ function InitiativeCard({
 // Tinted-glass chip instead of a flat gray pill, so it reads as an accent
 // on top of `.glass`/image surfaces rather than a disconnected gray sticker.
 // `leading-none` + `py-1` keeps the icon and text on the same optical
-// baseline; `backdrop-blur-sm` keeps it legible sitting on the Wiki card's
-// photo, not just on glass.
+// baseline; `backdrop-blur-sm` keeps it legible sitting on a photo, not
+// just on glass.
 function CardBadge({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold leading-none tracking-wide text-primary backdrop-blur-sm dark:border-primary/25 dark:bg-primary/15">
@@ -112,12 +165,20 @@ function CardBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CardVisitLink({ label }: { label: string }) {
+// `light`: white-on-image variant for the overlay tiles below, instead of
+// the default foreground-on-panel styling.
+function CardVisitLink({ label, light }: { label: string; light?: boolean }) {
   return (
-    <span className="mt-auto inline-flex items-center gap-1 pt-3 text-sm font-medium text-foreground group-hover:text-primary">
+    <span
+      className={`mt-auto inline-flex items-center gap-1 text-xs font-medium ${
+        light
+          ? "text-white/80 group-hover:text-white"
+          : "pt-3 text-sm text-foreground group-hover:text-primary"
+      }`}
+    >
       {label}
       <ArrowUpRight
-        size={14}
+        size={12}
         strokeWidth={1.75}
         className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
       />
@@ -125,104 +186,141 @@ function CardVisitLink({ label }: { label: string }) {
   );
 }
 
-function HacklantaCard() {
+// Shared shape for the "offer row" tiles below the hero: art fills the
+// whole card, badge top-right, name/caption/link overlaid bottom-left on
+// the scrim — no separate content panel, so every tile stays the same size
+// regardless of how much copy it carries.
+function OfferTile({
+  href,
+  external,
+  image,
+  badge,
+  name,
+  caption,
+  visitLabel,
+}: {
+  href: string;
+  external?: boolean;
+  image: React.ReactNode;
+  badge: React.ReactNode;
+  name: string;
+  caption: string;
+  visitLabel: string;
+}) {
   return (
-    <InitiativeCard href="https://hacklanta.dev" external>
-      <div className="relative min-h-[220px] flex-1 overflow-hidden sm:min-h-[320px]">
-        <Image
-          src="/hacklanta-ii-26.png"
-          alt="Hacklanta '26: Different Rhythm, Higher Stakes, Oct 9-11"
-          fill
-          className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-        />
-      </div>
-      <div className="flex flex-col gap-2 p-5">
-        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xl font-bold tracking-tight text-foreground">Hacklanta II</p>
-          {/* One segmented pill instead of a badge + a loose date tag side by
-              side — the divider gives them a shared edge instead of floating
-              independently at slightly different heights. */}
-          <div className="inline-flex w-fit shrink-0 items-center overflow-hidden rounded-full border border-primary/20 bg-primary/10 backdrop-blur-sm dark:border-primary/25 dark:bg-primary/15">
-            <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[10px] font-semibold leading-none tracking-wide text-primary">
-              <Sparkles size={12} strokeWidth={2} />
-              Flagship hackathon
-            </span>
-            <span aria-hidden className="h-3 w-px bg-primary/25 dark:bg-primary/30" />
-            <span className="py-1 pl-2 pr-2.5 text-[11px] font-bold leading-none tracking-tight text-foreground">
-              Oct 9–11
-            </span>
-          </div>
+    <InitiativeCard href={href} external={external}>
+      <div className="relative aspect-[16/9] overflow-hidden">
+        {image}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 from-0% via-black/70 via-30% to-transparent to-70%" />
+        <div className="absolute right-3 top-3">{badge}</div>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-3">
+          <p className="text-base font-bold tracking-tight text-white drop-shadow-lg">
+            {name}
+          </p>
+          <p className="line-clamp-1 text-xs text-white/70">{caption}</p>
+          <CardVisitLink label={visitLabel} light />
         </div>
-        <p className="text-sm text-muted-foreground">
-          Progsu&apos;s biggest event of the year, a weekend hackathon where
-          you build, ship, and pitch in front of real sponsors. Past
-          Hacklanta events have led to real internship offers. This is a
-          genuine opportunity, not just a resume line.
-        </p>
-        <p className="text-sm font-semibold text-amber-500">
-          RSVPs open, slots are limited!
-        </p>
-        <CardVisitLink label="Visit hacklanta.dev" />
       </div>
     </InitiativeCard>
   );
 }
 
-// Photo-led like Hacklanta, but a shorter image band and a pull-quote line
-// underneath so it still reads as the "quieter" of the two side tiles.
+// Live counterpart to OfferTile: same sizing and overlay layout, but for a
+// real upcoming event (cover art is a signed Supabase URL, so plain `img`
+// like the hero, not next/image with a static asset path).
+function UpcomingEventCard({ event }: { event: HomeEvent }) {
+  const start = new Date(event.starts_at);
+  const href = event.external_url ?? `/events/${event.slug}`;
+  return (
+    <OfferTile
+      href={href}
+      external={!!event.external_url}
+      image={
+        event.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={event.coverUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-primary/20">
+            <CalendarDays
+              size={32}
+              strokeWidth={1.5}
+              className="text-muted-foreground/60"
+              aria-hidden
+            />
+          </div>
+        )
+      }
+      badge={
+        <div className="inline-flex w-fit shrink-0 items-center overflow-hidden rounded-full border border-white/20 bg-black/50 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[10px] font-semibold leading-none tracking-wide text-primary">
+            <Users size={12} strokeWidth={2} />
+            {event.going_count} going
+          </span>
+          <span aria-hidden className="h-3 w-px bg-white/25" />
+          <span className="py-1 pl-2 pr-2.5 text-[11px] font-bold leading-none tracking-tight text-white">
+            {monthFormatter.format(start).toLowerCase()} {dayFormatter.format(start)}
+          </span>
+        </div>
+      }
+      name={event.title.toLowerCase()}
+      caption={event.location_text?.toLowerCase() ?? "location tbd"}
+      visitLabel="view event"
+    />
+  );
+}
+
+// Photo-led like Hacklanta's hero, but a shorter image band and a
+// pull-quote line underneath so it still reads as one of two "quieter"
+// side tiles next to the live event card.
 function WikiCard() {
   return (
-    <InitiativeCard href="https://wiki.progsu.com/guides/zero-to-hero" external>
-      <div className="relative aspect-[16/9] overflow-hidden">
+    <OfferTile
+      href="https://wiki.progsu.com/guides/zero-to-hero"
+      external
+      image={
         <Image
           src="/wiki-preview.png"
           alt="Progsu wiki: an open wiki for breaking into tech"
           fill
           className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-base font-medium text-foreground">Wiki: Zero to Hero</p>
-          <CardBadge>Just dropped ❕</CardBadge>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          The real guide on how to break into tech, starting from nothing:
-          your roadmap by year, and how to land your first internship.
-        </p>
-        <CardVisitLink label="Visit wiki.progsu.com" />
-      </div>
-    </InitiativeCard>
+      }
+      badge={<CardBadge>just dropped ❕</CardBadge>}
+      name="wiki: zero to hero"
+      caption="the real guide on how to break into tech, starting from nothing."
+      visitLabel="visit wiki.progsu.com"
+    />
   );
 }
 
-// Photo-led, compact — smaller image band than Wiki's so the two side tiles
-// still read as different weights, not identical shapes.
+// Photo-led, compact — same tile shape as Wiki's so the two side tiles
+// still read as a consistent pair next to the live event card.
 function ProgsuSiteCard() {
   return (
-    <InitiativeCard href="https://progsu.com" external>
-      <div className="relative aspect-[2/1] overflow-hidden">
+    <OfferTile
+      href="https://progsu.com"
+      external
+      image={
         <Image
           src="/progsu-site-preview.jpg"
           alt="progsu.com: builders and dreamers of ATL"
           fill
           className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-base font-medium text-foreground">Progsu Official</p>
-          <CardBadge>
-            <Globe size={11} strokeWidth={2} />
-            Official site
-          </CardBadge>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Mission, team, and the movements we&apos;re building beyond any
-          one event.
-        </p>
-        <CardVisitLink label="Visit progsu.com" />
-      </div>
-    </InitiativeCard>
+      }
+      badge={
+        <CardBadge>
+          <Globe size={11} strokeWidth={2} />
+          official site
+        </CardBadge>
+      }
+      name="progsu official"
+      caption="mission, team, and the movements we're building beyond any one event."
+      visitLabel="visit progsu.com"
+    />
   );
 }
