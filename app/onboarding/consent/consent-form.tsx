@@ -17,6 +17,7 @@ import {
   OnbErrorBox,
   OnbIntro,
   OnbPrimaryButton,
+  OnbSecondaryButton,
   OnbSurface,
 } from "../_components/shell";
 import { usePreview } from "../_components/preview";
@@ -267,10 +268,25 @@ The required bits take ten seconds. The rest decides what you actually get out o
       </OnbSurface>
 
       <OnbActionBar>
-        <div className="flex w-full flex-col items-center gap-2.5">
-          <OnbPrimaryButton type="submit" loading={pending} disabled={!ctaArmed}>
-            Save and finish
-          </OnbPrimaryButton>
+        <div className="flex w-full max-w-[24rem] flex-col items-center gap-2.5">
+          <div className="flex w-full items-center gap-3">
+            <OnbSecondaryButton
+              size="cta"
+              className="w-auto flex-none px-5"
+              disabled={pending}
+              onClick={() => router.push("/onboarding/resume")}
+            >
+              Back
+            </OnbSecondaryButton>
+            <OnbPrimaryButton
+              type="submit"
+              loading={pending}
+              disabled={!ctaArmed}
+              className="flex-1"
+            >
+              Save and finish
+            </OnbPrimaryButton>
+          </div>
           <p className="text-center text-xs text-muted-foreground">
             Change any of this later from settings
           </p>

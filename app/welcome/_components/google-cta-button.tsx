@@ -15,7 +15,9 @@ export function GoogleCtaButton({ next }: { next?: string }) {
       <span className="g-badge" aria-hidden>
         <GoogleGlyph />
       </span>
-      {pending ? "redirecting…" : "continue with google"}
+      <span className="btn-google-label">
+        {pending ? "redirecting…" : "continue with google"}
+      </span>
     </button>
   );
 }

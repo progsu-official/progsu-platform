@@ -33,6 +33,7 @@ import {
   OnbActionBar,
   OnbErrorBox,
   OnbPrimaryButton,
+  OnbSecondaryButton,
   OnbSurface,
   OnbIntro,
   onbPanelClasses,
@@ -153,7 +154,7 @@ export function LinksForm({ initial }: { initial: Initial }) {
   return (
     <>
       <OnbSurface className="space-y-6">
-        <OnbIntro title="What are you into?">
+        <OnbIntro title="A bit more about you">
           Just trying to get to know you. This is what decides which opportunities we send your way.
         </OnbIntro>
         <form id={FORM_ID} onSubmit={onSubmit} className="space-y-6">
@@ -379,9 +380,24 @@ export function LinksForm({ initial }: { initial: Initial }) {
       </OnbSurface>
 
       <OnbActionBar>
-        <OnbPrimaryButton type="submit" form={FORM_ID} loading={pending}>
-          {pending ? "Saving…" : "Continue"}
-        </OnbPrimaryButton>
+        <div className="flex w-full max-w-[24rem] items-center gap-3">
+          <OnbSecondaryButton
+            size="cta"
+            className="w-auto flex-none px-5"
+            disabled={pending}
+            onClick={() => router.push("/onboarding/profile")}
+          >
+            Back
+          </OnbSecondaryButton>
+          <OnbPrimaryButton
+            type="submit"
+            form={FORM_ID}
+            loading={pending}
+            className="flex-1"
+          >
+            {pending ? "Saving…" : "Continue"}
+          </OnbPrimaryButton>
+        </div>
       </OnbActionBar>
     </>
   );

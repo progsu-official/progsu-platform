@@ -322,6 +322,7 @@
   display: inline-flex;
   align-items: center;
   gap: 11px;
+  max-width: 100%;
   background: var(--w-ink);
   color: #fff;
   font-size: 15px;
@@ -332,6 +333,14 @@
   cursor: pointer;
   box-shadow: var(--w-shadow-md);
   transition: transform 0.16s, box-shadow 0.16s;
+}
+/* The label is a real flex item (not a bare text node), so it can shrink
+   and wrap onto a second line rather than forcing the button itself to
+   overflow its (already 90vw-capped) container on narrow phones. */
+.welcome-root .btn-google-label {
+  white-space: normal;
+  text-align: left;
+  min-width: 0;
 }
 .welcome-root .btn-google:hover {
   transform: translateY(-2px);

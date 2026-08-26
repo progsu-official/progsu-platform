@@ -263,7 +263,18 @@ export function ResumeUploader({
       </OnbSurface>
 
       <OnbActionBar>
-        <div className="flex w-full max-w-[24rem] items-center gap-3">
+        <div className="flex w-full max-w-[28rem] items-center gap-2">
+          <OnbSecondaryButton
+            size="cta"
+            className="w-auto flex-none px-4"
+            disabled={busy}
+            onClick={() => {
+              if (preview) return preview.advance("/onboarding/links");
+              router.push("/onboarding/links");
+            }}
+          >
+            Back
+          </OnbSecondaryButton>
           <OnbSecondaryButton
             // cta height so both pills in the bar match; width stays natural.
             size="cta"

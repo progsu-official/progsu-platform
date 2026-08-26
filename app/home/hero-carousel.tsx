@@ -1,7 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
+
+// Minimal shape of the bits of the YouTube IFrame Player API this file
+// actually uses — not worth a full @types/youtube dependency for this.
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (
+        el: HTMLElement,
+        opts: { events: { onStateChange: (e: { data: number }) => void } }
+      ) => { destroy: () => void };
+      PlayerState: { PLAYING: number; PAUSED: number; ENDED: number };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
 
 type HeroEvent = {
   slug: string;
@@ -87,10 +102,65 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
   );
 }
 
-function VideoSlide({ videoId }: { videoId: string }) {
+type VideoState = "unstarted" | "playing" | "paused" | "ended";
+
+// Wires up the real YouTube IFrame Player API (not just a bare embed) so the
+// carousel can tell whether someone is actually watching before it auto-
+// advances away from them.
+function VideoSlide({
+  videoId,
+  onStateChange,
+}: {
+  videoId: string;
+  onStateChange: (state: VideoState) => void;
+}) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    let destroyed = false;
+    let player: { destroy: () => void } | undefined;
+
+    function createPlayer() {
+      if (destroyed || !iframeRef.current || !window.YT) return;
+      const YT = window.YT;
+      player = new YT.Player(iframeRef.current, {
+        events: {
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.PLAYING) onStateChange("playing");
+            else if (e.data === YT.PlayerState.PAUSED) onStateChange("paused");
+            else if (e.data === YT.PlayerState.ENDED) onStateChange("ended");
+          },
+        },
+      });
+    }
+
+    if (window.YT) {
+      createPlayer();
+    } else {
+      if (!document.getElementById("youtube-iframe-api")) {
+        const script = document.createElement("script");
+        script.id = "youtube-iframe-api";
+        script.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(script);
+      }
+      const previous = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previous?.();
+        createPlayer();
+      };
+    }
+
+    return () => {
+      destroyed = true;
+      player?.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <iframe
-      src={`https://www.youtube.com/embed/${videoId}`}
+      ref={iframeRef}
+      src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1`}
       title="hacklanta video"
       className="h-full w-full"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -118,7 +188,9 @@ export function HeroCarousel({
 }) {
   const [trackPos, setTrackPos] = useState(0); // 0, 1, or 2 (2 = duplicate of 0)
   const [animated, setAnimated] = useState(true);
+  const [videoState, setVideoState] = useState<VideoState>("unstarted");
   const activeDot = trackPos % REAL_SLIDES;
+  const onVideoSlide = activeDot === 1;
 
   // No-ops while sitting on the duplicate slide, waiting for the snap-back
   // below — otherwise a click landing in that ~700ms window would push past
@@ -128,12 +200,17 @@ export function HeroCarousel({
     setTrackPos((p) => (p >= REAL_SLIDES ? p : p + 1));
   };
 
-  // Auto-advance every 15s. Restarts on every step (manual or auto) so a
-  // manual click gets a fresh window instead of an immediate second jump.
+  // Auto-advance every 15s, except: never advance away from the video slide
+  // while it's actually playing, and once they pause it, wait a full 60s
+  // (not 15) before moving on — a real "are they still watching" grace
+  // period, not just the normal cadence. Resets whenever trackPos or the
+  // video's state changes, so resuming/pausing playback re-arms the timer.
   useEffect(() => {
-    const id = setInterval(advance, 15_000);
-    return () => clearInterval(id);
-  }, [trackPos]);
+    if (onVideoSlide && videoState === "playing") return;
+    const delay = onVideoSlide ? 60_000 : 15_000;
+    const id = setTimeout(advance, delay);
+    return () => clearTimeout(id);
+  }, [trackPos, onVideoSlide, videoState]);
 
   // Landed on the duplicate slide: once the transition finishes, snap back
   // to the real position 0 with the transition disabled for that one frame
@@ -168,7 +245,7 @@ export function HeroCarousel({
           <EventSlide event={event} hosts={hosts} />
         </div>
         <div className="h-full w-full shrink-0" style={{ width: `${100 / (REAL_SLIDES + 1)}%` }}>
-          <VideoSlide videoId={videoId} />
+          <VideoSlide videoId={videoId} onStateChange={setVideoState} />
         </div>
         <div className="h-full w-full shrink-0" style={{ width: `${100 / (REAL_SLIDES + 1)}%` }}>
           <EventSlide event={event} hosts={hosts} />
