@@ -22,13 +22,13 @@ export default async function HomePage() {
   return (
     <div className="space-y-8 py-8">
       <header>
-        <h1 className="text-4xl font-bold tracking-tight">home</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Home</h1>
       </header>
 
       {pinnedEvent ? (
         <section className={`space-y-3 ${STAGGER} delay-0`}>
           <div className="flex justify-end">
-            <div className="inline-flex items-center gap-3 rounded-lg bg-black px-3 py-2">
+            <div className="inline-flex items-center gap-3 px-3 py-2">
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
                 featured
               </span>
