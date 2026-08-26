@@ -60,7 +60,7 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
             {event.title.toLowerCase()}
           </p>
           <p className="mt-1 text-sm text-white/80">
-            progsu&apos;s biggest event of the year — rsvp now, slots are limited.
+            progsu&apos;s biggest event of the year, rsvp now, slots are limited.
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
             {hosts ? <span>by {hosts}</span> : null}
