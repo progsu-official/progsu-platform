@@ -18,8 +18,22 @@ function Segment({ value, label }: { value: number; label: string }) {
       <span className="text-2xl font-black tabular-nums text-white sm:text-4xl">
         {String(value).padStart(2, "0")}
       </span>
-      <span className="text-[9px] font-semibold uppercase tracking-widest text-white/50 sm:text-[11px]">
+      <span className="text-[9px] font-semibold tracking-widest text-white/50 sm:text-[11px]">
         {label}
+      </span>
+    </div>
+  );
+}
+
+// Matches Segment's two-row height (number + label) with an invisible
+// second row, so items-start lines the colon glyph up with the numbers
+// above their labels instead of centering across the taller two-row block.
+function Colon() {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-2xl font-black text-white sm:text-4xl">:</span>
+      <span aria-hidden className="invisible text-[9px] sm:text-[11px]">
+        :
       </span>
     </div>
   );
@@ -38,13 +52,13 @@ export function CountdownTimer({ target }: { target: string }) {
   }, [targetMs]);
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2">
+    <div className="flex items-start gap-1.5 sm:gap-2">
       <Segment value={parts.days} label="days" />
-      <span className="text-2xl font-black text-white sm:text-4xl">:</span>
+      <Colon />
       <Segment value={parts.hours} label="hrs" />
-      <span className="text-2xl font-black text-white sm:text-4xl">:</span>
+      <Colon />
       <Segment value={parts.minutes} label="min" />
-      <span className="text-2xl font-black text-white sm:text-4xl">:</span>
+      <Colon />
       <Segment value={parts.seconds} label="sec" />
     </div>
   );
