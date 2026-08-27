@@ -12,10 +12,22 @@ function diffParts(targetMs: number, nowMs: number) {
   };
 }
 
-// Ticking countdown, spelled out ("44 days 18 hrs 45 min 40 secs") instead
-// of a bare DD:HH:MM:SS. Seeded from the server-rendered target on first
-// render so there's no hydration flash of "0 days 0 hrs..." before the
-// first tick.
+function Segment({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-3xl font-black tabular-nums text-white sm:text-5xl">
+        {String(value).padStart(2, "0")}
+      </span>
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/50 sm:text-xs">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// Digital-clock style countdown: big numbers, small labels, colons between.
+// Seeded from the server-rendered target on first render so there's no
+// hydration flash of "00:00:00:00" before the first tick.
 export function CountdownTimer({ target }: { target: string }) {
   const targetMs = new Date(target).getTime();
   const [parts, setParts] = useState(() => diffParts(targetMs, Date.now()));
@@ -26,8 +38,14 @@ export function CountdownTimer({ target }: { target: string }) {
   }, [targetMs]);
 
   return (
-    <span className="text-xs font-black tracking-wide text-primary tabular-nums sm:text-lg">
-      {parts.days} days {parts.hours} hrs {parts.minutes} min {parts.seconds} secs
-    </span>
+    <div className="flex items-center gap-2 sm:gap-3">
+      <Segment value={parts.days} label="days" />
+      <span className="text-3xl font-black text-primary sm:text-5xl">:</span>
+      <Segment value={parts.hours} label="hrs" />
+      <span className="text-3xl font-black text-primary sm:text-5xl">:</span>
+      <Segment value={parts.minutes} label="min" />
+      <span className="text-3xl font-black text-primary sm:text-5xl">:</span>
+      <Segment value={parts.seconds} label="sec" />
+    </div>
   );
 }

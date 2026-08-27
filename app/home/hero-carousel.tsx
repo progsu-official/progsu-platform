@@ -61,7 +61,9 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
           <p className="text-2xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl">
             {event.title.toLowerCase()}
           </p>
-          <CountdownTimer target={event.starts_at} />
+          <div className="mt-2">
+            <CountdownTimer target={event.starts_at} />
+          </div>
           <p className="mt-1 line-clamp-2 text-sm text-white/80">
             progsu&apos;s biggest event of the year, rsvp now, slots are limited.
           </p>
