@@ -25,7 +25,12 @@ export default async function HomePage() {
       </header>
 
       {pinnedEvent ? (
-        <section className={`space-y-3 ${STAGGER} delay-0`}>
+        <section className={`relative ${STAGGER} delay-0`}>
+          <div className="absolute right-4 top-4 z-10 rounded-xl border border-white/20 bg-black/50 px-2.5 py-1.5 backdrop-blur-md sm:right-6 sm:top-6">
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
+              featured
+            </span>
+          </div>
           <HeroCarousel
             event={pinnedEvent}
             hosts={joinHosts(pinnedEvent.hosts)}
