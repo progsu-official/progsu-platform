@@ -18,6 +18,8 @@ type SearchParams = {
   claimed?: string; // "unclaimed" | "claimed" | "all" (legacy view only)
   sms?: string; // "yes" | "no" | "unknown" (legacy view only)
   page?: string;
+  legacy?: string; // "yes" to show the unclaimed historical-import archive
+  lpage?: string;
 };
 
 const PAGE_SIZE = 25;
@@ -111,6 +113,11 @@ async function MembersSection({
   const archived = params.archived;
   const page = Math.min(
     Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1),
+    MAX_PAGE
+  );
+  const showLegacy = params.legacy === "yes";
+  const legacyPage = Math.min(
+    Math.max(1, Number.parseInt(params.lpage ?? "1", 10) || 1),
     MAX_PAGE
   );
 
@@ -209,6 +216,54 @@ async function MembersSection({
     MAX_PAGE
   );
 
+  // Historical Luma import (see scripts/import-legacy-members.ts). Only the
+  // unclaimed rows are worth surfacing here — claimed ones already show up
+  // above as real profiles. Kept as a separate table/query rather than
+  // merged into the paginated list above: the two sources have unrelated
+  // filters/columns, and a real profiles row already wins once claimed.
+  let legacyRows: Array<{
+    id: string;
+    full_name: string | null;
+    personal_email: string | null;
+    campus_email: string | null;
+    phone_number: string | null;
+    source: string;
+    imported_at: string;
+  }> = [];
+  let legacyCount = 0;
+  if (showLegacy) {
+    const lFrom = (legacyPage - 1) * PAGE_SIZE;
+    const lTo = lFrom + PAGE_SIZE - 1;
+    let legacyBuilder = admin
+      .from("legacy_members")
+      .select(
+        "id, full_name, personal_email, campus_email, phone_number, source, imported_at",
+        { count: "exact" }
+      )
+      .is("claimed_profile_id", null);
+    if (q) {
+      const escaped = q.replace(/[%_]/g, (c) => `\\${c}`);
+      legacyBuilder = legacyBuilder.or(
+        `full_name.ilike.%${escaped}%,personal_email.ilike.%${escaped}%,campus_email.ilike.%${escaped}%`
+      );
+    }
+    const {
+      data: legacyData,
+      count: legacyTotal,
+      error: legacyError,
+    } = await legacyBuilder
+      .order("imported_at", { ascending: false })
+      .range(lFrom, lTo);
+    if (!legacyError) {
+      legacyRows = legacyData ?? [];
+      legacyCount = legacyTotal ?? 0;
+    }
+  }
+  const legacyTotalPages = Math.min(
+    Math.ceil(legacyCount / PAGE_SIZE) || 1,
+    MAX_PAGE
+  );
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
@@ -295,6 +350,15 @@ async function MembersSection({
             ))}
           </div>
         </details>
+        <label className="flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1">
+          <input
+            type="checkbox"
+            name="legacy"
+            value="yes"
+            defaultChecked={showLegacy}
+          />
+          Show historical import (unclaimed)
+        </label>
         <button
           type="submit"
           className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
@@ -404,6 +468,48 @@ async function MembersSection({
       </div>
 
       <Pagination page={page} totalPages={totalPages} searchParams={params} />
+
+      {showLegacy ? (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold">
+            Historical import, unclaimed ({legacyCount})
+          </h2>
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/30 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Email</th>
+                  <th className="px-3 py-2 font-medium">Phone</th>
+                  <th className="px-3 py-2 font-medium">Source</th>
+                  <th className="px-3 py-2 font-medium">Imported</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {legacyRows.map((r) => (
+                  <tr key={r.id} className="hover:bg-muted/20">
+                    <td className="px-3 py-2">{r.full_name ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {r.campus_email ?? r.personal_email ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs">{r.phone_number ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs">{r.source}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {new Date(r.imported_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            page={legacyPage}
+            totalPages={legacyTotalPages}
+            searchParams={params}
+            paramName="lpage"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -597,20 +703,22 @@ function Pagination({
   page,
   totalPages,
   searchParams,
+  paramName = "page",
 }: {
   page: number;
   totalPages: number;
   searchParams: SearchParams;
+  paramName?: string;
 }) {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(searchParams)) {
-    if (k === "page") continue;
+    if (k === paramName) continue;
     if (Array.isArray(v)) for (const x of v) qs.append(k, x);
     else if (v != null) qs.append(k, v);
   }
   const link = (p: number) => {
     const u = new URLSearchParams(qs);
-    u.set("page", String(p));
+    u.set(paramName, String(p));
     return `?${u.toString()}`;
   };
   return (
