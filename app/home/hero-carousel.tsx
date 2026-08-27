@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 
+import { CountdownTimer } from "./countdown-timer";
+
 // Minimal shape of the bits of the YouTube IFrame Player API this file
 // actually uses — not worth a full @types/youtube dependency for this.
 declare global {
@@ -66,10 +68,16 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
             />
           </div>
         )}
-        {/* Lighter scrim: just enough for the overlay text to read (helped
-            along by the drop-shadow on the text itself), without flattening
-            the art into a black box. */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {/* Lighter scrim on larger screens: just enough for the overlay text
+            to read (helped along by the drop-shadow on the text itself),
+            without flattening the art into a black box. Mobile gets a much
+            stronger fade — the same via-stop that's subtle at desktop size
+            covers proportionally more of a shorter mobile slide, so the
+            busy cover art underneath was bleeding through the title. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent sm:from-black/70 sm:via-black/20" />
+        <div className="absolute left-4 top-4 rounded-xl border border-white/20 bg-black/50 px-2.5 py-1.5 backdrop-blur-md sm:left-6 sm:top-6">
+          <CountdownTimer target={event.starts_at} />
+        </div>
         <div className="absolute inset-x-0 bottom-0 p-4 pr-24 sm:p-6 sm:pr-28">
           <p className="text-2xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl">
             {event.title.toLowerCase()}

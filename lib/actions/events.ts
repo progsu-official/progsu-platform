@@ -549,6 +549,46 @@ export async function correctAttendance(
   return ok({ corrected: true });
 }
 
+const correctGuestAttendanceSchema = z.object({
+  eventId: z.string().uuid(),
+  guestRsvpId: z.string().uuid(),
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+// Undoes a guest check-in (event_guest_attendances), leaving the guest RSVP
+// itself intact — mirrors correctAttendance's "remove" action for members.
+export async function correctGuestAttendance(
+  eventId: string,
+  guestRsvpId: string,
+  note?: string | null
+): Promise<ActionResult<{ corrected: true }>> {
+  const parsed = correctGuestAttendanceSchema.safeParse({
+    eventId,
+    guestRsvpId,
+    note,
+  });
+  if (!parsed.success) {
+    return err(
+      "INVALID_INPUT",
+      parsed.error.issues[0]?.message ?? "Invalid input"
+    );
+  }
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  const { error } = await supabase.rpc("correct_guest_attendance", {
+    p_event_id: parsed.data.eventId,
+    p_guest_rsvp_id: parsed.data.guestRsvpId,
+    p_note: parsed.data.note ?? null,
+  });
+  if (error) return mapPgError(error);
+
+  revalidateEventPaths(parsed.data.eventId);
+  return ok({ corrected: true });
+}
+
 const removeRsvpSchema = z.object({
   eventId: z.string().uuid(),
   userId: z.string().uuid(),
@@ -570,6 +610,34 @@ export async function removeRsvp(
   const { error } = await supabase.rpc("admin_remove_rsvp", {
     p_event_id: parsed.data.eventId,
     p_user_id: parsed.data.userId,
+  });
+  if (error) return mapPgError(error);
+
+  revalidateEventPaths(parsed.data.eventId);
+  return ok({ removed: true });
+}
+
+const removeGuestRsvpSchema = z.object({
+  eventId: z.string().uuid(),
+  guestRsvpId: z.string().uuid(),
+});
+
+// Guest counterpart to removeRsvp — deletes the event_guest_rsvps row
+// (and, via cascade, any event_guest_attendances row under it).
+export async function removeGuestRsvp(
+  eventId: string,
+  guestRsvpId: string
+): Promise<ActionResult<{ removed: true }>> {
+  const parsed = removeGuestRsvpSchema.safeParse({ eventId, guestRsvpId });
+  if (!parsed.success) return err("INVALID_INPUT", "Invalid ids.");
+
+  const { supabase, user, isAdmin } = await requireAdminContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+  if (!isAdmin) return err("FORBIDDEN", "Admins only.");
+
+  const { error } = await supabase.rpc("admin_remove_guest_rsvp", {
+    p_event_id: parsed.data.eventId,
+    p_guest_rsvp_id: parsed.data.guestRsvpId,
   });
   if (error) return mapPgError(error);
 

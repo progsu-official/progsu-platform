@@ -12,10 +12,36 @@ function diffParts(targetMs: number, nowMs: number) {
   };
 }
 
-// Ticking countdown, spelled out ("44 days 18 hrs 45 min 40 secs") instead
-// of a bare DD:HH:MM:SS. Seeded from the server-rendered target on first
-// render so there's no hydration flash of "0 days 0 hrs..." before the
-// first tick.
+function Segment({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-2xl font-black tabular-nums text-white sm:text-4xl">
+        {String(value).padStart(2, "0")}
+      </span>
+      <span className="text-[9px] font-semibold tracking-widest text-white/50 sm:text-[11px]">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// Matches Segment's two-row height (number + label) with an invisible
+// second row, so items-start lines the colon glyph up with the numbers
+// above their labels instead of centering across the taller two-row block.
+function Colon() {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-2xl font-black text-white sm:text-4xl">:</span>
+      <span aria-hidden className="invisible text-[9px] sm:text-[11px]">
+        :
+      </span>
+    </div>
+  );
+}
+
+// Digital-clock style countdown: big numbers, small labels, colons between.
+// Seeded from the server-rendered target on first render so there's no
+// hydration flash of "00:00:00:00" before the first tick.
 export function CountdownTimer({ target }: { target: string }) {
   const targetMs = new Date(target).getTime();
   const [parts, setParts] = useState(() => diffParts(targetMs, Date.now()));
@@ -26,8 +52,14 @@ export function CountdownTimer({ target }: { target: string }) {
   }, [targetMs]);
 
   return (
-    <span className="text-xs font-black tracking-wide text-primary tabular-nums sm:text-lg">
-      {parts.days} days {parts.hours} hrs {parts.minutes} min {parts.seconds} secs
-    </span>
+    <div className="flex items-start gap-1.5 sm:gap-2">
+      <Segment value={parts.days} label="days" />
+      <Colon />
+      <Segment value={parts.hours} label="hrs" />
+      <Colon />
+      <Segment value={parts.minutes} label="min" />
+      <Colon />
+      <Segment value={parts.seconds} label="sec" />
+    </div>
   );
 }

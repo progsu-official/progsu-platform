@@ -7,7 +7,6 @@ import { resolveCoverUrl } from "@/lib/events/cover-url";
 
 import { joinHosts, type HostRef } from "../events/_components/event-card";
 import { EVENT_TIME_ZONE } from "../events/_components/event-date";
-import { CountdownTimer } from "./countdown-timer";
 import { HeroCarousel } from "./hero-carousel";
 
 const HACKLANTA_RECAP_VIDEO_ID = "OltQSnt5CHc";
@@ -26,15 +25,11 @@ export default async function HomePage() {
       </header>
 
       {pinnedEvent ? (
-        <section className={`space-y-3 ${STAGGER} delay-0`}>
-          <div className="flex justify-end">
-            <div className="inline-flex items-center gap-3 px-3 py-2">
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
-                featured
-              </span>
-              <span aria-hidden className="h-4 w-px bg-white/30" />
-              <CountdownTimer target={pinnedEvent.starts_at} />
-            </div>
+        <section className={`${STAGGER} delay-0`}>
+          <div className="mb-2 flex justify-start">
+            <span className="rounded-full bg-purple-900 px-3 py-1.5 text-sm font-black uppercase tracking-[0.2em] text-white">
+              featured
+            </span>
           </div>
           <HeroCarousel
             event={pinnedEvent}
@@ -46,7 +41,7 @@ export default async function HomePage() {
 
       <section className="space-y-6">
         <h2
-          className={`text-3xl font-bold tracking-tight text-foreground sm:text-5xl ${STAGGER} delay-[90ms]`}
+          className={`text-2xl font-bold tracking-tight text-foreground sm:text-4xl ${STAGGER} delay-[90ms]`}
         >
           more from progsu
         </h2>
