@@ -354,7 +354,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Contact</h2>
         <p>
           Email Progsu leadership at{" "}
-          <span className="font-mono text-xs">hello@progsu.org</span> with any
+          <span className="font-mono text-xs">hello@progsu.com</span> with any
           privacy questions.
         </p>
       </article>

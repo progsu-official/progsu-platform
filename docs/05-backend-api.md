@@ -64,7 +64,7 @@ src/
 | `finalizeResumeUpload` | `actions/resume.ts` | Session | `{ resumeId: string }` | `{ resumeId: string, isCurrent: true, sizeBytes: number }` | HEADs the Storage object; validates size ≤ 10 MB and `content-type: application/pdf`; calls SECURITY DEFINER `set_current_resume(resume_id)` (flips prior current to false, this one to true); writes audit; sends "resume updated" email via Resend (fire-and-forget). | 10 / hour / user. |
 | `deleteResume` | `actions/resume.ts` | Session, owner | `{ resumeId: string }` | `{ resumeId: string, deletedAt: string }` | **Own-only, soft-delete** (sets `deleted_at`, does NOT remove Storage object in V0). If resume is current, clears `is_current` and the member has no current resume until they upload another. Writes audit. Hard-delete of storage objects is a future cron job. | 10 / hour / user. |
 | `recordConsent` | `actions/consent.ts` | Session | `{ consentType, accepted, version }` | `{ consentId, recordedAt }` | Appends row to `consents` with IP + UA captured from request headers (via `headers()` helper). Never updates — always append. | 60 / hour / user. |
-| `requestAccountDeletion` | `actions/consent.ts` | Session | `{ reason?: string }` | `{ requestedAt: string }` | V0: writes `account_deletion_requests` row, writes audit, sends Resend email to `admin@progsu.org`. Actual deletion is a manual admin action. | 3 / day / user. |
+| `requestAccountDeletion` | `actions/consent.ts` | Session | `{ reason?: string }` | `{ requestedAt: string }` | V0: writes `account_deletion_requests` row, writes audit, sends Resend email to `admin@progsu.com`. Actual deletion is a manual admin action. | 3 / day / user. |
 
 **Rationale for `deleteResume` being own-only**: in V0 only the member can soft-delete their resume. Admins cannot delete member resumes — they can only un-verify or escalate to full account deletion. This preserves "admin never touches member-owned artifacts" as a V0 property and simplifies audit semantics.
 
@@ -1203,7 +1203,7 @@ Rate limited at the bucket level (60/min per source IP). If a single Resend IP b
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` | Supabase project URL — used by both server and browser clients. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGci...` | Public anon key; safe to ship to browser. |
-| `NEXT_PUBLIC_APP_URL` | `https://platform.progsu.org` | Self-URL for OAuth callback and email links. |
+| `NEXT_PUBLIC_APP_URL` | `https://platform.progsu.com` | Self-URL for OAuth callback and email links. |
 | `NEXT_PUBLIC_FEATURE_DOMAIN_ADMIN` | `false` | Feature flag for `/admin/domains`. Default false in V0. |
 
 ### 10.2 Server-only (NEVER prefixed `NEXT_PUBLIC_`)
@@ -1218,7 +1218,7 @@ Rate limited at the bucket level (60/min per source IP). If a single Resend IP b
 | `UPSTASH_REDIS_REST_URL` | (Future) rate-limit store. Optional in V0; undefined → fall back to DB buckets. |
 | `UPSTASH_REDIS_REST_TOKEN` | Paired with the URL above. |
 | `OTP_PEPPER` | Secret pepper mixed into OTP hashing before DB write (per Auth doc). |
-| `ADMIN_NOTIFY_EMAIL` | `admin@progsu.org` — where `requestAccountDeletion` emails land. |
+| `ADMIN_NOTIFY_EMAIL` | `admin@progsu.com` — where `requestAccountDeletion` emails land. |
 | `SENTRY_DSN` | (Future) exception reporting. Unused in V0. |
 | `LOG_LEVEL` | `info` / `debug`. Affects `logEvent` verbosity. |
 

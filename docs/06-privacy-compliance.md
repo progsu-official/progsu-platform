@@ -250,7 +250,7 @@ Include a `README.txt` alongside the CSV in the downloaded zip (or as the first 
 #   - Resume URLs in this file expire 15 minutes after export. Do not cache.
 #   - Students may withdraw consent at any time. If you receive a withdrawal
 #     request, stop contact and notify Progsu within 5 business days.
-#   - Questions: privacy@progsu.org
+#   - Questions: privacy@progsu.com
 ```
 
 ---
@@ -275,7 +275,7 @@ These are non-negotiable for V0 ship. Agents 03 (DB) and 04 (security) are the p
 
 ### User-initiated deletion (V0 process)
 
-- User clicks "Request account deletion" on `/profile/account`. V0 implementation: this opens a prefilled email to `privacy@progsu.org` (matches spec §5 non-goal on self-service delete).
+- User clicks "Request account deletion" on `/profile/account`. V0 implementation: this opens a prefilled email to `privacy@progsu.com` (matches spec §5 non-goal on self-service delete).
 - Admin receives the request, opens a ticket, and within **30 calendar days** executes the deletion runbook:
   1. Delete the resume object from Storage and all `resume_history` objects for that user.
   2. Delete `profiles` row.
@@ -350,7 +350,7 @@ Full drafting is out of V0 engineering scope, but the app must link to real page
 - **Children.** We require 18+ (or parental permission); see §6 of risks.
 - **Security.** Non-technical summary of §8.
 - **Changes to this policy.** Reference §6 of this doc: major vs minor bumps.
-- **Contact.** `privacy@progsu.org`.
+- **Contact.** `privacy@progsu.com`.
 
 ### Terms of Service (`/terms`)
 
@@ -362,7 +362,7 @@ Full drafting is out of V0 engineering scope, but the app must link to real page
 - **Disclaimers and limitations.** No warranty; Progsu is not responsible for what recruiters do post-export.
 - **Termination.** We can remove accounts that violate the terms; you can delete your own anytime.
 - **Governing law.** Georgia, USA.
-- **Contact.** `privacy@progsu.org`.
+- **Contact.** `privacy@progsu.com`.
 
 ---
 
@@ -410,7 +410,7 @@ Full drafting is out of V0 engineering scope, but the app must link to real page
 - [ ] `/privacy` and `/terms` pages are live with v1 content before any real user signs up.
 - [ ] Age-floor checkbox on signup (pending §13 Q1 decision).
 - [ ] Resume-upload PII warning copy is live on upload pages.
-- [ ] `privacy@progsu.org` inbox exists and is monitored by a named officer.
+- [ ] `privacy@progsu.com` inbox exists and is monitored by a named officer.
 - [ ] Deletion runbook exists in `docs/runbooks/`; deletion SLA documented as 30 days.
 - [ ] Risks register (§10) reviewed by leadership and signed off.
 - [ ] Lawyer review of privacy policy, ToS, consent copy, and recruiter DPA **before first external export**.
