@@ -100,10 +100,18 @@ export default async function AdminEventsPage({
   const rsvpCountByEvent = new Map<string, { going: number; waitlisted: number }>();
   const hostsByEvent = new Map<string, Array<{ display_name: string; sort_order: number }>>();
   if (ids.length > 0) {
-    const [{ data: rsvps }, { data: hosts }, { data: historicalCounts }] =
+    const [{ data: rsvps }, { data: guestRsvps }, { data: hosts }, { data: historicalCounts }] =
       await Promise.all([
         admin
           .from("event_rsvps")
+          .select("event_id, status")
+          .in("event_id", ids)
+          .in("status", ["going", "waitlisted"]),
+        // Capacity is one shared pool across members + guests (2026-08-21
+        // guest-RSVP decision) — omitting these undercounts any event with
+        // guest sign-ups, same as the single-event page already accounts for.
+        admin
+          .from("event_guest_rsvps")
           .select("event_id, status")
           .in("event_id", ids)
           .in("status", ["going", "waitlisted"]),
@@ -120,7 +128,7 @@ export default async function AdminEventsPage({
         // undercounting well-attended historical events.
         admin.rpc("historical_attendance_counts", { p_event_ids: ids }),
       ]);
-    for (const r of rsvps ?? []) {
+    for (const r of [...(rsvps ?? []), ...(guestRsvps ?? [])]) {
       const id = r.event_id as string;
       const entry = rsvpCountByEvent.get(id) ?? { going: 0, waitlisted: 0 };
       if (r.status === "going") entry.going += 1;
