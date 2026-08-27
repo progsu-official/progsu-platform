@@ -25,8 +25,8 @@ export default async function HomePage() {
       </header>
 
       {pinnedEvent ? (
-        <section className={`relative ${STAGGER} delay-0`}>
-          <div className="absolute right-4 top-4 z-10 rounded-xl border border-white/20 bg-black/50 px-2.5 py-1.5 backdrop-blur-md sm:right-6 sm:top-6">
+        <section className={`${STAGGER} delay-0`}>
+          <div className="mb-2 flex justify-end">
             <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
               featured
             </span>
@@ -41,7 +41,7 @@ export default async function HomePage() {
 
       <section className="space-y-6">
         <h2
-          className={`text-3xl font-bold tracking-tight text-foreground sm:text-5xl ${STAGGER} delay-[90ms]`}
+          className={`text-xl font-bold tracking-tight text-foreground sm:text-3xl ${STAGGER} delay-[90ms]`}
         >
           more from progsu
         </h2>
