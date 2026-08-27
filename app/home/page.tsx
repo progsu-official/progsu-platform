@@ -27,7 +27,7 @@ export default async function HomePage() {
       {pinnedEvent ? (
         <section className={`${STAGGER} delay-0`}>
           <div className="mb-2 flex justify-start">
-            <span className="rounded-full bg-primary px-3 py-1.5 text-sm font-black uppercase tracking-[0.2em] text-primary-foreground">
+            <span className="rounded-full bg-purple-900 px-3 py-1.5 text-sm font-black uppercase tracking-[0.2em] text-white">
               featured
             </span>
           </div>
