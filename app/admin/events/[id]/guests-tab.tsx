@@ -11,6 +11,7 @@ import {
   adminCheckInByToken,
   correctAttendance,
   correctGuestAttendance,
+  removeGuestRsvp,
   removeRsvp,
   inviteMemberByEmail,
   promoteWaitlistedMember,
@@ -98,6 +99,16 @@ function GuestRsvpSection({
     });
   }
 
+  function onRemoveRsvp(guestRsvpId: string) {
+    if (!window.confirm("Remove this RSVP? This can't be undone.")) return;
+    setError(null);
+    startTransition(async () => {
+      const r = await removeGuestRsvp(eventId, guestRsvpId);
+      if (!r.ok) setError(r.error.message);
+      else router.refresh();
+    });
+  }
+
   return (
     <FoldSection
       summary={
@@ -148,26 +159,37 @@ function GuestRsvpSection({
               <RsvpBadge status={r.status} />
               {/* Token is null unless the guest is 'going'; a waitlisted or
                   cancelled guest has no ticket to redeem. */}
-              {r.checkin_token && !r.checked_in_at ? (
+              <div className="flex flex-wrap gap-1.5">
+                {r.checkin_token && !r.checked_in_at ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => onCheckIn(r.checkin_token as string)}
+                    disabled={pending}
+                  >
+                    Check in
+                  </Button>
+                ) : r.checked_in_at ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRemoveAttendance(r.id)}
+                    disabled={pending}
+                  >
+                    Remove attendance
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => onCheckIn(r.checkin_token as string)}
+                  variant="destructive"
+                  onClick={() => onRemoveRsvp(r.id)}
                   disabled={pending}
                 >
-                  Check in
+                  Remove RSVP
                 </Button>
-              ) : r.checked_in_at ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onRemoveAttendance(r.id)}
-                  disabled={pending}
-                >
-                  Remove attendance
-                </Button>
-              ) : null}
+              </div>
             </div>
           ))}
         </div>
