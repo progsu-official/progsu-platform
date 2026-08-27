@@ -40,11 +40,11 @@ export function CountdownTimer({ target }: { target: string }) {
   return (
     <div className="flex items-center gap-2 sm:gap-3">
       <Segment value={parts.days} label="days" />
-      <span className="text-3xl font-black text-primary sm:text-5xl">:</span>
+      <span className="text-3xl font-black text-white sm:text-5xl">:</span>
       <Segment value={parts.hours} label="hrs" />
-      <span className="text-3xl font-black text-primary sm:text-5xl">:</span>
+      <span className="text-3xl font-black text-white sm:text-5xl">:</span>
       <Segment value={parts.minutes} label="min" />
-      <span className="text-3xl font-black text-primary sm:text-5xl">:</span>
+      <span className="text-3xl font-black text-white sm:text-5xl">:</span>
       <Segment value={parts.seconds} label="sec" />
     </div>
   );

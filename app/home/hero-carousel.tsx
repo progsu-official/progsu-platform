@@ -57,13 +57,13 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
             along by the drop-shadow on the text itself), without flattening
             the art into a black box. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute left-4 top-4 rounded-xl border border-white/20 bg-black/50 px-3 py-2 backdrop-blur-md sm:left-6 sm:top-6">
+          <CountdownTimer target={event.starts_at} />
+        </div>
         <div className="absolute inset-x-0 bottom-0 p-4 pr-24 sm:p-6 sm:pr-28">
           <p className="text-2xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl">
             {event.title.toLowerCase()}
           </p>
-          <div className="mt-2">
-            <CountdownTimer target={event.starts_at} />
-          </div>
           <p className="mt-1 line-clamp-2 text-sm text-white/80">
             progsu&apos;s biggest event of the year, rsvp now, slots are limited.
           </p>
