@@ -7,7 +7,6 @@ import { resolveCoverUrl } from "@/lib/events/cover-url";
 
 import { joinHosts, type HostRef } from "../events/_components/event-card";
 import { EVENT_TIME_ZONE } from "../events/_components/event-date";
-import { CountdownTimer } from "./countdown-timer";
 import { HeroCarousel } from "./hero-carousel";
 
 const HACKLANTA_RECAP_VIDEO_ID = "OltQSnt5CHc";
@@ -32,8 +31,6 @@ export default async function HomePage() {
               <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
                 featured
               </span>
-              <span aria-hidden className="h-4 w-px bg-white/30" />
-              <CountdownTimer target={pinnedEvent.starts_at} />
             </div>
           </div>
           <HeroCarousel
