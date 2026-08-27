@@ -10,6 +10,7 @@ import {
   adminCheckIn,
   adminCheckInByToken,
   correctAttendance,
+  correctGuestAttendance,
   removeRsvp,
   inviteMemberByEmail,
   promoteWaitlistedMember,
@@ -88,6 +89,15 @@ function GuestRsvpSection({
     });
   }
 
+  function onRemoveAttendance(guestRsvpId: string) {
+    setError(null);
+    startTransition(async () => {
+      const r = await correctGuestAttendance(eventId, guestRsvpId);
+      if (!r.ok) setError(r.error.message);
+      else router.refresh();
+    });
+  }
+
   return (
     <FoldSection
       summary={
@@ -146,6 +156,16 @@ function GuestRsvpSection({
                   disabled={pending}
                 >
                   Check in
+                </Button>
+              ) : r.checked_in_at ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRemoveAttendance(r.id)}
+                  disabled={pending}
+                >
+                  Remove attendance
                 </Button>
               ) : null}
             </div>
