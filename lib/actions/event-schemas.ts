@@ -193,13 +193,30 @@ export const rsvpToEventSchema = z.object({
 
 export type RsvpToEventInput = z.input<typeof rsvpToEventSchema>;
 
-// The exact SMS disclosure shown next to the opt-in checkbox. Stored verbatim
-// with each consent so we can prove later what someone actually agreed to, and
-// quoted in the carrier campaign registration. Changing this string changes
-// what future consents record — it is not cosmetic copy. Keep the frequency,
-// rates, STOP and HELP disclosures; carriers check for all four.
-export const SMS_CONSENT_COPY =
-  "Text me about Progsu events. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. See our Terms and Privacy Policy.";
+// The SMS disclosure, split into the part that sells and the part the law
+// requires. Rendered as two lines, stored as one string.
+//
+// SMS_CONSENT_HEADLINE is the only line most people read, so it names what
+// they get rather than what we send: events and recruiter visits, the two
+// things a member actually loses by not knowing. "Stop anytime" is there
+// because the fear it answers — being stuck on a list — is the main reason
+// people decline, and it costs nothing to answer it up front.
+//
+// SMS_CONSENT_FINE_PRINT is not editorial. Carriers check for all four of
+// frequency, rates, STOP and HELP at campaign review, and a 10DLC campaign
+// gets rejected or deregistered without them. Shorten the headline freely;
+// leave these four alone.
+export const SMS_CONSENT_HEADLINE =
+  "Text me about events and recruiter visits. Stop anytime.";
+
+export const SMS_CONSENT_FINE_PRINT =
+  "Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. See our Terms and Privacy Policy.";
+
+// Stored verbatim with each consent so we can prove later what someone
+// actually agreed to. It is the two visible lines joined, in the order they
+// appear on screen — the record has to match what was in front of them, so
+// this is derived rather than written out a second time.
+export const SMS_CONSENT_COPY = `${SMS_CONSENT_HEADLINE} ${SMS_CONSENT_FINE_PRINT}`;
 
 // Account-free guest RSVP (2026-08-21 decision). Phone regex matches the
 // onboarding profile form's (lib/actions/profile-schemas.ts).

@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/app/_components/phone-input";
 import { guestRsvpToEvent } from "@/lib/actions/events";
-import { SMS_CONSENT_COPY } from "@/lib/actions/event-schemas";
+import {
+  SMS_CONSENT_FINE_PRINT,
+  SMS_CONSENT_HEADLINE,
+} from "@/lib/actions/event-schemas";
 import { useTheme } from "@/app/_components/theme-shell";
 import { useGoogleSignIn } from "@/lib/hooks/use-google-sign-in";
 import { usePreview } from "@/app/onboarding/_components/preview";
@@ -256,20 +259,68 @@ export function GuestRsvpModal({
 
             {/* Unchecked by default and staying that way. A pre-ticked box is
                 not express written consent, and carrier review looks for
-                exactly this. The disclosure text is the same constant stored
-                with the consent record. */}
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border/60 bg-muted/30 p-3">
-              <input
-                type="checkbox"
-                checked={smsOptIn}
-                disabled={pending}
-                onChange={(e) => setSmsOptIn(e.target.checked)}
-                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[hsl(var(--primary))]"
-              />
-              <span className="text-[11.5px] leading-[1.45] text-muted-foreground">
-                {SMS_CONSENT_COPY}
-              </span>
-            </label>
+                exactly this — so the nudge here is visual, never a default.
+
+                The card reads as the expected choice: primary tint, a full-
+                width target, and a lit border once it is on. What it does not
+                do is arrive already ticked.
+
+                Two lines, not one paragraph. The old block set all 150
+                characters at 11.5px muted, so the sentence that answers
+                "what do I get" was the same size and colour as the carrier
+                boilerplate, and lost to it. The headline is now the only
+                thing at reading weight; the four required disclosures stay
+                visible directly beneath, which is where review expects them.
+
+                The fine print sits outside the <label> on purpose: it holds
+                real links, and inside a label a click on Terms would toggle
+                the checkbox instead of opening the page. */}
+            <div
+              className={
+                "rounded-xl border p-3 transition-colors " +
+                (smsOptIn
+                  ? "border-primary/50 bg-primary/10"
+                  : "border-primary/25 bg-primary/[0.04]")
+              }
+            >
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={smsOptIn}
+                  disabled={pending}
+                  onChange={(e) => setSmsOptIn(e.target.checked)}
+                  className="mt-0.5 h-[18px] w-[18px] flex-shrink-0 accent-[hsl(var(--primary))]"
+                />
+                <span className="text-[13px] font-medium leading-snug text-foreground">
+                  {SMS_CONSENT_HEADLINE}
+                </span>
+              </label>
+              <p className="mt-1.5 pl-[28px] text-[10.5px] leading-[1.45] text-muted-foreground">
+                {SMS_CONSENT_FINE_PRINT.replace(
+                  " See our Terms and Privacy Policy.",
+                  " "
+                )}
+                See our{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Terms
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            </div>
 
             {error ? (
               <div
