@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/app/_components/phone-input";
 import { guestRsvpToEvent } from "@/lib/actions/events";
 import {
+  GUEST_RSVP_TERMS_COPY,
   SMS_CONSENT_FINE_PRINT,
   SMS_CONSENT_HEADLINE,
 } from "@/lib/actions/event-schemas";
@@ -261,64 +262,36 @@ export function GuestRsvpModal({
                 not express written consent, and carrier review looks for
                 exactly this — so the nudge here is visual, never a default.
 
-                The card reads as the expected choice: primary tint, a full-
-                width target, and a lit border once it is on. What it does not
-                do is arrive already ticked.
+                Both strings are cut to fit one line at this modal's 384px
+                (see event-schemas.ts). Two lines of headline left an orphaned
+                "anytime." and three lines of fine print read as legal sludge,
+                which is what people were skipping past.
 
-                Two lines, not one paragraph. The old block set all 150
-                characters at 11.5px muted, so the sentence that answers
-                "what do I get" was the same size and colour as the carrier
-                boilerplate, and lost to it. The headline is now the only
-                thing at reading weight; the four required disclosures stay
-                visible directly beneath, which is where review expects them.
-
-                The fine print sits outside the <label> on purpose: it holds
-                real links, and inside a label a click on Terms would toggle
-                the checkbox instead of opening the page. */}
+                The fine print is no longer indented under the headline: that
+                28px of padding bought alignment and cost a line of wrapping,
+                and full-bleed is the cheaper trade. */}
             <div
               className={
-                "rounded-xl border p-3 transition-colors " +
+                "rounded-xl border px-3 py-2.5 transition-colors " +
                 (smsOptIn
                   ? "border-primary/50 bg-primary/10"
                   : "border-primary/25 bg-primary/[0.04]")
               }
             >
-              <label className="flex cursor-pointer items-start gap-2.5">
+              <label className="flex cursor-pointer items-center gap-2.5">
                 <input
                   type="checkbox"
                   checked={smsOptIn}
                   disabled={pending}
                   onChange={(e) => setSmsOptIn(e.target.checked)}
-                  className="mt-0.5 h-[18px] w-[18px] flex-shrink-0 accent-[hsl(var(--primary))]"
+                  className="h-[18px] w-[18px] flex-shrink-0 accent-[hsl(var(--primary))]"
                 />
                 <span className="text-[13px] font-medium leading-snug text-foreground">
                   {SMS_CONSENT_HEADLINE}
                 </span>
               </label>
-              <p className="mt-1.5 pl-[28px] text-[10.5px] leading-[1.45] text-muted-foreground">
-                {SMS_CONSENT_FINE_PRINT.replace(
-                  " See our Terms and Privacy Policy.",
-                  " "
-                )}
-                See our{" "}
-                <a
-                  href="/terms"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2 hover:text-foreground"
-                >
-                  Terms
-                </a>{" "}
-                and{" "}
-                <a
-                  href="/privacy"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2 hover:text-foreground"
-                >
-                  Privacy Policy
-                </a>
-                .
+              <p className="mt-1 text-[10.5px] leading-[1.4] text-muted-foreground">
+                {SMS_CONSENT_FINE_PRINT}
               </p>
             </div>
 
@@ -350,6 +323,34 @@ export function GuestRsvpModal({
               ) : null}
               {pending ? "Registering…" : submitLabel}
             </Button>
+
+            {/* The Terms and Privacy reference the SMS fine print used to
+                carry. Still on screen at the moment of consent, which is what
+                review cares about — just not crowding the checkbox. */}
+            <p className="text-center text-[10.5px] leading-[1.4] text-muted-foreground">
+              {GUEST_RSVP_TERMS_COPY.replace(
+                "our Terms and Privacy Policy.",
+                "our "
+              )}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Terms
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
           </form>
         )}
       </div>
