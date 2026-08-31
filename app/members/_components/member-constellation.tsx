@@ -690,7 +690,7 @@ export function MemberConstellation({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="LinkedIn"
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-black dark:hover:text-white"
                       >
                         <LinkedInMark className="h-[15px] w-[15px]" />
                       </a>
@@ -701,7 +701,7 @@ export function MemberConstellation({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="GitHub"
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-black dark:hover:text-white"
                       >
                         <GitHubMark className="h-[15px] w-[15px]" />
                       </a>
