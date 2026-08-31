@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy · Progsu",
+  title: "Privacy Policy · progsu",
 };
 
 export default function PrivacyPage() {
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Who we are</h2>
         <p>
           Progsu is a programming and builders community at Georgia State
-          University. The Progsu member platform is operated by Progsu
+          University. The progsu member platform is operated by progsu
           leadership as a student organization, not by GSU itself.
         </p>
 
@@ -42,8 +42,8 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">How we use it</h2>
         <ul className="list-disc pl-6">
           <li>To run your member account.</li>
-          <li>To let Progsu admins help you with problems (e.g. manual verification).</li>
-          <li>To share with sponsors and recruiters Progsu works with — only if you toggle &quot;open to recruiters&quot; AND accept the recruiter-sharing consent.</li>
+          <li>To let progsu admins help you with problems (e.g. manual verification).</li>
+          <li>To share with sponsors and recruiters progsu works with — only if you toggle &quot;open to recruiters&quot; AND accept the recruiter-sharing consent.</li>
           <li>To operate events you participate in — RSVP confirmations, reminders, and cancellations (see Events below).</li>
           <li>To send marketing event and opportunity emails or text messages, if you opt in separately.</li>
         </ul>
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
           If you register for an event without an account
         </h2>
         <p>
-          New in v6: you can RSVP to a Progsu event as a guest, without signing
+          New in v6: you can RSVP to a progsu event as a guest, without signing
           up. When you do, we store the name, email, and phone number you enter
           so we can send you the event details and check you in at the door.
         </p>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
           so you do not have to type them twice.
         </p>
         <p>
-          Guest registrations are visible to Progsu admins running the event.
+          Guest registrations are visible to progsu admins running the event.
           They are not shown to other members, and guests do not appear on the
           public attendee list on an event page.
         </p>
@@ -79,7 +79,7 @@ export default function PrivacyPage() {
         <p className="font-medium">
           We do not sell, rent, or share mobile opt-in data or consent with
           anyone for their own marketing. Your phone number and the fact that
-          you opted in stay with Progsu.
+          you opted in stay with progsu.
         </p>
         <p>
           Message frequency varies. Message and data rates may apply. Reply
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
 
         <h2 className="text-lg font-semibold">Events</h2>
         <p>
-          When you RSVP to a Progsu event, we store your RSVP status, any
+          When you RSVP to a progsu event, we store your RSVP status, any
           waitlist position, and whether you checked in. Admins running the
           event can see this roster so they can manage capacity, run
           check-in, and follow up with attendees.
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
           <Link href="/profile/settings/visibility" className="text-primary underline underline-offset-4">
             settings
           </Link>
-          . When it&apos;s on, other Progsu members can visit{" "}
+          . When it&apos;s on, other progsu members can visit{" "}
           <span className="font-mono text-xs">progsu.app/members/&lt;your-slug&gt;</span>{" "}
           and see a sanitized view of your profile.
         </p>
@@ -189,7 +189,7 @@ export default function PrivacyPage() {
         <p>
           Event pages are public, so this group is visible to anyone with the
           link, not only to signed-in members. This is the one place your
-          directory profile is shown to people outside Progsu, and it is worth
+          directory profile is shown to people outside progsu, and it is worth
           reading twice before you leave visibility on:
         </p>
         <ul className="list-disc pl-6">
@@ -229,12 +229,12 @@ export default function PrivacyPage() {
         </h2>
         <p>
           New in v7: when you RSVP to an event, we post a short announcement in
-          the Progsu Discord server. It names you by first name and last
+          the progsu Discord server. It names you by first name and last
           initial &mdash; &quot;Natasha K.&quot; &mdash; along with the event
           you are going to and how many people are going in total.
         </p>
         <p>
-          Everyone in the Progsu Discord can read that channel. This is a
+          Everyone in the progsu Discord can read that channel. This is a
           different audience from the rest of the platform, so it is worth
           being specific about what is and is not in it:
         </p>
@@ -269,7 +269,7 @@ export default function PrivacyPage() {
           knows it worked.
         </p>
         <p>
-          If you would rather not appear in that channel, tell a Progsu officer
+          If you would rather not appear in that channel, tell a progsu officer
           and we will stop announcing your RSVPs. There is no toggle for this
           in your settings yet.
         </p>
@@ -331,14 +331,14 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Retention and deletion</h2>
         <p>
           We keep your data while you&apos;re an active member. If you request
-          deletion, Progsu will process it within 30 days. Consent rows are
+          deletion, progsu will process it within 30 days. Consent rows are
           retained (with name and email redacted) so we can prove what you
           agreed to at what time.
         </p>
 
         <h2 className="text-lg font-semibold">Your rights</h2>
         <p>
-          You can view, edit, or ask to delete your data by emailing Progsu
+          You can view, edit, or ask to delete your data by emailing progsu
           leadership or using the settings page. If you&apos;re in a jurisdiction
           with stronger rights (GDPR, CCPA), we will honor them even though our
           users are primarily in Georgia, USA.
@@ -353,7 +353,7 @@ export default function PrivacyPage() {
 
         <h2 className="text-lg font-semibold">Contact</h2>
         <p>
-          Email Progsu leadership at{" "}
+          Email progsu leadership at{" "}
           <span className="font-mono text-xs">hello@progsu.com</span> with any
           privacy questions.
         </p>
