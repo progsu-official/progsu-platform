@@ -712,7 +712,7 @@ export function MemberConstellation({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="Portfolio"
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-black dark:hover:text-white"
                       >
                         <Globe size={15} strokeWidth={1.75} aria-hidden />
                       </a>
