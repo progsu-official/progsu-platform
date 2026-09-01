@@ -59,6 +59,10 @@ type BrandKit = {
   /** The flyer's fine print. Carries the urgency the card would otherwise
    *  lose — the event has no in-platform RSVP, so nothing else says it. */
   fineprint: string;
+  /** The official published flyer, already carrying its own wordmark, dates,
+   *  sponsors, and QR — when set, this replaces the hand-composited poster
+   *  below instead of layering our own text over it. */
+  flyer?: { src: string; alt: string; width: number; height: number };
 };
 
 const BRAND_KITS: Record<string, BrandKit> = {
@@ -75,6 +79,12 @@ const BRAND_KITS: Record<string, BrandKit> = {
     headline: "$20,000 in prizes",
     cta: "hacklanta.dev",
     fineprint: "Free for accepted participants. Seats are limited.",
+    flyer: {
+      src: "/hacklanta/flyer.png",
+      alt: "Hacklanta '26 flyer: 3 day hackathon, Oct 9-11, SCE at Georgia State, win prizes up to $20,000, RSVP at hacklanta.dev",
+      width: 1024,
+      height: 819,
+    },
   },
 };
 
@@ -169,6 +179,23 @@ function BrandedPoster({
   item: PinnedHeroItem;
   kit: BrandKit;
 }) {
+  if (kit.flyer) {
+    return (
+      <div className="mx-auto w-full max-w-md">
+        <PosterShell href={item.href}>
+          <Image
+            src={kit.flyer.src}
+            alt={kit.flyer.alt}
+            width={kit.flyer.width}
+            height={kit.flyer.height}
+            priority
+            className="h-auto w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          />
+        </PosterShell>
+      </div>
+    );
+  }
+
   return (
     <PosterShell href={item.href}>
       <div className={`${teko.variable} relative isolate`}>
