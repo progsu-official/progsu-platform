@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { getRequestOnboardingState } from "@/lib/auth/request-cache";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
+import { env } from "@/lib/env";
 
 import { EVENT_TIME_ZONE, formatTimeRange } from "../_components/event-date";
+import { AddToCalendarButton } from "../_components/add-to-calendar";
 import { AttendeeStack, type AttendeeFace } from "./_components/attendee-stack";
 import { EventDescription } from "./_components/event-description";
 import { RsvpPanel } from "./_components/rsvp-panel";
@@ -452,6 +454,14 @@ export default async function MemberEventDetailPage({
                 </div>
               ) : null}
             </div>
+
+            <AddToCalendarButton
+              title={event.title}
+              location={event.location_text}
+              startsAt={event.starts_at}
+              endsAt={event.ends_at}
+              eventUrl={`${env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/events/${event.slug}`}
+            />
 
             {attendance ? (
               <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">

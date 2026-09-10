@@ -56,13 +56,13 @@ In the Supabase dashboard → Authentication → Providers → Google:
 2. Authorized JavaScript origins:
    - `http://localhost:3000`
    - `https://<preview>.vercel.app` (optional, only if using wildcard previews)
-   - `https://members.progsu.org` (prod)
+   - `https://members.progsu.com` (prod)
 3. Authorized redirect URIs — point at **Supabase's** callback, not our app:
    - `https://<project-ref>.supabase.co/auth/v1/callback`
 4. Paste the Client ID / Secret into Supabase.
 5. In Supabase → Authentication → URL Configuration:
-   - Site URL: `https://members.progsu.org`
-   - Additional redirect URLs: `http://localhost:3000/auth/callback`, `https://members.progsu.org/auth/callback`, and preview wildcards if needed.
+   - Site URL: `https://members.progsu.com`
+   - Additional redirect URLs: `http://localhost:3000/auth/callback`, `https://members.progsu.com/auth/callback`, and preview wildcards if needed.
 6. Email confirmation: **disabled** (Google is already confirmed).
 7. JWT expiry: default 3600s. Refresh handled by middleware.
 
@@ -482,7 +482,7 @@ Usage:
 
 ```ts
 await resend.emails.send({
-  from: process.env.RESEND_FROM_EMAIL!,           // 'Progsu <no-reply@mail.progsu.org>'
+  from: process.env.RESEND_FROM_EMAIL!,           // 'Progsu <no-reply@mail.progsu.com>'
   to: studentEmail,
   subject: 'Your Progsu verification code',
   react: <OtpEmail firstName={firstName} code={code} expiresInMinutes={10} />,
@@ -500,9 +500,9 @@ await resend.emails.send({
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | `https://abcdxyz.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server | public; safe in bundle |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Never exposed to browser. Used by server actions for admin ops (e.g., profile writes that bypass RLS, audit_log inserts). |
-| `NEXT_PUBLIC_SITE_URL` | client + server | `http://localhost:3000` / `https://members.progsu.org`. Used to build `redirectTo`. |
+| `NEXT_PUBLIC_SITE_URL` | client + server | `http://localhost:3000` / `https://members.progsu.com`. Used to build `redirectTo`. |
 | `RESEND_API_KEY` | **server only** | Resend dashboard → API keys. |
-| `RESEND_FROM_EMAIL` | server | `Progsu <no-reply@mail.progsu.org>`. Domain must be verified in Resend. |
+| `RESEND_FROM_EMAIL` | server | `Progsu <no-reply@mail.progsu.com>`. Domain must be verified in Resend. |
 | `OTP_CODE_TTL_MINUTES` | server | default 10 — keeps magic numbers out of code |
 | `OTP_MAX_ATTEMPTS` | server | default 5 |
 | `OTP_PER_EMAIL_COOLDOWN_SECONDS` | server | default 60 |

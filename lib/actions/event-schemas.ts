@@ -193,13 +193,44 @@ export const rsvpToEventSchema = z.object({
 
 export type RsvpToEventInput = z.input<typeof rsvpToEventSchema>;
 
-// The exact SMS disclosure shown next to the opt-in checkbox. Stored verbatim
-// with each consent so we can prove later what someone actually agreed to, and
-// quoted in the carrier campaign registration. Changing this string changes
-// what future consents record — it is not cosmetic copy. Keep the frequency,
-// rates, STOP and HELP disclosures; carriers check for all four.
-export const SMS_CONSENT_COPY =
-  "Text me about Progsu events. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. See our Terms and Privacy Policy.";
+// The SMS disclosure, split into the part that sells and the part the law
+// wants. Rendered as two lines, stored as one string.
+//
+// Both are cut to fit ONE line inside a max-w-sm modal, which is 384px wide:
+// roughly 45 characters at the headline's 13px, roughly 60 at the fine
+// print's 10.5px. Anything longer wraps, and a wrapped line here leaves an
+// orphaned word that makes the whole block read as legal sludge — which is
+// what it looked like before, and why people were skipping it.
+//
+// The headline says "jobs" rather than "recruiter visits" because it is
+// shorter, and because the job is the thing anyone actually wants; the visit
+// is our logistics. "Stop anytime" stays: the fear of being stuck on a list
+// is the main reason people decline, and answering it is worth the 13
+// characters.
+export const SMS_CONSENT_HEADLINE =
+  "Text me about events and jobs. Stop anytime.";
+
+// Trimmed to rates + STOP + HELP on an explicit call from the owner
+// (2026-08-28) to buy the one-line layout. What went is "Msg frequency
+// varies", and the Terms/Privacy sentence, which now sits under the submit
+// button instead — still on screen at the moment of consent, which is what
+// matters, just not crowding the checkbox.
+//
+// Do not trim further. STOP and HELP are the two a carrier hard-checks at
+// 10DLC review, and a rejected campaign means no texts at all.
+export const SMS_CONSENT_FINE_PRINT =
+  "Msg/data rates apply. STOP to opt out, HELP for help.";
+
+// The general agreement line under the submit button. Carries the Terms and
+// Privacy reference that used to live in the fine print.
+export const GUEST_RSVP_TERMS_COPY =
+  "By registering you agree to our Terms and Privacy Policy.";
+
+// Stored verbatim with each consent so we can prove later what someone
+// actually agreed to. All three visible strings, in the order they appear on
+// screen — the record has to match what was in front of them, so this is
+// derived rather than written out a second time.
+export const SMS_CONSENT_COPY = `${SMS_CONSENT_HEADLINE} ${SMS_CONSENT_FINE_PRINT} ${GUEST_RSVP_TERMS_COPY}`;
 
 // Account-free guest RSVP (2026-08-21 decision). Phone regex matches the
 // onboarding profile form's (lib/actions/profile-schemas.ts).

@@ -351,7 +351,7 @@ Each step lists: **what to do** · **files touched** · **verification**. Steps 
 
 **5. Supabase local.** Install Supabase CLI. `supabase init && supabase start`. Configure `supabase/config.toml` so local uses ports 54321–54324. Verify: `supabase status` prints URLs and keys; Studio opens at 54323.
 
-**6. Resend + domain.** Create Resend account. Verify domain `mail.progsu.org` (DKIM + SPF + DMARC records). Create API key, webhook secret. Set `RESEND_FROM_EMAIL="Progsu <no-reply@mail.progsu.org>"`. Defer webhook URL registration to step 40. Verify: API key accepted by `resend.emails.send()` in a scratch script.
+**6. Resend + domain.** Create Resend account. Verify domain `mail.progsu.com` (DKIM + SPF + DMARC records). Create API key, webhook secret. Set `RESEND_FROM_EMAIL="Progsu <no-reply@mail.progsu.com>"`. Defer webhook URL registration to step 40. Verify: API key accepted by `resend.emails.send()` in a scratch script.
 
 ### Phase 1 — Data layer (steps 7–13)
 
@@ -475,11 +475,11 @@ Source: `01` §5; `06` §5, §9. Verify: withdrawing recruiter consent writes an
 
 **45. Vercel project.** Link repo; set **every** env var from §2.8. Configure preview branch protection so preview envs don't share prod Supabase. Verify: preview deploy builds green.
 
-**46. Google OAuth prod config.** Per `03` §2.1: Authorized origins include prod + preview wildcard; redirect URI points at Supabase's `/auth/v1/callback`. Site URL in Supabase set to `https://members.progsu.org`. Additional redirect URLs include prod, local, and preview wildcards. Verify: Google OAuth completes on prod domain.
+**46. Google OAuth prod config.** Per `03` §2.1: Authorized origins include prod + preview wildcard; redirect URI points at Supabase's `/auth/v1/callback`. Site URL in Supabase set to `https://members.progsu.com`. Additional redirect URLs include prod, local, and preview wildcards. Verify: Google OAuth completes on prod domain.
 
-**47. Resend prod config.** Verify domain, DKIM/SPF/DMARC green, register webhook URL `https://members.progsu.org/api/webhooks/resend` with the `RESEND_WEBHOOK_SECRET` from step 4. Verify: send test OTP to a real `.edu` address, confirm delivery.
+**47. Resend prod config.** Verify domain, DKIM/SPF/DMARC green, register webhook URL `https://members.progsu.com/api/webhooks/resend` with the `RESEND_WEBHOOK_SECRET` from step 4. Verify: send test OTP to a real `.edu` address, confirm delivery.
 
-**48. First admin seed.** Run `pnpm tsx scripts/admin-seed.ts --email devon@progsu.org` which executes `UPDATE public.profiles SET is_admin = true WHERE google_email = 'devon@progsu.org';` under service role. Per `01` §9.3, seed at least **two** admins. Verify: `/admin` loads for both seeded admins.
+**48. First admin seed.** Run `pnpm tsx scripts/admin-seed.ts --email devon@progsu.com` which executes `UPDATE public.profiles SET is_admin = true WHERE google_email = 'devon@progsu.com';` under service role. Per `01` §9.3, seed at least **two** admins. Verify: `/admin` loads for both seeded admins.
 
 **49. Smoke test end-to-end.** Using a brand-new Google account, complete the full happy path: sign-in → verify email → profile → resume+consents → done → dashboard. Then as an admin: list members, view detail, manual-verify a different account, export CSV, confirm CSV has correct columns and signed URLs open. Verify: every assertion in the §7 Manual QA list passes.
 
@@ -773,25 +773,25 @@ Spin a fresh `supabase start` per CI job; apply migrations; seed; then:
    - `resumes` bucket exists, `public = false`, `file_size_limit = 10 MiB`, `allowed_mime_types = ['application/pdf']`.
    - Storage policies present (test: unauthenticated GET returns 400).
 3. **Google OAuth prod.**
-   - Google Cloud OAuth 2.0 client: authorized origins `https://members.progsu.org`, `https://*-progsu.vercel.app` (preview), `http://localhost:3000`.
+   - Google Cloud OAuth 2.0 client: authorized origins `https://members.progsu.com`, `https://*-progsu.vercel.app` (preview), `http://localhost:3000`.
    - Authorized redirect URI: **only** `https://<project-ref>.supabase.co/auth/v1/callback` (Supabase's, not ours).
    - Supabase Auth → URL Configuration: Site URL = prod; additional redirect URLs include prod `/auth/callback`, local `/auth/callback`, and preview wildcards.
 4. **Resend prod.**
-   - Domain `mail.progsu.org` verified; DKIM + SPF + DMARC green in Resend dashboard.
-   - Webhook endpoint registered: `POST https://members.progsu.org/api/webhooks/resend` with secret set to `RESEND_WEBHOOK_SECRET`.
+   - Domain `mail.progsu.com` verified; DKIM + SPF + DMARC green in Resend dashboard.
+   - Webhook endpoint registered: `POST https://members.progsu.com/api/webhooks/resend` with secret set to `RESEND_WEBHOOK_SECRET`.
 5. **Vercel project.**
    - Env vars (exhaustive):
      - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_FEATURE_DOMAIN_ADMIN=false`
      - `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DATABASE_URL_DIRECT`
      - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_WEBHOOK_SECRET`
-     - `OTP_PEPPER`, `PRIVACY_INBOX_EMAIL=privacy@progsu.org`, `LOG_LEVEL=info`
+     - `OTP_PEPPER`, `PRIVACY_INBOX_EMAIL=privacy@progsu.com`, `LOG_LEVEL=info`
    - Preview branch: mark for preview-only env (do NOT share prod Supabase).
-   - Production domain: `members.progsu.org` with HSTS header set.
+   - Production domain: `members.progsu.com` with HSTS header set.
 6. **First admins seeded via SQL.** Run at prod service role:
    ```sql
    UPDATE public.profiles
    SET is_admin = true
-   WHERE google_email IN ('devon@progsu.org', 'president@progsu.org');
+   WHERE google_email IN ('devon@progsu.com', 'president@progsu.com');
    ```
    Per `01` §9.3, seed at least two admins so one losing Google access is not a lockout.
 7. **Smoke test.** From a fresh Google account:

@@ -191,7 +191,7 @@ export default async function MemberProfilePage({
                       rel="noopener noreferrer"
                       aria-label="LinkedIn"
                       title={linkPreview(card.linkedin_url)}
-                      className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <LinkedInIcon className="h-[17px] w-[17px]" />
                     </a>
@@ -203,7 +203,7 @@ export default async function MemberProfilePage({
                       rel="noopener noreferrer"
                       aria-label="GitHub"
                       title={linkPreview(card.github_url)}
-                      className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <GitHubIcon className="h-[17px] w-[17px]" />
                     </a>
