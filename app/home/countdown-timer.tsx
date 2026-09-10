@@ -12,13 +12,16 @@ function diffParts(targetMs: number, nowMs: number) {
   };
 }
 
+// Number/label sizes and weights match the date plate's day number and
+// month label (hero-carousel.tsx) so the two chips read as one family
+// instead of the timer looking like a separate, louder component.
 function Segment({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-2xl font-black tabular-nums text-white sm:text-4xl">
+      <span className="text-xl font-black tabular-nums tracking-tight text-white sm:text-2xl">
         {String(value).padStart(2, "0")}
       </span>
-      <span className="text-[9px] font-semibold tracking-widest text-white/50 sm:text-[11px]">
+      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 sm:text-[11px]">
         {label}
       </span>
     </div>
@@ -31,7 +34,7 @@ function Segment({ value, label }: { value: number; label: string }) {
 function Colon() {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-2xl font-black text-white sm:text-4xl">:</span>
+      <span className="text-xl font-black text-white sm:text-2xl">:</span>
       <span aria-hidden className="invisible text-[9px] sm:text-[11px]">
         :
       </span>

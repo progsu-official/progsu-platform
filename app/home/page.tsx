@@ -27,7 +27,11 @@ export default async function HomePage() {
       {pinnedEvent ? (
         <section className={`${STAGGER} delay-0`}>
           <div className="mb-2 flex justify-start">
-            <span className="rounded-full bg-purple-900 px-3 py-1.5 text-sm font-black uppercase tracking-[0.2em] text-white">
+            {/* Same chip recipe as the date plate and countdown timer inside
+                the hero below (rounded-xl, border-white/20, bg-black/50,
+                backdrop-blur-md) so this reads as the first piece of the
+                same hero-chrome family, not a standalone sticker. */}
+            <span className="rounded-xl border border-white/20 bg-black/50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.2em] text-white backdrop-blur-md">
               featured
             </span>
           </div>

@@ -75,7 +75,7 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
             covers proportionally more of a shorter mobile slide, so the
             busy cover art underneath was bleeding through the title. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent sm:from-black/70 sm:via-black/20" />
-        <div className="absolute left-4 top-4 rounded-xl border border-white/20 bg-black/50 px-2.5 py-1.5 backdrop-blur-md sm:left-6 sm:top-6">
+        <div className="absolute left-4 top-4 rounded-xl border border-white/20 bg-black/50 px-3 py-1.5 backdrop-blur-md sm:left-6 sm:top-6">
           <CountdownTimer target={event.starts_at} />
         </div>
         <div className="absolute inset-x-0 bottom-0 p-4 pr-24 sm:p-6 sm:pr-28">
