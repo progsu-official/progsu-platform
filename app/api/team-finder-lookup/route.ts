@@ -6,7 +6,9 @@ import { log } from "@/lib/log";
 
 // Server-to-server lookup for hacklanta-ii's team-finder: given a batch of
 // applicant emails, report which ones belong to an existing Progsu member and
-// hand back their avatar. Auth is the same shared-bearer pattern as the cron
+// hand back the profile fields team-finder mirrors (avatar, bio, discord,
+// links) so a member's Progsu profile is the single source of truth for
+// those once linked. Auth is the same shared-bearer pattern as the cron
 // routes (see event-notifications/route.ts for the constant-time compare this
 // copies); there is no per-user session, only a service calling in.
 
@@ -57,20 +59,36 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const columns = "google_email, student_email, avatar_url, bio, discord_username, linkedin_url, github_url";
     const admin = createAdminClient();
     const [byGoogle, byStudent] = await Promise.all([
-      admin.from("profiles").select("google_email, student_email, avatar_url").in("google_email", emails),
-      admin.from("profiles").select("google_email, student_email, avatar_url").in("student_email", emails),
+      admin.from("profiles").select(columns).in("google_email", emails),
+      admin.from("profiles").select(columns).in("student_email", emails),
     ]);
     if (byGoogle.error || byStudent.error) {
       throw byGoogle.error ?? byStudent.error;
     }
 
-    const matches: Record<string, { avatarUrl: string | null }> = {};
+    const matches: Record<
+      string,
+      {
+        avatarUrl: string | null;
+        bio: string | null;
+        discordUsername: string | null;
+        linkedinUrl: string | null;
+        githubUrl: string | null;
+      }
+    > = {};
     for (const row of [...(byGoogle.data ?? []), ...(byStudent.data ?? [])]) {
-      const avatarUrl = row.avatar_url ?? null;
-      if (row.google_email) matches[row.google_email.toLowerCase()] = { avatarUrl };
-      if (row.student_email) matches[row.student_email.toLowerCase()] = { avatarUrl };
+      const match = {
+        avatarUrl: row.avatar_url ?? null,
+        bio: row.bio ?? null,
+        discordUsername: row.discord_username ?? null,
+        linkedinUrl: row.linkedin_url ?? null,
+        githubUrl: row.github_url ?? null,
+      };
+      if (row.google_email) matches[row.google_email.toLowerCase()] = match;
+      if (row.student_email) matches[row.student_email.toLowerCase()] = match;
     }
     return NextResponse.json({ ok: true, matches });
   } catch (err) {
