@@ -120,8 +120,9 @@ export const config = {
   // Skip Next.js internals + static files + webhook endpoints (which verify their own HMAC)
   // + cron endpoints (which verify CRON_SECRET themselves) + smoketest routes
   // (only created during integration smoke scripts; they self-auth) + dev-login
-  // (local-only Google OAuth bypass; self-gates on NODE_ENV).
+  // (local-only Google OAuth bypass; self-gates on NODE_ENV) + team-finder-lookup
+  // (server-to-server call from hacklanta-ii, verifies TEAM_FINDER_SYNC_SECRET itself).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|api/dev-login|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|api/dev-login|api/team-finder-lookup|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
