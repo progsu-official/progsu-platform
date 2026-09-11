@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const columns = "google_email, student_email, avatar_url, bio, discord_username, linkedin_url, github_url";
+    const columns = "id, google_email, student_email, avatar_url, bio, discord_username, linkedin_url, github_url";
     const admin = createAdminClient();
     const [byGoogle, byStudent] = await Promise.all([
       admin.from("profiles").select(columns).in("google_email", emails),
@@ -68,6 +68,22 @@ export async function POST(req: NextRequest) {
     if (byGoogle.error || byStudent.error) {
       throw byGoogle.error ?? byStudent.error;
     }
+    const rows = [...(byGoogle.data ?? []), ...(byStudent.data ?? [])];
+
+    // profile_slug only resolves to a real public URL when the member has
+    // also opted into discoverability — a matched member with no slug (or
+    // discoverable off) just doesn't get a link, same as a non-member.
+    const ids = [...new Set(rows.map((row) => row.id))];
+    const { data: visibility, error: visibilityError } = await admin
+      .from("profile_visibility_settings")
+      .select("user_id, profile_slug, discoverable")
+      .in("user_id", ids);
+    if (visibilityError) throw visibilityError;
+    const slugById = new Map(
+      (visibility ?? [])
+        .filter((v) => v.discoverable && v.profile_slug)
+        .map((v) => [v.user_id, v.profile_slug as string]),
+    );
 
     const matches: Record<
       string,
@@ -77,15 +93,17 @@ export async function POST(req: NextRequest) {
         discordUsername: string | null;
         linkedinUrl: string | null;
         githubUrl: string | null;
+        profileSlug: string | null;
       }
     > = {};
-    for (const row of [...(byGoogle.data ?? []), ...(byStudent.data ?? [])]) {
+    for (const row of rows) {
       const match = {
         avatarUrl: row.avatar_url ?? null,
         bio: row.bio ?? null,
         discordUsername: row.discord_username ?? null,
         linkedinUrl: row.linkedin_url ?? null,
         githubUrl: row.github_url ?? null,
+        profileSlug: slugById.get(row.id) ?? null,
       };
       if (row.google_email) matches[row.google_email.toLowerCase()] = match;
       if (row.student_email) matches[row.student_email.toLowerCase()] = match;
