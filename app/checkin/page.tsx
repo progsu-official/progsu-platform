@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
+import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 import {
   isStaffCheckinAuthed,
   staffCheckInByToken,
@@ -13,11 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QrScanner } from "@/app/admin/events/[id]/_components/qr-scanner";
 import { AttendeeTable } from "@/app/admin/events/[id]/_components/attendee-table";
+import { ShowCheckinQrButton } from "@/app/admin/events/[id]/_components/show-checkin-qr-button";
 import { CheckinThemeShell } from "./_components/theme-toggle-shell";
 
 export const dynamic = "force-dynamic";
 
-type UpcomingEvent = { id: string; title: string; starts_at: string };
+type UpcomingEvent = { id: string; slug: string; title: string; starts_at: string };
 
 // Staff check-in, no admin account. /checkin is a public middleware
 // path (self-auths via the STAFF_CHECKIN_TOKEN cookie, same pattern as
@@ -85,6 +88,22 @@ export default async function CheckinPage({
     : null;
   const attendees = attendeesResult?.ok ? attendeesResult.data : [];
 
+  // D14: door staff run this page without an admin account, so the
+  // fullscreen self-serve QR (otherwise only on /admin/events/[id]) needs to
+  // be reachable from here too — same ShowCheckinQrButton, generated the
+  // same way as the admin page.
+  const checkinQrDataUrl = selected
+    ? await QRCode.toDataURL(
+        `${env.NEXT_PUBLIC_SITE_URL}/events/${selected.slug}/check-in`,
+        {
+          errorCorrectionLevel: "H",
+          margin: 0,
+          width: 640,
+          color: { dark: "#18181b", light: "#ffffff" },
+        }
+      )
+    : null;
+
   return (
     <CheckinThemeShell>
       <div
@@ -124,12 +143,20 @@ export default async function CheckinPage({
                   {selected.title}
                 </p>
               </div>
-              <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5">
-                <a href="/checkin">
-                  <ArrowLeft size={14} strokeWidth={1.75} aria-hidden />
-                  Change event
-                </a>
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                {checkinQrDataUrl ? (
+                  <ShowCheckinQrButton
+                    qrDataUrl={checkinQrDataUrl}
+                    eventTitle={selected.title}
+                  />
+                ) : null}
+                <Button asChild variant="outline" size="sm" className="gap-1.5">
+                  <a href="/checkin">
+                    <ArrowLeft size={14} strokeWidth={1.75} aria-hidden />
+                    Change event
+                  </a>
+                </Button>
+              </div>
             </div>
             <QrScanner eventId={selected.id} checkIn={staffCheckInByToken} />
             <AttendeeTable rows={attendees} />
