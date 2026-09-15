@@ -69,7 +69,7 @@ export default async function SelfCheckInPage({
           />
           <div className="space-y-1">
             <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              {result.data.already ? "Already checked in" : "You're checked in"}
+              {result.data.already ? "You're already confirmed" : "You're confirmed, thanks!"}
             </h1>
             <p className="text-sm text-muted-foreground">
               {event.title as string}

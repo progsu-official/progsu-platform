@@ -93,21 +93,25 @@ export async function GET(request: NextRequest) {
     Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
   if (signedUpJustNow) await recordReferralConversion("signup");
 
-  // Admins always go to the admin surface; they bypass member onboarding (D8).
+  // Admins bypass member onboarding (D8) and default to /admin — but an
+  // explicit `next` still wins for them first, same as a fully-onboarded
+  // member. Previously isAdmin was checked before `next`, so an admin
+  // following any deep link (e.g. the self-check-in QR) always landed on the
+  // dashboard instead. Bug found 2026-09-15 testing the QR check-in flow.
   const state = await loadOnboardingState(supabase, user.id);
 
   let targetPath: string;
-  if (state.isAdmin) {
-    targetPath = "/admin";
-  } else if (
+  if (
     requestedNext &&
     requestedNext.startsWith("/") &&
-    (state.fullyOnboarded || isPublicEventDetailPath(requestedNext))
+    (state.isAdmin || state.fullyOnboarded || isPublicEventDetailPath(requestedNext))
   ) {
     // Public event page: honor `next` even mid-funnel, per the 2026-08-20
     // RSVP-first decision — landing back on the event is the point; the
     // onboarding nudge happens after a successful RSVP, not before.
     targetPath = requestedNext;
+  } else if (state.isAdmin) {
+    targetPath = "/admin";
   } else if (
     !state.studentEmailVerified &&
     !state.profileFieldsComplete
