@@ -72,7 +72,14 @@ export async function addCheckinCodeToWallet(): Promise<
         logoText: "Progsu",
         description: `${holderName}'s personal check-in code`,
         colorPreset: "dark",
-        primaryFields: [{ label: "Member", value: holderName }],
+        primaryFields: [{ label: "Name", value: holderName }],
+        // WalletWallet has no logo/icon image field (tried logoImageUrl,
+        // logoImage, iconImage, iconImageUrl, stripImageUrl — every one is
+        // silently dropped, confirmed by diffing the returned pass's
+        // icon.png byte-for-byte across requests). secondaryFields is the
+        // one real customization slot left, so the "Member" tag lives there
+        // instead of a logo.
+        secondaryFields: [{ label: "Status", value: "Member" }],
       }),
     });
   } catch {
