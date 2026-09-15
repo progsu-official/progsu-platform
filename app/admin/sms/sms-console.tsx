@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { MessageSquare, Send, Smartphone, X } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   type SmsOverview,
 } from "@/lib/actions/sms-schemas";
 import { smsSegments } from "@/lib/sms/segments";
+import { eventReminderBody } from "@/lib/sms/templates";
 
 // One composer, one history. Who can be texted is decided in the database
 // (sms_is_sendable); this page only ever shows the resulting counts, so there
@@ -45,6 +47,7 @@ const AUDIENCE_LABEL: Record<SmsBroadcastRow["audience"], string> = {
   gsu: "Georgia State",
   all_consented: "Everyone opted in",
   self_test: "Test to self",
+  event_reminder: "Event reminder",
 };
 
 // Display order for the per-broadcast tally, most useful first.
@@ -125,6 +128,7 @@ export function SmsConsole({
           ) : null}
 
           <Composer data={data} />
+          <Reminders data={data} />
           <History broadcasts={data.broadcasts} suppressed={data.suppressed} />
         </>
       )}
@@ -362,6 +366,83 @@ function Composer({ data }: { data: SmsOverview }) {
   );
 }
 
+// The automatic 30-minute reminder: what it says, and which events in the
+// next week will send one. The preview runs the real template, so the text
+// shown is the text that goes out.
+function Reminders({ data }: { data: SmsOverview }) {
+  const next = data.upcomingReminders.find((r) => r.send_sms_reminder && !r.sms_reminder_sent_at);
+  const now = new Date();
+  const preview = eventReminderBody({
+    title: next?.title ?? "Fall Kickoff",
+    slug: next?.slug ?? "fall-kickoff",
+    startsAt: new Date(now.getTime() + 30 * 60_000),
+    locationText: next ? next.location_text : "Langdale 420",
+    siteUrl: data.siteUrl,
+    now,
+  });
+  const seg = smsSegments(preview);
+
+  return (
+    <Panel
+      title="Event reminders"
+      hint={
+        data.config.eventReminders
+          ? "Texted automatically 30 minutes before an event to everyone RSVP'd going who opted in to texts. Turn it off per event in the event's options."
+          : "Turned off for this deployment (FEATURE_SMS_EVENT_REMINDERS)."
+      }
+    >
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">
+            {next ? `Message for ${next.title}` : "Message (example)"}
+          </p>
+          <p className="whitespace-pre-line rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm text-foreground/90">
+            {preview}
+          </p>
+          <p className="text-xs tabular-nums text-muted-foreground">
+            {seg.segments} {seg.segments === 1 ? "segment" : "segments"} per person
+          </p>
+        </div>
+
+        {data.upcomingReminders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No events in the next 7 days.</p>
+        ) : (
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/70">
+            {data.upcomingReminders.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/events/${r.id}`}
+                    className="block truncate text-sm text-foreground hover:underline"
+                  >
+                    {r.title}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    Starts {dateTimeFormat.format(new Date(r.starts_at))}
+                  </p>
+                </div>
+                <p className="text-xs tabular-nums">
+                  {!r.send_sms_reminder ? (
+                    <span className="text-muted-foreground">Off for this event</span>
+                  ) : r.sms_reminder_sent_at ? (
+                    <span className="text-emerald-400">
+                      Sent {dateTimeFormat.format(new Date(r.sms_reminder_sent_at))}
+                    </span>
+                  ) : (
+                    <span className="text-foreground">
+                      {r.recipient_count.toLocaleString()} will get it so far
+                    </span>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 function History({
   broadcasts,
   suppressed,
@@ -412,7 +493,9 @@ function BroadcastItem({ broadcast: b }: { broadcast: SmsBroadcastRow }) {
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <p className="text-xs text-muted-foreground">
           {dateTimeFormat.format(new Date(b.created_at))} ·{" "}
-          {AUDIENCE_LABEL[b.audience]} · {b.recipient_count.toLocaleString()}{" "}
+          {AUDIENCE_LABEL[b.audience]}
+          {b.event_title ? `: ${b.event_title}` : ""} ·{" "}
+          {b.recipient_count.toLocaleString()}{" "}
           {b.recipient_count === 1 ? "recipient" : "recipients"}
           {b.created_by_name ? ` · ${b.created_by_name}` : ""}
         </p>

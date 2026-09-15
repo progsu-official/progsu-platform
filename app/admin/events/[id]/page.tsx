@@ -80,7 +80,7 @@ export default async function AdminEventDetailPage({
   const { data: event } = await admin
     .from("events")
     .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned"
+      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, send_sms_reminder, sms_reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned"
     )
     .eq("id", id)
     .maybeSingle();
@@ -110,6 +110,9 @@ export default async function AdminEventDetailPage({
     send_rsvp_email: !!event.send_rsvp_email,
     send_reminder_email: !!event.send_reminder_email,
     reminder_sent_at: (event.reminder_sent_at as string | null) ?? null,
+    // Column defaults true; `!== false` keeps that default if a row predates it.
+    send_sms_reminder: event.send_sms_reminder !== false,
+    sms_reminder_sent_at: (event.sms_reminder_sent_at as string | null) ?? null,
     cancellation_reason: (event.cancellation_reason as string | null) ?? null,
     cancelled_at: (event.cancelled_at as string | null) ?? null,
     published_at: (event.published_at as string | null) ?? null,
