@@ -16,21 +16,24 @@ alter type public.attendance_method_t add value if not exists 'self_qr';
 
 -- ============================================================================
 -- self_check_in_by_event(event_id) — the signed-in caller checks themself
--- into a published event. Upsert-as-no-op like admin_check_in_member (a
--- re-scan shouldn't error on a self-serve surface), but reports whether the
--- row already existed so the page can render "already checked in" instead of
--- a fresh confirmation.
+-- into a published event, but only if they already have a `going` RSVP —
+-- unlike admin_check_in_member/admin_check_in_by_token, this surface has no
+-- staff eyeballing the person at the door, so it doesn't accept walk-ins.
+-- out_rsvpd = false means "go RSVP first", distinct from out_already = true
+-- ("already checked in") — the page renders each as its own message. Upsert-
+-- as-no-op on a re-scan like admin_check_in_member, same reasoning.
 -- ============================================================================
 create or replace function public.self_check_in_by_event(p_event_id uuid)
-returns table (out_checked_in_at timestamptz, out_already boolean)
+returns table (out_checked_in_at timestamptz, out_already boolean, out_rsvpd boolean)
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_uid      uuid := auth.uid();
-  v_status   public.event_status_t;
-  v_existing timestamptz;
+  v_uid        uuid := auth.uid();
+  v_status     public.event_status_t;
+  v_existing   timestamptz;
+  v_rsvp_going boolean;
 begin
   if v_uid is null then
     raise exception 'self_check_in_by_event: unauthenticated' using errcode = 'P0001';
@@ -49,7 +52,17 @@ begin
    where event_id = p_event_id and user_id = v_uid;
 
   if v_existing is not null then
-    return query select v_existing, true;
+    return query select v_existing, true, true;
+    return;
+  end if;
+
+  select exists (
+    select 1 from public.event_rsvps
+     where event_id = p_event_id and user_id = v_uid and status = 'going'
+  ) into v_rsvp_going;
+
+  if not v_rsvp_going then
+    return query select null::timestamptz, false, false;
     return;
   end if;
 
@@ -64,7 +77,7 @@ begin
     jsonb_build_object('event_id', p_event_id, 'method', 'self_qr')
   );
 
-  return query select now(), false;
+  return query select now(), false, true;
 end;
 $$;
 

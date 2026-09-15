@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarCheck, CheckCircle2, XCircle } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { selfCheckInToEvent } from "@/lib/actions/events";
@@ -30,9 +30,33 @@ export default async function SelfCheckInPage({
 
   const result = await selfCheckInToEvent(event.id as string);
 
+  // Three outcomes, not two: a failed RPC call (result.ok === false) is a
+  // real error (unauthenticated, event not open, etc.), but result.ok with
+  // rsvpd === false is the RPC working correctly and declining — no staff at
+  // this surface to wave a walk-in through, so they go RSVP first instead.
+  const needsRsvp = result.ok && !result.data.rsvpd;
+
   return (
     <div className="mx-auto max-w-sm space-y-5 py-14 text-center">
-      {result.ok ? (
+      {needsRsvp ? (
+        <>
+          <CalendarCheck
+            size={56}
+            strokeWidth={1.5}
+            className="mx-auto text-primary"
+            aria-hidden
+          />
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              RSVP to check in
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              You haven&apos;t RSVP&apos;d to {event.title as string} yet.
+              RSVP on the event page, then rescan this code.
+            </p>
+          </div>
+        </>
+      ) : result.ok ? (
         <>
           <CheckCircle2
             size={56}
@@ -68,10 +92,10 @@ export default async function SelfCheckInPage({
         </>
       )}
 
-      <Button asChild variant="outline" className="h-11 rounded-full px-6">
+      <Button asChild variant={needsRsvp ? "default" : "outline"} className="h-11 rounded-full px-6">
         <Link href={`/events/${slug}`}>
-          <ArrowLeft size={15} strokeWidth={1.75} aria-hidden />
-          Event page
+          {needsRsvp ? null : <ArrowLeft size={15} strokeWidth={1.75} aria-hidden />}
+          {needsRsvp ? "RSVP now" : "Event page"}
         </Link>
       </Button>
     </div>

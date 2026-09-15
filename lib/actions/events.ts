@@ -515,10 +515,13 @@ const selfCheckInToEventSchema = z.object({
 // model. The QR an admin projects only names the event id — no token to
 // resolve — because the credential here is the caller's own member session,
 // enforced the same way any other /events/* page is (middleware.ts), not by
-// this action. See self_check_in_by_event() and docs/09 D14.
+// this action. rsvpd = false means the RPC declined to check them in because
+// they have no `going` RSVP — this surface has no staff to wave a walk-in
+// through, unlike adminCheckIn/adminCheckInByToken. See
+// self_check_in_by_event() and docs/09 D14.
 export async function selfCheckInToEvent(
   eventId: string
-): Promise<ActionResult<{ checkedInAt: string; already: boolean }>> {
+): Promise<ActionResult<{ checkedInAt: string | null; already: boolean; rsvpd: boolean }>> {
   const parsed = selfCheckInToEventSchema.safeParse({ eventId });
   if (!parsed.success) return err("INVALID_INPUT", "Invalid event.");
 
@@ -531,9 +534,17 @@ export async function selfCheckInToEvent(
   if (error) return mapPgError(error);
   if (!data) return err("INTERNAL", "Check-in did not return a result.");
 
-  const row = data as { out_checked_in_at: string; out_already: boolean };
+  const row = data as {
+    out_checked_in_at: string | null;
+    out_already: boolean;
+    out_rsvpd: boolean;
+  };
   revalidateEventPaths(parsed.data.eventId);
-  return ok({ checkedInAt: row.out_checked_in_at, already: row.out_already });
+  return ok({
+    checkedInAt: row.out_checked_in_at,
+    already: row.out_already,
+    rsvpd: row.out_rsvpd,
+  });
 }
 
 const correctAttendanceSchema = z.object({
