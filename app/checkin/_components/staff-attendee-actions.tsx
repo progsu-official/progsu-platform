@@ -4,14 +4,19 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { staffCheckInByToken, staffCheckInMember } from "@/lib/actions/checkin";
+import {
+  staffCheckInByToken,
+  staffCheckInMember,
+  staffRemoveCheckIn,
+  staffRemoveGuestCheckIn,
+} from "@/lib/actions/checkin";
 import { AttendeeTable, type AttendeeRow } from "@/app/admin/events/[id]/_components/attendee-table";
 
 // Staff-token trust model, not an admin session, so actions here stay to
-// check-in only — no remove/promote (those stay admin-only in guests-tab.tsx).
-// Members check in by user_id via staffCheckInMember (no ticket needed);
-// guests reuse the same staffCheckInByToken the QR scanner calls, now that
-// staffEventAttendees also returns their checkin_token.
+// check-in/undo only — no promote or RSVP removal (those stay admin-only in
+// guests-tab.tsx). Members check in by user_id via staffCheckInMember (no
+// ticket needed); guests reuse the same staffCheckInByToken the QR scanner
+// calls, now that staffEventAttendees also returns their checkin_token.
 export function StaffAttendeeSection({
   eventId,
   rows,
@@ -48,7 +53,23 @@ export function StaffAttendeeSection({
         rows={rows}
         renderActions={(r) => {
           if (r.checkedIn) {
-            return <span className="text-xs text-muted-foreground">Checked in</span>;
+            return (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() =>
+                  run(() =>
+                    r.kind === "member"
+                      ? staffRemoveCheckIn(eventId, r.id)
+                      : staffRemoveGuestCheckIn(eventId, r.id)
+                  )
+                }
+              >
+                Remove check-in
+              </Button>
+            );
           }
           if (r.kind === "member") {
             return (

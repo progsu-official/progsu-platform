@@ -192,3 +192,62 @@ export async function staffCheckInMember(
 
   return ok({ checkedIn: true });
 }
+
+const staffRemoveCheckInSchema = z.object({
+  eventId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
+
+// Undo a member's check-in from the door — mirrors correctAttendance's
+// "remove" action, staff-token trust model instead of an admin session.
+export async function staffRemoveCheckIn(
+  eventId: string,
+  userId: string
+): Promise<ActionResult<{ removed: true }>> {
+  if (!(await isStaffCheckinAuthed())) {
+    return err("UNAUTHORIZED", "Sign in required.");
+  }
+
+  const parsed = staffRemoveCheckInSchema.safeParse({ eventId, userId });
+  if (!parsed.success) return err("INVALID_INPUT", "Invalid ids.");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("staff_remove_check_in", {
+    p_event_id: parsed.data.eventId,
+    p_user_id: parsed.data.userId,
+  });
+  if (error) return err("INVALID_INPUT", error.message ?? "Database error.");
+
+  return ok({ removed: true });
+}
+
+const staffRemoveGuestCheckInSchema = z.object({
+  eventId: z.string().uuid(),
+  guestRsvpId: z.string().uuid(),
+});
+
+// Undo a guest's check-in — mirrors correctGuestAttendance, staff-token
+// trust model instead of an admin session.
+export async function staffRemoveGuestCheckIn(
+  eventId: string,
+  guestRsvpId: string
+): Promise<ActionResult<{ removed: true }>> {
+  if (!(await isStaffCheckinAuthed())) {
+    return err("UNAUTHORIZED", "Sign in required.");
+  }
+
+  const parsed = staffRemoveGuestCheckInSchema.safeParse({
+    eventId,
+    guestRsvpId,
+  });
+  if (!parsed.success) return err("INVALID_INPUT", "Invalid ids.");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("staff_remove_guest_check_in", {
+    p_event_id: parsed.data.eventId,
+    p_guest_rsvp_id: parsed.data.guestRsvpId,
+  });
+  if (error) return err("INVALID_INPUT", error.message ?? "Database error.");
+
+  return ok({ removed: true });
+}
