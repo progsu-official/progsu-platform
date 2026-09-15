@@ -547,33 +547,6 @@ export async function selfCheckInToEvent(
   });
 }
 
-const guestSelfCheckInSchema = z.object({
-  token: z.string().uuid(),
-});
-
-// Guest counterpart to selfCheckInToEvent above. A guest has no session to
-// serve as the credential, so their own opaque checkin_token — already the
-// credential for /tickets/[token] itself (guest_ticket_by_token) — takes its
-// place. No name/email/staff step: holding the link (or having scanned their
-// own ticket QR) already proves who they are. See
-// guest_self_check_in_by_token().
-export async function guestSelfCheckIn(
-  token: string
-): Promise<ActionResult<{ checkedInAt: string | null; already: boolean }>> {
-  const parsed = guestSelfCheckInSchema.safeParse({ token });
-  if (!parsed.success) return err("INVALID_INPUT", "Invalid ticket.");
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .rpc("guest_self_check_in_by_token", { p_token: parsed.data.token })
-    .maybeSingle();
-  if (error) return mapPgError(error);
-  if (!data) return err("INTERNAL", "Check-in did not return a result.");
-
-  const row = data as { out_checked_in_at: string | null; out_already: boolean };
-  return ok({ checkedInAt: row.out_checked_in_at, already: row.out_already });
-}
-
 const correctAttendanceSchema = z.object({
   eventId: z.string().uuid(),
   userId: z.string().uuid(),
