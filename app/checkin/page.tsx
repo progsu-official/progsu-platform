@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ArrowLeft, CalendarDays, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -8,14 +9,17 @@ import {
   staffCheckinLogout,
   staffEventAttendees,
 } from "@/lib/actions/checkin";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { QrScanner } from "@/app/admin/events/[id]/_components/qr-scanner";
 import { AttendeeTable } from "@/app/admin/events/[id]/_components/attendee-table";
+import { CheckinThemeShell } from "./_components/theme-toggle-shell";
 
 export const dynamic = "force-dynamic";
 
 type UpcomingEvent = { id: string; title: string; starts_at: string };
 
-// Door-staff check-in, no admin account. /checkin is a public middleware
+// Staff check-in, no admin account. /checkin is a public middleware
 // path (self-auths via the STAFF_CHECKIN_TOKEN cookie, same pattern as
 // /tickets and /joined) — see lib/actions/checkin.ts.
 export default async function CheckinPage({
@@ -35,24 +39,33 @@ export default async function CheckinPage({
     }
 
     return (
-      <div className="mx-auto max-w-sm space-y-4 p-6">
-        <h1 className="text-lg font-semibold">Staff check-in</h1>
-        <form action={login} className="space-y-3">
-          <input
-            name="token"
-            type="text"
-            placeholder="Private token"
-            required
-            className="w-full rounded-md border px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-          >
-            Enter
-          </button>
-        </form>
-      </div>
+      <CheckinThemeShell>
+        <div className="flex min-h-screen items-center justify-center p-6">
+          <div className="w-full max-w-sm space-y-6 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+            <div className="space-y-1.5 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+                <ShieldCheck size={20} strokeWidth={1.75} className="text-primary" aria-hidden />
+              </div>
+              <h1 className="text-lg font-semibold text-foreground">Staff check-in</h1>
+              <p className="text-sm text-muted-foreground">
+                Enter the staff token to continue.
+              </p>
+            </div>
+            <form action={login} className="space-y-3">
+              <Input
+                name="token"
+                type="text"
+                placeholder="Private token"
+                required
+                className="rounded-xl"
+              />
+              <Button type="submit" className="w-full rounded-xl">
+                Enter
+              </Button>
+            </form>
+          </div>
+        </div>
+      </CheckinThemeShell>
     );
   }
 
@@ -73,48 +86,84 @@ export default async function CheckinPage({
   const attendees = attendeesResult?.ok ? attendeesResult.data : [];
 
   return (
-    <div className={`mx-auto space-y-4 p-6 ${selected ? "max-w-3xl" : "max-w-sm"}`}>
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Staff check-in</h1>
-        <form action={logout}>
-          <button type="submit" className="text-xs text-muted-foreground underline">
-            Log out
-          </button>
-        </form>
-      </div>
-
-      {selected ? (
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <p className="text-sm font-medium">{selected.title}</p>
-            <a href="/checkin" className="text-xs text-muted-foreground underline">
-              Change event
-            </a>
-            <QrScanner eventId={selected.id} checkIn={staffCheckInByToken} />
+    <CheckinThemeShell>
+      <div
+        className={`mx-auto space-y-6 p-6 ${selected ? "max-w-3xl" : "flex min-h-screen max-w-md flex-col justify-center"}`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays
+              size={18}
+              strokeWidth={1.75}
+              className="text-muted-foreground"
+              aria-hidden
+            />
+            <h1 className="text-lg font-semibold">Staff check-in</h1>
           </div>
-          <AttendeeTable rows={attendees} />
+          <form action={logout}>
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <LogOut size={14} strokeWidth={1.75} aria-hidden />
+              Log out
+            </Button>
+          </form>
         </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">Pick an event to check people in:</p>
-          {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming events.</p>
-          ) : (
-            <ul className="space-y-2">
-              {events.map((e) => (
-                <li key={e.id}>
-                  <a
-                    href={`/checkin?event=${e.id}`}
-                    className="block rounded-md border px-3 py-2 text-sm hover:bg-accent/10"
-                  >
-                    {e.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
+
+        {selected ? (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Checking in for
+                </p>
+                <p className="truncate text-base font-semibold text-foreground">
+                  {selected.title}
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5">
+                <a href="/checkin">
+                  <ArrowLeft size={14} strokeWidth={1.75} aria-hidden />
+                  Change event
+                </a>
+              </Button>
+            </div>
+            <QrScanner eventId={selected.id} checkIn={staffCheckInByToken} />
+            <AttendeeTable rows={attendees} />
+          </div>
+        ) : (
+          <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-5">
+            <p className="text-sm text-muted-foreground">
+              Pick an event to check people in.
+            </p>
+            {events.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming events.</p>
+            ) : (
+              <ul className="space-y-2">
+                {events.map((e) => (
+                  <li key={e.id}>
+                    <a
+                      href={`/checkin?event=${e.id}`}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-4 py-3 text-sm transition-colors hover:border-primary/40 hover:bg-accent/10"
+                    >
+                      <span className="min-w-0 truncate font-medium">{e.title}</span>
+                      <ChevronRight
+                        size={16}
+                        strokeWidth={1.75}
+                        className="shrink-0 text-muted-foreground"
+                        aria-hidden
+                      />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </CheckinThemeShell>
   );
 }
