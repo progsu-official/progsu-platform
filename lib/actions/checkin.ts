@@ -64,7 +64,10 @@ export async function staffCheckinLogin(
 
 export async function staffCheckinLogout(): Promise<void> {
   const jar = await cookies();
-  jar.delete(COOKIE_NAME);
+  // Must match the cookie's original path — deleting without it defaults to
+  // "/", which sets an unrelated cookie and leaves the real one (scoped to
+  // "/checkin") still attached to every request here.
+  jar.delete({ name: COOKIE_NAME, path: "/checkin" });
 }
 
 const staffCheckInByTokenSchema = z.object({
