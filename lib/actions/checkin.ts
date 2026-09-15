@@ -112,9 +112,10 @@ export async function staffCheckInByToken(
   return ok({ eventId: outEventId, userId });
 }
 
-// Read-only search list for door staff — no admin session, no destructive
-// actions. See staff_event_attendees_for() for what it deliberately leaves
-// out (invites, waitlist position, historical attendees).
+// Search list for door staff — no admin session, so actions here (below)
+// stay limited to check-in only, no remove/promote. See
+// staff_event_attendees_for() for what it deliberately leaves out (invites,
+// waitlist position, historical attendees).
 export async function staffEventAttendees(
   eventId: string
 ): Promise<ActionResult<AttendeeRow[]>> {
@@ -139,6 +140,7 @@ export async function staffEventAttendees(
     status: string | null;
     checked_in: boolean;
     checked_in_at: string | null;
+    checkin_token: string | null;
   }>;
 
   return ok(
@@ -150,6 +152,43 @@ export async function staffEventAttendees(
       status: r.status,
       checkedIn: r.checked_in,
       checkedInAt: r.checked_in_at,
+      checkinToken: r.checkin_token,
     }))
   );
+}
+
+const staffCheckInMemberSchema = z.object({
+  eventId: z.string().uuid(),
+  userId: z.string().uuid(),
+  note: z.string().trim().max(500).optional().nullable(),
+});
+
+// Manual walk-in for a member, no QR needed — mirrors admin_check_in_member's
+// upsert/no-RSVP-required behavior, just under the staff-token trust model
+// instead of an admin session. Guests don't get an equivalent here: their
+// checkin_token is returned by staffEventAttendees above, so a manual guest
+// check-in reuses staffCheckInByToken directly (same as the admin tab).
+export async function staffCheckInMember(
+  eventId: string,
+  userId: string,
+  note?: string | null
+): Promise<ActionResult<{ checkedIn: true }>> {
+  if (!(await isStaffCheckinAuthed())) {
+    return err("UNAUTHORIZED", "Sign in required.");
+  }
+
+  const parsed = staffCheckInMemberSchema.safeParse({ eventId, userId, note });
+  if (!parsed.success) {
+    return err("INVALID_INPUT", parsed.error.issues[0]?.message ?? "Invalid input");
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("staff_check_in_member", {
+    p_event_id: parsed.data.eventId,
+    p_user_id: parsed.data.userId,
+    p_note: parsed.data.note ?? null,
+  });
+  if (error) return err("INVALID_INPUT", error.message ?? "Database error.");
+
+  return ok({ checkedIn: true });
 }

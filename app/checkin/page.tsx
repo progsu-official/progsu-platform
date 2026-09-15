@@ -14,9 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QrScanner } from "@/app/admin/events/[id]/_components/qr-scanner";
-import { AttendeeTable } from "@/app/admin/events/[id]/_components/attendee-table";
 import { ShowCheckinQrButton } from "@/app/admin/events/[id]/_components/show-checkin-qr-button";
 import { CheckinThemeShell } from "./_components/theme-toggle-shell";
+import { StaffAttendeeSection } from "./_components/staff-attendee-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -159,7 +159,7 @@ export default async function CheckinPage({
               </div>
             </div>
             <QrScanner eventId={selected.id} checkIn={staffCheckInByToken} />
-            <AttendeeTable rows={attendees} />
+            <StaffAttendeeSection eventId={selected.id} rows={attendees} />
           </div>
         ) : (
           <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-5">

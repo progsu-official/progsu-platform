@@ -21,6 +21,11 @@ export type AttendeeRow = {
   status: string | null;
   checkedIn: boolean;
   checkedInAt: string | null;
+  // Absent for the admin Attendees tab (its actions read straight from raw
+  // below). Set for the door-staff /checkin surface's guest rows so its
+  // manual "Check in" button can redeem it via staffCheckInByToken, same
+  // token the QR scan already resolves — see staffEventAttendees.
+  checkinToken?: string | null;
   // Absent for the door-staff /checkin surface, which has no admin session
   // to act with — its rows are search/display-only (see staffEventAttendees).
   raw?: RosterRow | GuestRsvpRow;
@@ -87,7 +92,7 @@ export function RsvpBadge({ status }: { status: string | null }) {
   );
 }
 
-type StatusFilter = "all" | "in" | "out";
+type StatusFilter = "all" | "in" | "out" | "guest";
 
 // Shared by the admin Attendees tab (full actions) and the door-staff
 // /checkin surface (read-only, renderActions omitted) — one search/filter/
@@ -105,9 +110,12 @@ export function AttendeeTable({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows
-      .filter((r) =>
-        filter === "in" ? r.checkedIn : filter === "out" ? !r.checkedIn : true
-      )
+      .filter((r) => {
+        if (filter === "in") return r.checkedIn;
+        if (filter === "out") return !r.checkedIn;
+        if (filter === "guest") return r.kind === "guest";
+        return true;
+      })
       .filter(
         (r) =>
           !q ||
@@ -156,8 +164,8 @@ export function AttendeeTable({
             className="rounded-xl pl-9"
           />
         </div>
-        <div className="flex gap-1.5">
-          {(["all", "in", "out"] as const).map((f) => (
+        <div className="flex flex-wrap gap-1.5">
+          {(["all", "in", "out", "guest"] as const).map((f) => (
             <Button
               key={f}
               type="button"
@@ -165,7 +173,13 @@ export function AttendeeTable({
               variant={filter === f ? "default" : "outline"}
               onClick={() => setFilter(f)}
             >
-              {f === "all" ? "All" : f === "in" ? "Checked in" : "Not checked in"}
+              {f === "all"
+                ? "All"
+                : f === "in"
+                  ? "Checked in"
+                  : f === "out"
+                    ? "Not checked in"
+                    : "Guests"}
             </Button>
           ))}
         </div>
