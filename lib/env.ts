@@ -133,6 +133,10 @@ export function requireTwilioAuthToken(): string {
   return required("TWILIO_AUTH_TOKEN", process.env.TWILIO_AUTH_TOKEN);
 }
 
+export function requireStaffCheckinToken(): string {
+  return required("STAFF_CHECKIN_TOKEN", process.env.STAFF_CHECKIN_TOKEN);
+}
+
 export function requireWalletWalletApiKey(): string {
   return required("WALLETWALLET_API_KEY", process.env.WALLETWALLET_API_KEY);
 }

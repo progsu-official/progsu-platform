@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { QrCode, X } from "lucide-react";
 
+import { adminCheckInByToken } from "@/lib/actions/events";
+
 import { QrScanner } from "./qr-scanner";
 
 // Replaces the old separate /admin/events/[id]/check-in page — that page's
@@ -43,7 +45,7 @@ export function ScanQrButton({ eventId }: { eventId: string }) {
             >
               <X size={18} aria-hidden />
             </button>
-            <QrScanner eventId={eventId} />
+            <QrScanner eventId={eventId} checkIn={adminCheckInByToken} />
           </div>
         </div>
       ) : null}
