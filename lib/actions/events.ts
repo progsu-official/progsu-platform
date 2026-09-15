@@ -539,7 +539,13 @@ export async function selfCheckInToEvent(
     out_already: boolean;
     out_rsvpd: boolean;
   };
-  revalidateEventPaths(parsed.data.eventId);
+  // No revalidateEventPaths() here, unlike every other action in this file:
+  // this one is called directly during the render of /events/[slug]/check-in
+  // (visiting the URL IS the mutation), not from a client-triggered form
+  // action. revalidatePath() during a render throws ("used during render"),
+  // which crashed the page in production for every successful check-in.
+  // /admin/events/[id] is already force-dynamic, so it reads fresh data on
+  // its own next request regardless — nothing to revalidate for.
   return ok({
     checkedInAt: row.out_checked_in_at,
     already: row.out_already,
