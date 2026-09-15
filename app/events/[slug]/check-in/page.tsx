@@ -54,6 +54,9 @@ export default async function SelfCheckInPage({
               You haven&apos;t RSVP&apos;d to {event.title as string} yet.
               RSVP on the event page, then rescan this code.
             </p>
+            <p className="text-xs text-muted-foreground">
+              Confirm your RSVP to boost your Progsu ranking.
+            </p>
           </div>
         </>
       ) : result.ok ? (
@@ -71,6 +74,17 @@ export default async function SelfCheckInPage({
             <p className="text-sm text-muted-foreground">
               {event.title as string}
             </p>
+            {result.data.already ? null : (
+              // D14 side note: the ranking boost itself is an exec-side
+              // system outside this codebase, and it's keyed off a
+              // staff-confirmed check-in specifically — this self-scan is
+              // provisional until staff confirms it, so say that rather than
+              // imply the boost already landed.
+              <p className="text-xs text-muted-foreground">
+                Ranking credit finalizes once staff confirms your check-in at
+                the door.
+              </p>
+            )}
           </div>
         </>
       ) : (
