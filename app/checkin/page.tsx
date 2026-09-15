@@ -6,8 +6,10 @@ import {
   staffCheckInByToken,
   staffCheckinLogin,
   staffCheckinLogout,
+  staffEventAttendees,
 } from "@/lib/actions/checkin";
 import { QrScanner } from "@/app/admin/events/[id]/_components/qr-scanner";
+import { AttendeeTable } from "@/app/admin/events/[id]/_components/attendee-table";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +41,7 @@ export default async function CheckinPage({
           <input
             name="token"
             type="text"
-            placeholder="Check-in code"
+            placeholder="Private token"
             required
             className="w-full rounded-md border px-3 py-2 text-sm"
           />
@@ -65,8 +67,13 @@ export default async function CheckinPage({
   const events = (data ?? []) as UpcomingEvent[];
   const selected = events.find((e) => e.id === eventId) ?? null;
 
+  const attendeesResult = selected
+    ? await staffEventAttendees(selected.id)
+    : null;
+  const attendees = attendeesResult?.ok ? attendeesResult.data : [];
+
   return (
-    <div className="mx-auto max-w-sm space-y-4 p-6">
+    <div className={`mx-auto space-y-4 p-6 ${selected ? "max-w-3xl" : "max-w-sm"}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Staff check-in</h1>
         <form action={logout}>
@@ -77,12 +84,15 @@ export default async function CheckinPage({
       </div>
 
       {selected ? (
-        <div className="space-y-3">
-          <p className="text-sm font-medium">{selected.title}</p>
-          <a href="/checkin" className="text-xs text-muted-foreground underline">
-            Change event
-          </a>
-          <QrScanner eventId={selected.id} checkIn={staffCheckInByToken} />
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-sm font-medium">{selected.title}</p>
+            <a href="/checkin" className="text-xs text-muted-foreground underline">
+              Change event
+            </a>
+            <QrScanner eventId={selected.id} checkIn={staffCheckInByToken} />
+          </div>
+          <AttendeeTable rows={attendees} />
         </div>
       ) : (
         <div className="space-y-2">

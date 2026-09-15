@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireStaffCheckinToken } from "@/lib/env";
 import { type ActionResult, err, ok } from "./result";
+import type { AttendeeRow } from "@/app/admin/events/[id]/_components/attendee-table";
 
 // Door-staff check-in: no Supabase Auth account, just a shared secret you
 // hand out (STAFF_CHECKIN_TOKEN). Holding the cookie below is the entire
@@ -46,7 +47,7 @@ export async function staffCheckinLogin(
     return err("INTERNAL", "Check-in is not configured yet.");
   }
   if (!constantTimeEqual(token.trim(), expected)) {
-    return err("UNAUTHORIZED", "That code is not valid.");
+    return err("UNAUTHORIZED", "That token is not valid.");
   }
 
   const jar = await cookies();
@@ -106,4 +107,46 @@ export async function staffCheckInByToken(
   if (!outEventId) return err("INTERNAL", "Check-in did not return a result.");
 
   return ok({ eventId: outEventId, userId });
+}
+
+// Read-only search list for door staff — no admin session, no destructive
+// actions. See staff_event_attendees_for() for what it deliberately leaves
+// out (invites, waitlist position, historical attendees).
+export async function staffEventAttendees(
+  eventId: string
+): Promise<ActionResult<AttendeeRow[]>> {
+  if (!(await isStaffCheckinAuthed())) {
+    return err("UNAUTHORIZED", "Sign in required.");
+  }
+  if (!z.string().uuid().safeParse(eventId).success) {
+    return err("INVALID_INPUT", "Invalid event.");
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc("staff_event_attendees_for", {
+    p_event_id: eventId,
+  });
+  if (error) return err("INTERNAL", error.message);
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    kind: "member" | "guest";
+    name: string;
+    email: string | null;
+    status: string | null;
+    checked_in: boolean;
+    checked_in_at: string | null;
+  }>;
+
+  return ok(
+    rows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      name: r.name,
+      email: r.email,
+      status: r.status,
+      checkedIn: r.checked_in,
+      checkedInAt: r.checked_in_at,
+    }))
+  );
 }
