@@ -20,6 +20,7 @@ Read these **in this order** when you need context:
 7. `docs/13-roadmap/` — post-R3 planned work
 8. `docs/17-campaign-links.md` — referral/campaign links, and the privacy line they hold
 9. `docs/18-discord-rsvp-alerts.md` — Discord RSVP announcements, and the v7 consent bump they required
+10. `docs/19-sms-broadcasts.md` — officer SMS sends, and the recipient rule that decides who can be texted
 
 ## Hard rules
 
