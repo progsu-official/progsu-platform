@@ -42,12 +42,27 @@ export async function addCheckinCodeToWallet(): Promise<
     (profile as { first_name?: string | null }).first_name ||
     "Member";
 
+  // Checked separately from the fetch below so a missing/blank
+  // WALLETWALLET_API_KEY (config gap) reports distinctly from an actual
+  // network failure — they were sharing one catch block, so a misconfigured
+  // key showed the same "couldn't reach" message as the service being down,
+  // which is the wrong thing to debug first.
+  let apiKey: string;
+  try {
+    apiKey = requireWalletWalletApiKey();
+  } catch {
+    return err(
+      "INTERNAL",
+      "Wallet passes aren't configured yet. Ask an admin to set WALLETWALLET_API_KEY."
+    );
+  }
+
   let res: Response;
   try {
     res = await fetch(WALLETWALLET_API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${requireWalletWalletApiKey()}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
