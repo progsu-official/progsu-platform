@@ -507,6 +507,35 @@ export async function adminCheckInByToken(
   return ok({ eventId: outEventId, userId });
 }
 
+const selfCheckInToEventSchema = z.object({
+  eventId: z.string().uuid(),
+});
+
+// D14: self-serve QR check-in, additive to D12/D13's staff-scans-attendee
+// model. The QR an admin projects only names the event id — no token to
+// resolve — because the credential here is the caller's own member session,
+// enforced the same way any other /events/* page is (middleware.ts), not by
+// this action. See self_check_in_by_event() and docs/09 D14.
+export async function selfCheckInToEvent(
+  eventId: string
+): Promise<ActionResult<{ checkedInAt: string; already: boolean }>> {
+  const parsed = selfCheckInToEventSchema.safeParse({ eventId });
+  if (!parsed.success) return err("INVALID_INPUT", "Invalid event.");
+
+  const { supabase, user } = await requireAuthenticatedContext();
+  if (!user) return err("UNAUTHORIZED", "Sign in required.");
+
+  const { data, error } = await supabase
+    .rpc("self_check_in_by_event", { p_event_id: parsed.data.eventId })
+    .maybeSingle();
+  if (error) return mapPgError(error);
+  if (!data) return err("INTERNAL", "Check-in did not return a result.");
+
+  const row = data as { out_checked_in_at: string; out_already: boolean };
+  revalidateEventPaths(parsed.data.eventId);
+  return ok({ checkedInAt: row.out_checked_in_at, already: row.out_already });
+}
+
 const correctAttendanceSchema = z.object({
   eventId: z.string().uuid(),
   userId: z.string().uuid(),

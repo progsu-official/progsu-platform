@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Users } from "lucide-react";
+import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,6 +12,7 @@ import { EVENT_TIME_ZONE, formatTimeRange } from "@/app/events/_components/event
 import { EventDescription } from "@/app/events/[slug]/_components/event-description";
 import { CheckInInfoPopover } from "./_components/checkin-info-popover";
 import { ScanQrButton } from "./_components/scan-qr-button";
+import { ShowCheckinQrButton } from "./_components/show-checkin-qr-button";
 
 import { DetailsTab } from "./details-tab";
 import { GuestsTab } from "./guests-tab";
@@ -167,6 +169,20 @@ export default async function AdminEventDetailPage({
 
   const startDate = new Date(ev.starts_at);
 
+  // D14: self-serve QR, points at the member-gated check-in landing page.
+  // Same errorCorrectionLevel/margin/color as the ticket + personal QRs
+  // (app/tickets/[token]/page.tsx, app/profile/my-checkin-qr.tsx) so it
+  // scans just as reliably off a projector as those do off a phone screen.
+  const checkinQrDataUrl = await QRCode.toDataURL(
+    `${env.NEXT_PUBLIC_SITE_URL}/events/${ev.slug}/check-in`,
+    {
+      errorCorrectionLevel: "H",
+      margin: 0,
+      width: 640,
+      color: { dark: "#18181b", light: "#ffffff" },
+    }
+  );
+
   return (
     <div className="relative">
       {/* Same blown-up-cover ambience as the member detail page (see
@@ -208,6 +224,10 @@ export default async function AdminEventDetailPage({
               past the grid below. */}
           <div className="flex shrink-0 items-center gap-2">
             <ScanQrButton eventId={ev.id} />
+            <ShowCheckinQrButton
+              qrDataUrl={checkinQrDataUrl}
+              eventTitle={ev.title}
+            />
             <CheckInInfoPopover />
           </div>
         </nav>
