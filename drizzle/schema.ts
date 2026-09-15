@@ -561,6 +561,56 @@ export const majors = pgTable("majors", {
 	check("majors_slug_check", sql`slug ~ '^[a-z0-9_]+$'::text`),
 ]);
 
+export const smsBroadcasts = pgTable("sms_broadcasts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	body: text().notNull(),
+	audience: text().notNull(),
+	status: text().default('sending').notNull(),
+	recipientCount: integer("recipient_count").default(0).notNull(),
+	createdBy: uuid("created_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	cancelledAt: timestamp("cancelled_at", { withTimezone: true, mode: 'string' }),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("sms_broadcasts_created_idx").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops"), table.id.desc().nullsFirst().op("timestamptz_ops")),
+	uniqueIndex("sms_broadcasts_one_sending_idx").using("btree", sql`(true)`).where(sql`((status = 'sending'::text) AND (audience <> 'self_test'::text))`),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [profiles.id],
+			name: "sms_broadcasts_created_by_fkey"
+		}).onDelete("set null"),
+	check("sms_broadcasts_audience_check", sql`audience = ANY (ARRAY['gsu'::text, 'all_consented'::text, 'self_test'::text])`),
+	check("sms_broadcasts_body_len", sql`(char_length(body) >= 1) AND (char_length(body) <= 480)`),
+	check("sms_broadcasts_status_check", sql`status = ANY (ARRAY['sending'::text, 'done'::text, 'cancelled'::text])`),
+]);
+
+export const smsDeliveries = pgTable("sms_deliveries", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	broadcastId: uuid("broadcast_id").notNull(),
+	phoneE164: text("phone_e164").notNull(),
+	status: text().default('queued').notNull(),
+	attempts: integer().default(0).notNull(),
+	twilioSid: text("twilio_sid"),
+	errorCode: text("error_code"),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }),
+	statusUpdatedAt: timestamp("status_updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("sms_deliveries_broadcast_status_idx").using("btree", table.broadcastId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("text_ops")),
+	index("sms_deliveries_queued_idx").using("btree", table.createdAt.asc().nullsLast().op("uuid_ops"), table.id.asc().nullsLast().op("uuid_ops")).where(sql`(status = 'queued'::text)`),
+	foreignKey({
+			columns: [table.broadcastId],
+			foreignColumns: [smsBroadcasts.id],
+			name: "sms_deliveries_broadcast_id_fkey"
+		}).onDelete("cascade"),
+	unique("sms_deliveries_broadcast_id_phone_e164_key").on(table.broadcastId, table.phoneE164),
+	unique("sms_deliveries_twilio_sid_key").on(table.twilioSid),
+	check("sms_deliveries_phone_e164_check", sql`phone_e164 ~ '^\+1[2-9][0-9]{9}$'::text`),
+	check("sms_deliveries_status_check", sql`status = ANY (ARRAY['queued'::text, 'sending'::text, 'sent'::text, 'delivered'::text, 'undelivered'::text, 'failed'::text, 'suppressed'::text, 'skipped'::text, 'cancelled'::text])`),
+]);
+
 export const smsSuppressions = pgTable("sms_suppressions", {
 	phoneE164: text("phone_e164").primaryKey().notNull(),
 	reason: text().notNull(),
