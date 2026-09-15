@@ -16,6 +16,7 @@ import {
   cancelSmsBroadcastSchema,
   createSmsBroadcastSchema,
   sendSmsTestSchema,
+  setEventSmsReminderSchema,
   type SmsOverview,
 } from "./sms-schemas";
 
@@ -74,16 +75,21 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
   const { data, error } = await supabase.rpc("admin_sms_overview");
   if (error) return mapPgError(error);
 
-  const payload = (data ?? {}) as Partial<SmsOverview>;
+  const payload = (data ?? {}) as Partial<SmsOverview> & {
+    upcoming_reminders?: SmsOverview["upcomingReminders"];
+  };
   return ok({
     audiences: payload.audiences ?? { gsu: 0, all_consented: 0 },
     suppressed: payload.suppressed ?? 0,
     self: payload.self ?? { has_phone: false, phone_last4: null, is_suppressed: false },
     broadcasts: payload.broadcasts ?? [],
+    upcomingReminders: payload.upcoming_reminders ?? [],
     config: {
       canSend: loadTwilioSendConfig() !== null,
       receipts: loadTwilioAuthToken() !== null,
+      eventReminders: env.FEATURE_SMS_EVENT_REMINDERS,
     },
+    siteUrl: env.NEXT_PUBLIC_SITE_URL,
   });
 }
 
@@ -134,6 +140,27 @@ export async function createSmsBroadcast(
   kickWorker();
   revalidatePath("/admin/sms");
   return ok({ broadcastId: row.broadcast_id, recipientCount: row.recipient_count });
+}
+
+// Per-event switch for the automatic 30-minute reminder. Not gated on
+// FEATURE_SMS: an officer turning reminders off for a sensitive event should
+// stick even while SMS as a whole is switched off.
+export async function setEventSmsReminder(
+  input: unknown
+): Promise<ActionResult<{ enabled: boolean }>> {
+  const parsed = setEventSmsReminderSchema.safeParse(input);
+  if (!parsed.success) return firstIssue(parsed.error);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_event_sms_reminder", {
+    p_event_id: parsed.data.eventId,
+    p_enabled: parsed.data.enabled,
+  });
+  if (error) return mapPgError(error);
+
+  revalidatePath(`/admin/events/${parsed.data.eventId}`);
+  revalidatePath("/admin/sms");
+  return ok({ enabled: parsed.data.enabled });
 }
 
 export async function cancelSmsBroadcast(

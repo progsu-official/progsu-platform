@@ -73,6 +73,13 @@ export const env = {
   // sending off must never turn opt-out capture off.
   FEATURE_SMS: parseBool(process.env.FEATURE_SMS),
 
+  // 30-minute SMS reminders for RSVP'd, opted-in attendees. Ships on whenever
+  // FEATURE_SMS is on; this is the switch to pull them alone without also
+  // stopping officer broadcasts. Per-event opt-out is events.send_sms_reminder.
+  FEATURE_SMS_EVENT_REMINDERS: parseBoolDefaultTrue(
+    process.env.FEATURE_SMS_EVENT_REMINDERS
+  ),
+
   // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,
   // no OTP email is sent, the code is always 000000, and OTP rate limits are
   // skipped. Hard-gated on NODE_ENV like DEV_AUTO_LOGIN so it can never be

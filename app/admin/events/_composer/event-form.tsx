@@ -8,6 +8,7 @@ import {
   ExternalLink,
   EyeOff,
   Mail,
+  MessageSquare,
   Pencil,
   Pin,
   Users,
@@ -22,6 +23,7 @@ import {
   deleteEventCover,
   updateEvent,
 } from "@/lib/actions/events";
+import { setEventSmsReminder } from "@/lib/actions/sms";
 import {
   EVENT_COVER_MIME_TYPES,
   type EventVisibility,
@@ -104,6 +106,9 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
   const [rsvpEmail, setRsvpEmail] = useState(event?.send_rsvp_email ?? true);
   const [reminderEmail, setReminderEmail] = useState(
     event?.send_reminder_email ?? true
+  );
+  const [smsReminder, setSmsReminder] = useState(
+    event?.send_sms_reminder ?? true
   );
   const [theme, setTheme] = useState<ThemeSpec>(DEFAULT_THEME);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -250,6 +255,21 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
           setCoverRemoved(false);
         }
 
+        // Separate helper, not part of update_event's payload, so the SMS
+        // switch never needs a rewrite of the event write path.
+        if (smsReminder !== event.send_sms_reminder) {
+          const smsResult = await setEventSmsReminder({
+            eventId: event.id,
+            enabled: smsReminder,
+          });
+          if (!smsResult.ok) {
+            setError({
+              message: `Saved, but the text reminder setting didn't: ${smsResult.error.message}`,
+            });
+            return;
+          }
+        }
+
         setSavedNotice("Saved.");
         router.refresh();
         return;
@@ -260,6 +280,21 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
       if (!result.ok) {
         setError({ message: result.error.message, field: result.error.field });
         return;
+      }
+
+      // New events default to reminders on, so only an opt-out needs a call.
+      if (!smsReminder) {
+        const smsResult = await setEventSmsReminder({
+          eventId: result.data.eventId,
+          enabled: false,
+        });
+        if (!smsResult.ok) {
+          setCreated({
+            id: result.data.eventId,
+            note: `Event created, but text reminders are still on: ${smsResult.error.message}`,
+          });
+          return;
+        }
       }
 
       // The event exists now, so a cover failure is recoverable on the detail
@@ -475,6 +510,22 @@ export function EventForm({ recentLocations, event, coverUrl = null }: Props) {
                 label="Reminder email"
                 checked={reminderEmail}
                 onChange={setReminderEmail}
+                disabled={pending}
+              />
+            </OptionRow>
+            <OptionRow
+              icon={MessageSquare}
+              label="Text reminder"
+              hint={
+                event?.sms_reminder_sent_at
+                  ? `Sent ${new Date(event.sms_reminder_sent_at).toLocaleString()}`
+                  : "30 min before, to RSVPs who opted in to texts"
+              }
+            >
+              <Switch
+                label="Text reminder"
+                checked={smsReminder}
+                onChange={setSmsReminder}
                 disabled={pending}
               />
             </OptionRow>

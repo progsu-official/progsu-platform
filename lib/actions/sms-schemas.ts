@@ -32,6 +32,22 @@ export const cancelSmsBroadcastSchema = z.object({
   broadcastId: z.string().uuid(),
 });
 
+export const setEventSmsReminderSchema = z.object({
+  eventId: z.string().uuid(),
+  enabled: z.boolean(),
+});
+
+export type SmsUpcomingReminder = {
+  id: string;
+  title: string;
+  slug: string;
+  location_text: string | null;
+  starts_at: string;
+  send_sms_reminder: boolean;
+  sms_reminder_sent_at: string | null;
+  recipient_count: number;
+};
+
 export type SmsDeliveryStatus =
   | "queued"
   | "sending"
@@ -46,12 +62,14 @@ export type SmsDeliveryStatus =
 export type SmsBroadcastRow = {
   id: string;
   body: string;
-  audience: SmsAudience | "self_test";
+  audience: SmsAudience | "self_test" | "event_reminder";
   status: "sending" | "done" | "cancelled";
   recipient_count: number;
   created_at: string;
   completed_at: string | null;
   cancelled_at: string | null;
+  event_id: string | null;
+  event_title: string | null;
   created_by_name: string;
   counts: Partial<Record<SmsDeliveryStatus, number>>;
   error_codes: Record<string, number>;
@@ -62,5 +80,7 @@ export type SmsOverview = {
   suppressed: number;
   self: { has_phone: boolean; phone_last4: string | null; is_suppressed: boolean };
   broadcasts: SmsBroadcastRow[];
-  config: { canSend: boolean; receipts: boolean };
+  upcomingReminders: SmsUpcomingReminder[];
+  config: { canSend: boolean; receipts: boolean; eventReminders: boolean };
+  siteUrl: string;
 };

@@ -160,4 +160,48 @@ Same phases as `docs/12-events-pilot-runbook.md`.
   timestamped consent, not a backfill of `sms_consent_at`.
 - START / re-subscribe. `sms_suppressions` has no un-suppress path by design;
   someone who texts START is still skipped until an officer clears them by hand.
-- Scheduling, per-event audiences, templates, MMS.
+- Scheduling, per-event audiences, editable templates, MMS.
+
+## 8 · Event reminders
+
+Migration `20260915130000_sms_event_reminders.sql`, `lib/sms/reminders.ts`,
+`lib/sms/templates.ts`, smoke `scripts/smoke-sms-event-reminders.ts`.
+
+Thirty minutes before a published event starts, everyone RSVP'd **going** who
+passes the §1 rule gets one text. Being RSVP'd is not consent; the SMS opt-in is.
+Waitlisted, declined and cancelled RSVPs get nothing, and a person RSVP'd as both
+a member and a guest on the same number gets one text.
+
+```
+yo, PrizePicks Internship Recruiting Event starts in 30 min at Petit Science Center Rm. 101! See you there.
+
+Progsu: reply STOP to opt out
+```
+
+- **Default on.** `events.send_sms_reminder` defaults true. Officers switch it
+  off per event under "Text reminder" in the event's options
+  (`set_event_sms_reminder()`, audited). `FEATURE_SMS_EVENT_REMINDERS=false`
+  stops all reminders without stopping broadcasts; unset means on.
+- **When.** The per-minute cron queues reminders for events starting 30 to 5
+  minutes out, so a few missed ticks still send, but "starting soon" never lands
+  as doors open.
+- **Exactly once.** `enqueue_event_sms_reminder()` stamps
+  `events.sms_reminder_sent_at` under a row lock in the same transaction as the
+  enqueue. Moving `starts_at` clears the stamp, so a rescheduled event reminds
+  again at the new time.
+- **Re-checked at send.** A reminder row is skipped if the person cancelled their
+  RSVP or stopped being textable, if the event was cancelled, or once it has
+  started.
+- **Never blocked.** Reminders don't count toward the one-broadcast-at-a-time
+  rule, so an officer's blast in flight can't hold one up.
+- **Cost.** One segment for any event with a room (title capped at 45
+  characters, room at 35, emoji dropped). With no room, the event link is
+  included instead, which can run to two segments.
+- **Where to see it.** `/admin/sms` shows the message for the next event, which
+  events in the next 7 days will send, and how many people each will reach so
+  far. Sent reminders appear in the history as "Event reminder: title".
+
+Validated before applying the same way as §6: the migration plus assertions ran
+in one rolled-back transaction against prod. That covered claim-time skips for a
+cancelled RSVP, a suppressed number and a cancelled event, which the smoke
+cannot exercise without racing the live worker.
