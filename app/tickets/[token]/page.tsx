@@ -10,6 +10,7 @@ import { resolveCoverUrl } from "@/lib/events/cover-url";
 
 import { EVENT_TIME_ZONE, formatTimeRange } from "@/app/events/_components/event-date";
 import { QrCenterMark } from "@/app/events/_components/qr-center-mark";
+import { GuestSelfCheckInButton } from "./guest-self-checkin-button";
 
 const LINK_BUTTON = "h-11 flex-1 rounded-full";
 
@@ -185,6 +186,13 @@ export default async function GuestTicketPage({
               ? `Checked in ${checkedInFormatter.format(new Date(ticket.checked_in_at))}. See you in there.`
               : "You're already checked in. See you in there."}
           </p>
+        ) : ticket.status === "going" ? (
+          <div className="space-y-2">
+            <GuestSelfCheckInButton token={parsedToken.data} />
+            <p className="text-center text-xs text-muted-foreground">
+              Or show this QR at the door and staff will scan you in.
+            </p>
+          </div>
         ) : (
           <p className="text-center text-xs text-muted-foreground">
             Show this at the door and staff will scan you in.
