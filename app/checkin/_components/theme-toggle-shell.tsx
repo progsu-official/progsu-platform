@@ -22,7 +22,7 @@ export function CheckinThemeShell({
         type="button"
         onClick={() => setDark((d) => !d)}
         aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-        className="fixed right-4 top-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-sm transition-colors hover:bg-accent/10"
+        className="fixed bottom-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-sm transition-colors hover:bg-accent/10"
       >
         {dark ? (
           <Moon size={16} strokeWidth={1.75} aria-hidden />

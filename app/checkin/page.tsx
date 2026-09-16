@@ -107,7 +107,7 @@ export default async function CheckinPage({
   return (
     <CheckinThemeShell>
       <div
-        className={`mx-auto space-y-6 p-6 ${selected ? "max-w-3xl" : "flex min-h-screen max-w-md flex-col justify-center"}`}
+        className={`mx-auto space-y-6 p-6 ${selected ? "max-w-3xl" : "max-w-md"}`}
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export default async function CheckinPage({
 
         {selected ? (
           <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card px-5 py-4">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Checking in for
@@ -143,14 +143,15 @@ export default async function CheckinPage({
                   {selected.title}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
                 {checkinQrDataUrl ? (
                   <ShowCheckinQrButton
                     qrDataUrl={checkinQrDataUrl}
                     eventTitle={selected.title}
+                    triggerClassName="w-full sm:w-auto"
                   />
                 ) : null}
-                <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Button asChild variant="outline" size="sm" className="w-full gap-1.5 sm:w-auto">
                   <a href="/checkin">
                     <ArrowLeft size={14} strokeWidth={1.75} aria-hidden />
                     Change event

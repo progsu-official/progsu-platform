@@ -10,9 +10,14 @@ import { Maximize, Minimize, QrCode, X } from "lucide-react";
 export function ShowCheckinQrButton({
   qrDataUrl,
   eventTitle,
+  // Admin header row (fixed-width icons in a shrink-0 row) needs the default
+  // content-sized button; /checkin's mobile-stacked header needs it full-width
+  // below sm. Caller opts in instead of this component guessing its context.
+  triggerClassName = "",
 }: {
   qrDataUrl: string;
   eventTitle: string;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -44,7 +49,7 @@ export function ShowCheckinQrButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-base font-semibold text-foreground shadow-sm transition-colors hover:bg-accent/10"
+        className={`inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-2.5 text-base font-semibold text-foreground shadow-sm transition-colors hover:bg-accent/10 ${triggerClassName}`}
       >
         <QrCode size={18} strokeWidth={1.75} aria-hidden />
         Show check-in QR

@@ -211,7 +211,7 @@ export default async function AdminEventDetailPage({
       </div>
 
       <div className="space-y-6">
-        <nav className="flex items-center justify-between gap-3">
+        <nav className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/admin/events"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
@@ -222,11 +222,12 @@ export default async function AdminEventDetailPage({
           {/* Above the cover art, not tucked beside the title, so it's
               reachable the instant the page loads instead of after scrolling
               past the grid below. */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
             <ScanQrButton eventId={ev.id} />
             <ShowCheckinQrButton
               qrDataUrl={checkinQrDataUrl}
               eventTitle={ev.title}
+              triggerClassName="w-full sm:w-auto"
             />
             <CheckInInfoPopover />
           </div>

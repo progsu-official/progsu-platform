@@ -20,7 +20,7 @@ export function ScanQrButton({ eventId }: { eventId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-base font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-base font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:w-auto"
       >
         <QrCode size={18} strokeWidth={1.75} aria-hidden />
         Scan QR code
