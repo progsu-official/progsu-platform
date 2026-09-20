@@ -35,17 +35,23 @@ export default async function LoginPage({
 
   if (user) {
     const state = await loadOnboardingState(supabase, user.id);
-    if (state.isAdmin) redirect("/admin");
+    // Admins bypass onboarding entirely (D8), so an explicit `next` should
+    // always win for them — same as a fully-onboarded member. Previously
+    // this checked isAdmin first and hard-redirected to /admin regardless of
+    // `next`, which meant an admin who followed any deep link (e.g. the
+    // self-check-in QR) lost that destination and landed on the dashboard
+    // instead. Bug found 2026-09-15 testing the QR check-in flow.
     if (
       params.next &&
       params.next.startsWith("/") &&
-      (state.fullyOnboarded || isPublicEventDetailPath(params.next))
+      (state.isAdmin || state.fullyOnboarded || isPublicEventDetailPath(params.next))
     ) {
       // Public event page: honor `next` even mid-funnel, per the 2026-08-20
       // RSVP-first decision — signing in from there should land back on the
       // event, not get diverted into onboarding.
       redirect(params.next);
     }
+    if (state.isAdmin) redirect("/admin");
     const next = onboardingPathFor(state.nextStep) ?? "/profile";
     redirect(next);
   }

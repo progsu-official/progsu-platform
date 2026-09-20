@@ -30,6 +30,9 @@ const PUBLIC_PREFIXES = [
   "/auth/callback",
   "/tickets",
   "/joined",
+  // Door-staff check-in: self-auths via STAFF_CHECKIN_TOKEN, no Supabase
+  // Auth session at all (see lib/actions/checkin.ts).
+  "/checkin",
   // Campaign short links. Strangers reach these from a printed flyer with no
   // session; the handler redirects to the event page, which is itself public.
   "/r",

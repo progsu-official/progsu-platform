@@ -7,6 +7,7 @@ import { resolveCoverUrl } from "@/lib/events/cover-url";
 import { getRequestOnboardingState } from "@/lib/auth/request-cache";
 import { onboardingPathFor } from "@/lib/auth/onboarding";
 import { env } from "@/lib/env";
+import { MyCheckinQr } from "@/app/profile/my-checkin-qr";
 
 import { EVENT_TIME_ZONE, formatTimeRange } from "../_components/event-date";
 import { AddToCalendarButton } from "../_components/add-to-calendar";
@@ -74,6 +75,7 @@ export default async function MemberEventDetailPage({
   let attendance: AttendanceRow | null;
   let goingCount: number | null;
   let waitlistedCount: number | null;
+  let checkinCode: string | null = null;
 
   if (!user) {
     // Anonymous visitor, per the 2026-08-20 RSVP-first decision: read through
@@ -146,6 +148,7 @@ export default async function MemberEventDetailPage({
       { count: going },
       { count: waitlisted },
       { data: guestCountsRaw },
+      { data: checkinRaw },
     ] = await Promise.all([
       supabase
         .from("event_hosts")
@@ -178,6 +181,14 @@ export default async function MemberEventDetailPage({
       // guest-RSVP decision); event_guest_rsvps has no client RLS access, so
       // this SECURITY DEFINER RPC is the only way to fold guest counts in.
       supabase.rpc("event_guest_counts", { p_event_id: event.id }).maybeSingle(),
+      // Same reasoning as app/profile/page.tsx: queried apart from any other
+      // profiles select so a missing checkin_code column degrades to "no
+      // QR" instead of breaking the event page.
+      supabase
+        .from("profiles")
+        .select("checkin_code")
+        .eq("id", user.id)
+        .maybeSingle(),
     ]);
 
     hosts = ((hostsRaw ?? []) as HostRow[]).map((h) => ({
@@ -186,6 +197,9 @@ export default async function MemberEventDetailPage({
     }));
     rsvp = (rsvpRaw as RsvpRow | null) ?? null;
     attendance = (attendanceRaw as AttendanceRow | null) ?? null;
+    checkinCode =
+      (checkinRaw as { checkin_code?: string | null } | null)?.checkin_code ??
+      null;
     const guestCounts = guestCountsRaw as {
       going_count: number;
       waitlisted_count: number;
@@ -471,6 +485,10 @@ export default async function MemberEventDetailPage({
                 Checked in at{" "}
                 {new Date(attendance.checked_in_at).toLocaleString()}.
               </div>
+            ) : null}
+
+            {rsvp?.status === "going" && !attendance && checkinCode ? (
+              <MyCheckinQr code={checkinCode} />
             ) : null}
 
             <RsvpPanel

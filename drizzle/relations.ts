@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { profiles, referralLinks, events, referralLinkHits, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, eventNotificationJobs, legacyMembers, profileVisibilitySettings, domainRequests, eventGuestRsvps, historicalEventAttendances, eventHosts, eventInvites, eventGuestAttendances, eventAttendances, eventRsvps } from "./schema";
+import { profiles, referralLinks, events, referralLinkHits, emailVerificationCodes, resumes, consents, auditLog, accountDeletionRequests, eventNotificationJobs, legacyMembers, profileVisibilitySettings, domainRequests, eventGuestRsvps, historicalEventAttendances, smsBroadcasts, smsDeliveries, eventHosts, eventInvites, eventGuestAttendances, eventAttendances, eventRsvps } from "./schema";
 
 // auth.users relation intentionally omitted — auth schema is filtered out of
 // introspection. FKs to auth.users.id still live in Postgres.
@@ -43,6 +43,7 @@ export const profilesRelations = relations(profiles, ({many}) => ({
 	events_updatedBy: many(events, {
 		relationName: "events_updatedBy_profiles_id"
 	}),
+	smsBroadcasts: many(smsBroadcasts),
 	eventHosts: many(eventHosts),
 	eventInvites_invitedBy: many(eventInvites, {
 		relationName: "eventInvites_invitedBy_profiles_id"
@@ -74,6 +75,7 @@ export const eventsRelations = relations(events, ({one, many}) => ({
 	}),
 	eventGuestRsvps: many(eventGuestRsvps),
 	historicalEventAttendances: many(historicalEventAttendances),
+	smsBroadcasts: many(smsBroadcasts),
 	eventHosts: many(eventHosts),
 	eventInvites: many(eventInvites),
 	eventGuestAttendances: many(eventGuestAttendances),
@@ -184,6 +186,25 @@ export const historicalEventAttendancesRelations = relations(historicalEventAtte
 	legacyMember: one(legacyMembers, {
 		fields: [historicalEventAttendances.legacyMemberId],
 		references: [legacyMembers.id]
+	}),
+}));
+
+export const smsDeliveriesRelations = relations(smsDeliveries, ({one}) => ({
+	smsBroadcast: one(smsBroadcasts, {
+		fields: [smsDeliveries.broadcastId],
+		references: [smsBroadcasts.id]
+	}),
+}));
+
+export const smsBroadcastsRelations = relations(smsBroadcasts, ({one, many}) => ({
+	smsDeliveries: many(smsDeliveries),
+	profile: one(profiles, {
+		fields: [smsBroadcasts.createdBy],
+		references: [profiles.id]
+	}),
+	event: one(events, {
+		fields: [smsBroadcasts.eventId],
+		references: [events.id]
 	}),
 }));
 

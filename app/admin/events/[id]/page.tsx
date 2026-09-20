@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Download, MapPin, Users } from "lucide-react";
+import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,6 +12,7 @@ import { EVENT_TIME_ZONE, formatTimeRange } from "@/app/events/_components/event
 import { EventDescription } from "@/app/events/[slug]/_components/event-description";
 import { CheckInInfoPopover } from "./_components/checkin-info-popover";
 import { ScanQrButton } from "./_components/scan-qr-button";
+import { ShowCheckinQrButton } from "./_components/show-checkin-qr-button";
 
 import { DetailsTab } from "./details-tab";
 import { GuestsTab } from "./guests-tab";
@@ -80,7 +82,7 @@ export default async function AdminEventDetailPage({
   const { data: event } = await admin
     .from("events")
     .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned"
+      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, send_sms_reminder, sms_reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned"
     )
     .eq("id", id)
     .maybeSingle();
@@ -110,6 +112,9 @@ export default async function AdminEventDetailPage({
     send_rsvp_email: !!event.send_rsvp_email,
     send_reminder_email: !!event.send_reminder_email,
     reminder_sent_at: (event.reminder_sent_at as string | null) ?? null,
+    // Column defaults true; `!== false` keeps that default if a row predates it.
+    send_sms_reminder: event.send_sms_reminder !== false,
+    sms_reminder_sent_at: (event.sms_reminder_sent_at as string | null) ?? null,
     cancellation_reason: (event.cancellation_reason as string | null) ?? null,
     cancelled_at: (event.cancelled_at as string | null) ?? null,
     published_at: (event.published_at as string | null) ?? null,
@@ -164,6 +169,20 @@ export default async function AdminEventDetailPage({
 
   const startDate = new Date(ev.starts_at);
 
+  // D14: self-serve QR, points at the member-gated check-in landing page.
+  // Same errorCorrectionLevel/margin/color as the ticket + personal QRs
+  // (app/tickets/[token]/page.tsx, app/profile/my-checkin-qr.tsx) so it
+  // scans just as reliably off a projector as those do off a phone screen.
+  const checkinQrDataUrl = await QRCode.toDataURL(
+    `${env.NEXT_PUBLIC_SITE_URL}/events/${ev.slug}/check-in`,
+    {
+      errorCorrectionLevel: "H",
+      margin: 0,
+      width: 640,
+      color: { dark: "#18181b", light: "#ffffff" },
+    }
+  );
+
   return (
     <div className="relative">
       {/* Same blown-up-cover ambience as the member detail page (see
@@ -192,7 +211,7 @@ export default async function AdminEventDetailPage({
       </div>
 
       <div className="space-y-6">
-        <nav className="flex items-center justify-between gap-3">
+        <nav className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/admin/events"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
@@ -203,18 +222,23 @@ export default async function AdminEventDetailPage({
           {/* Above the cover art, not tucked beside the title, so it's
               reachable the instant the page loads instead of after scrolling
               past the grid below. */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-col gap-2 sm:shrink-0 sm:flex-row sm:items-center">
             {/* Plain anchor, not <Link>: this hits a route handler that
                 responds with a CSV attachment, so it must be a real browser
                 navigation and not a client-side router push. */}
             <a
               href={`/api/admin/events/${ev.id}/export`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 sm:w-auto"
             >
               <Download size={14} strokeWidth={1.75} aria-hidden />
               Export CSV
             </a>
             <ScanQrButton eventId={ev.id} />
+            <ShowCheckinQrButton
+              qrDataUrl={checkinQrDataUrl}
+              eventTitle={ev.title}
+              triggerClassName="w-full sm:w-auto"
+            />
             <CheckInInfoPopover />
           </div>
         </nav>

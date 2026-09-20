@@ -1,7 +1,7 @@
 # 09 — Events Platform Program Plan
 
 Owner: Planning synth lead
-Last revised: 2026-08-16 (D12 added: QR check-in reopens non-goal #10, see §7.5)
+Last revised: 2026-09-15 (D14 added: self-serve event QR, additive to D12/D13)
 Status: Canonical program plan after multi-agent review
 Canon for the existing platform: `docs/00-plan-review.md` + `docs/07-implementation-plan.md` + live code + `supabase/migrations/*`
 
@@ -44,6 +44,7 @@ These decisions replace contradictory parts of the earlier swarm draft.
 | D11 | Document authority | This doc is self-contained. It does not rely on `/tmp` lane files or ephemeral swarm artifacts. |
 | D12 | QR check-in (reopens non-goal #10, 2026-08-16) | Per-attendee QR check-in ships as a check-in entry path. A random `checkin_token` is generated on `event_rsvps` when status becomes `going`; the member's ticket view renders it as a QR. Staff scan it from the existing admin check-in screen, which resolves the token to the attendee and writes to `event_attendances` through the same helper/audit seam as every other check-in method. No new table, no "ticket" object, no payment concept, see §7.5. |
 | D13 | Cut D5, QR is the sole staff-facing check-in mechanism (2026-08-17) | The shared per-event code (D5) never matched Luma's actual pattern, checked against their real docs: Luma is QR scan + staff manual name-search, not a typed shared code. Removed `self_check_in`, `rotate_check_in_code_with_raw`, `check_in_code_hash`/`check_in_code_expires_at`. QR (D12) is now primary; the pre-existing `admin_check_in_member` roster-search flow is the fallback, matching Luma exactly, no new fallback work needed. |
+| D14 | Self-serve event QR, additive to D12/D13 (2026-09-15) | Explicit John call, overriding D13's Luma-parity reasoning for this one surface: admin projects one QR per event (fullscreen, from `/admin/events/[id]`), attendees scan with their own camera and land on `/events/[slug]/check-in`, member-gated by `middleware.ts` like any other `/events/*` path — unauthenticated scanners bounce to `/login?next=...` first. No new secret: unlike D5's typed code, the QR only names the event id and a signed-in session is the credential, checked by `self_check_in_by_event()`. Staff QR scanning (D12) is unchanged and stays the primary door mechanism; this is a lower-friction opt-in for events light on staffing. |
 
 ---
 

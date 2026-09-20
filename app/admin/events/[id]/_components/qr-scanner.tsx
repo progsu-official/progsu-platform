@@ -5,12 +5,27 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { adminCheckInByToken } from "@/lib/actions/events";
+import type { ActionResult } from "@/lib/actions/result";
+
+type CheckInFn = (
+  token: string,
+  eventId: string
+) => Promise<ActionResult<{ eventId: string; userId: string | null }>>;
 
 // D12/§7.5: browser camera scan, no native app. jsQR runs everywhere
 // (including iOS Safari, which never shipped the native BarcodeDetector
 // API), so one code path instead of a native-API + fallback split.
-export function QrScanner({ eventId }: { eventId: string }) {
+//
+// checkIn is injected rather than always calling adminCheckInByToken so the
+// same camera/decode loop serves both the admin scanner and the door-staff
+// /checkin surface (staffCheckInByToken), which has no admin session at all.
+export function QrScanner({
+  eventId,
+  checkIn,
+}: {
+  eventId: string;
+  checkIn: CheckInFn;
+}) {
   const router = useRouter();
   // Starts active: landing on this page from "Day-of check-in" should open
   // straight to a scanning camera, not require a second click. Stop/start
@@ -90,7 +105,7 @@ export function QrScanner({ eventId }: { eventId: string }) {
     busyRef.current = true;
     lastTokenRef.current = token;
     setStatus({ kind: "checking" });
-    const r = await adminCheckInByToken(token, eventId);
+    const r = await checkIn(token, eventId);
     busyRef.current = false;
     if (r.ok) {
       setStatus({ kind: "success" });

@@ -17,7 +17,15 @@ export function AddToWalletButton() {
         setError(result.error.message);
         return;
       }
-      window.open(result.data.shareUrl, "_blank", "noopener,noreferrer");
+      // Not window.open(url, "_blank"): that's a new-window popup, and
+      // popup blockers (iOS Safari especially) require it to fire
+      // synchronously inside the click handler. This call happens after
+      // awaiting the server action, so the browser silently blocks it —
+      // no error, the button just goes back to normal with nothing
+      // having happened. A same-tab navigation is never treated as a
+      // popup, so it's never blocked, and landing on the page IS the
+      // feedback that it worked.
+      window.location.href = result.data.shareUrl;
     });
   }
 

@@ -67,6 +67,19 @@ export const env = {
   // v7 cascade — it can run today while the per-RSVP alert above stays off.
   FEATURE_DISCORD_RECAP: parseBool(process.env.FEATURE_DISCORD_RECAP),
 
+  // SMS broadcasts (/admin/sms and the delivery worker). Off hides the page
+  // and stops the worker between batches, so queued texts wait rather than
+  // go. The STOP webhook is deliberately not behind this flag: turning
+  // sending off must never turn opt-out capture off.
+  FEATURE_SMS: parseBool(process.env.FEATURE_SMS),
+
+  // 30-minute SMS reminders for RSVP'd, opted-in attendees. Ships on whenever
+  // FEATURE_SMS is on; this is the switch to pull them alone without also
+  // stopping officer broadcasts. Per-event opt-out is events.send_sms_reminder.
+  FEATURE_SMS_EVENT_REMINDERS: parseBoolDefaultTrue(
+    process.env.FEATURE_SMS_EVENT_REMINDERS
+  ),
+
   // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,
   // no OTP email is sent, the code is always 000000, and OTP rate limits are
   // skipped. Hard-gated on NODE_ENV like DEV_AUTO_LOGIN so it can never be
@@ -94,6 +107,34 @@ export function requireTeamFinderSyncSecret(): string {
     "TEAM_FINDER_SYNC_SECRET",
     process.env.TEAM_FINDER_SYNC_SECRET
   );
+}
+
+// Sending authenticates with an API key (SK...), not the account's auth
+// token, so the key can be rotated or revoked without touching the account.
+// The Account SID still goes in the request path.
+export function requireTwilioSendConfig() {
+  return {
+    accountSid: required("TWILIO_ACCOUNT_SID", process.env.TWILIO_ACCOUNT_SID),
+    apiKeySid: required("TWILIO_API_KEY_SID", process.env.TWILIO_API_KEY_SID),
+    apiKeySecret: required(
+      "TWILIO_API_KEY_SECRET",
+      process.env.TWILIO_API_KEY_SECRET
+    ),
+    messagingServiceSid: required(
+      "TWILIO_MESSAGING_SERVICE_SID",
+      process.env.TWILIO_MESSAGING_SERVICE_SID
+    ),
+  };
+}
+
+// Twilio signs webhooks with the account auth token and nothing else; an API
+// key secret cannot verify X-Twilio-Signature.
+export function requireTwilioAuthToken(): string {
+  return required("TWILIO_AUTH_TOKEN", process.env.TWILIO_AUTH_TOKEN);
+}
+
+export function requireStaffCheckinToken(): string {
+  return required("STAFF_CHECKIN_TOKEN", process.env.STAFF_CHECKIN_TOKEN);
 }
 
 export function requireWalletWalletApiKey(): string {

@@ -32,6 +32,8 @@ export type EventRecord = {
   send_rsvp_email: boolean;
   send_reminder_email: boolean;
   reminder_sent_at: string | null;
+  send_sms_reminder: boolean;
+  sms_reminder_sent_at: string | null;
   cancellation_reason: string | null;
   cancelled_at: string | null;
   published_at: string | null;
