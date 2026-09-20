@@ -12,6 +12,8 @@ import { PhoneInput } from "@/app/_components/phone-input";
 import { guestRsvpToEvent } from "@/lib/actions/events";
 import {
   GUEST_RSVP_TERMS_COPY,
+  GUEST_SCHOOL_EMAIL_ERROR,
+  isSchoolEmail,
   SMS_CONSENT_FINE_PRINT,
   SMS_CONSENT_HEADLINE,
 } from "@/lib/actions/event-schemas";
@@ -44,6 +46,7 @@ export function GuestRsvpModal({
     phone: "",
   });
   const [smsOptIn, setSmsOptIn] = useState(false);
+  const [notStudent, setNotStudent] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -91,6 +94,13 @@ export function GuestRsvpModal({
     if (closedNoWaitlist) return;
     setError(null);
     setFieldError(null);
+    // Checked here as well as in the action so a student who typed a Gmail, or
+    // fat-fingered "student.edu.gsu", hears about it before the round trip.
+    if (!notStudent && !isSchoolEmail(fields.email)) {
+      setError(GUEST_SCHOOL_EMAIL_ERROR);
+      setFieldError("email");
+      return;
+    }
     setPending(true);
     // /dev/screens: everything up to here is real — native validation, the
     // SMS box, the pending spinner. Only the RSVP write is skipped.
@@ -105,6 +115,7 @@ export function GuestRsvpModal({
       email: fields.email.trim(),
       phone: fields.phone.trim(),
       smsOptIn,
+      notStudent,
     });
     if (!res.ok) {
       setPending(false);
@@ -219,32 +230,53 @@ export function GuestRsvpModal({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="guest-rsvp-email">School email *</Label>
+              <Label htmlFor="guest-rsvp-email">
+                {notStudent ? "Email *" : "School email *"}
+              </Label>
               <Input
                 id="guest-rsvp-email"
                 type="email"
                 required
                 autoComplete="email"
                 disabled={pending}
-                placeholder="you@student.gsu.edu"
+                placeholder={notStudent ? "you@example.com" : "you@student.gsu.edu"}
                 value={fields.email}
                 onChange={(e) => set("email", e.target.value)}
                 className="rounded-xl"
                 aria-describedby="guest-rsvp-email-hint"
                 aria-invalid={fieldError === "email"}
               />
-              {/* Asked for by name rather than validated to a hard allowlist:
-                  a .edu is what carries onto the profile and unlocks recruiter
-                  exports, but alumni, speakers, and people from other schools
-                  come to these events too, and none of them should be turned
-                  away at the door over an address. */}
+              {/* A .edu is required unless the box below is ticked. It is what
+                  carries onto the profile and into the lists recruiters get,
+                  and asking by label alone let Gmails and typo'd domains
+                  through. Alumni, speakers, and sponsors come to these events
+                  too, so the way out is one tap, not a closed door. */}
               <p
                 id="guest-rsvp-email-hint"
                 className="text-[11.5px] leading-[1.4] text-muted-foreground"
               >
-                Use your .edu if you have one — it&apos;s what gets you into the
-                lists we send recruiters. Any email works.
+                {notStudent
+                  ? "Any email works."
+                  : "Your .edu address — it\u2019s what gets you into the lists we send recruiters."}
               </p>
+              <label className="flex cursor-pointer items-center gap-2 pt-0.5">
+                <input
+                  type="checkbox"
+                  checked={notStudent}
+                  disabled={pending}
+                  onChange={(e) => {
+                    setNotStudent(e.target.checked);
+                    if (fieldError === "email") {
+                      setError(null);
+                      setFieldError(null);
+                    }
+                  }}
+                  className="h-4 w-4 flex-shrink-0 accent-[hsl(var(--primary))]"
+                />
+                <span className="text-[12px] leading-snug text-muted-foreground">
+                  I&apos;m not a student
+                </span>
+              </label>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="guest-rsvp-phone">Phone number *</Label>
