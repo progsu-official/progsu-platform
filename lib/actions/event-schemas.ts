@@ -234,17 +234,37 @@ export const SMS_CONSENT_COPY = `${SMS_CONSENT_HEADLINE} ${SMS_CONSENT_FINE_PRIN
 
 // Account-free guest RSVP (2026-08-21 decision). Phone regex matches the
 // onboarding profile form's (lib/actions/profile-schemas.ts).
-export const guestRsvpToEventSchema = z.object({
-  eventId: z.string().uuid("Invalid event id."),
-  name: z.string().trim().min(1, "Name required").max(100, "Name is too long"),
-  email: z.string().trim().email("Enter a valid email").max(255),
-  phone: z
-    .string()
-    .trim()
-    .min(1, "Phone number is required")
-    .refine(isValidUsPhone, US_PHONE_ERROR),
-  smsOptIn: z.boolean().default(false),
-});
+//
+// The email has to be a .edu unless the guest says they are not a student.
+// It used to be asked for by label only ("Any email works"), and the per-event
+// export showed the cost: students typing a personal Gmail, and typos like
+// "student.edu.gsu" that no one catches until the recruiter list is short.
+// Alumni, speakers and sponsors still get in — they tick the box.
+export const GUEST_SCHOOL_EMAIL_ERROR =
+  "Use your school email (it ends in .edu), or tick “I’m not a student”.";
+
+export function isSchoolEmail(email: string): boolean {
+  const domain = email.trim().toLowerCase().split("@")[1] ?? "";
+  return domain.endsWith(".edu");
+}
+
+export const guestRsvpToEventSchema = z
+  .object({
+    eventId: z.string().uuid("Invalid event id."),
+    name: z.string().trim().min(1, "Name required").max(100, "Name is too long"),
+    email: z.string().trim().email("Enter a valid email").max(255),
+    phone: z
+      .string()
+      .trim()
+      .min(1, "Phone number is required")
+      .refine(isValidUsPhone, US_PHONE_ERROR),
+    smsOptIn: z.boolean().default(false),
+    notStudent: z.boolean().default(false),
+  })
+  .refine((v) => v.notStudent || isSchoolEmail(v.email), {
+    message: GUEST_SCHOOL_EMAIL_ERROR,
+    path: ["email"],
+  });
 
 export type GuestRsvpToEventInput = z.input<typeof guestRsvpToEventSchema>;
 

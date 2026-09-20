@@ -62,10 +62,12 @@ async function main() {
   const adminEmail = `admin-export-${suffix}@example.com`;
   const aliceEmail = `alice-export-${suffix}@example.com`;
   const bobEmail = `bob-export-${suffix}@example.com`;
+  const carolEmail = `carol-export-${suffix}@example.com`;
 
   const adminUser = await makeUser(adminEmail, { isAdmin: true });
   const alice = await makeUser(aliceEmail);
   const bob = await makeUser(bobEmail); // walk-in: check-in, never RSVPs
+  const carol = await makeUser(carolEmail); // walk-in scanned in by QR
 
   const adminClient = await userClient(adminEmail);
   const aliceClient = await userClient(aliceEmail);
@@ -116,6 +118,20 @@ async function main() {
     });
     if (ciErr) throw new Error(`admin_check_in_member: ${ciErr.message}`);
 
+    // 1 more member walk-in, scanned in by QR rather than clicked in. This is
+    // the shape nearly every real check-in has, and the one the analytics
+    // ignored until 20260920130000: qr_token counted toward neither side of
+    // the self/admin split, and a no-RSVP attendance was only a walk-in when
+    // its method was admin_click. Service-role insert — the token path has
+    // its own smoke; this one only needs the row.
+    const { error: qrErr } = await admin.from("event_attendances").insert({
+      event_id: eventId,
+      user_id: carol.id,
+      method: "qr_token",
+      checked_in_by: adminUser.id,
+    });
+    if (qrErr) throw new Error(`qr attendance: ${qrErr.message}`);
+
     // 3 guest RSVPs.
     const guestEmails = [
       `guest1-export-${suffix}@student.gsu.edu`,
@@ -151,7 +167,7 @@ async function main() {
     });
     if (gaErr) throw new Error(`guest attendance: ${gaErr.message}`);
 
-    console.log("[smoke-event-export] seeded 1 member RSVP, 1 walk-in, 3 guests");
+    console.log("[smoke-event-export] seeded 1 member RSVP, 2 walk-ins, 3 guests");
 
     // ===== Analytics: going must fold guests =====
     const { data: analytics, error: anErr } = await adminClient.rpc(
@@ -161,7 +177,13 @@ async function main() {
     if (anErr) throw new Error(`analytics: ${anErr.message}`);
     const a = analytics as {
       rsvp: { going: number; members: number; guests: number; historical: number };
-      attendance: { total: number; walk_ins: number; no_shows: number };
+      attendance: {
+        total: number;
+        walk_ins: number;
+        no_shows: number;
+        self_code: number;
+        admin_click: number;
+      };
     };
 
     // 1 member going + 3 guests going. The pre-fix function returned 1.
@@ -175,19 +197,27 @@ async function main() {
     }
     console.log("[smoke-event-export] OK: analytics going = 4 (1 member + 3 guests)");
 
-    // 1 member check-in (bob) + 1 guest check-in.
-    if (a.attendance.total !== 2) {
-      throw new Error(`attendance.total expected 2, got ${a.attendance.total}`);
+    // 2 member check-ins (bob, carol) + 1 guest check-in.
+    if (a.attendance.total !== 3) {
+      throw new Error(`attendance.total expected 3, got ${a.attendance.total}`);
     }
-    // bob (member, no RSVP) + the guest, whose RSVP was created after starts_at.
-    if (a.attendance.walk_ins !== 2) {
-      throw new Error(`walk_ins expected 2, got ${a.attendance.walk_ins}`);
+    // bob + carol (members, no RSVP, one clicked in and one QR-scanned) + the
+    // guest, whose RSVP was created after starts_at.
+    if (a.attendance.walk_ins !== 3) {
+      throw new Error(`walk_ins expected 3, got ${a.attendance.walk_ins}`);
+    }
+    // All three were checked in by staff; carol's qr_token has to land on the
+    // admin side or the split stops adding up to the total.
+    if (a.attendance.self_code !== 0 || a.attendance.admin_click !== 3) {
+      throw new Error(
+        `method split expected 0 self / 3 admin, got ${a.attendance.self_code}/${a.attendance.admin_click}`
+      );
     }
     // alice (going, no check-in) + 2 unchecked guests.
     if (a.attendance.no_shows !== 3) {
       throw new Error(`no_shows expected 3, got ${a.attendance.no_shows}`);
     }
-    console.log("[smoke-event-export] OK: attendance folds guests too");
+    console.log("[smoke-event-export] OK: attendance folds guests and QR check-ins");
 
     // ===== Export: one row per registrant =====
     const { data: exportData, error: exErr } = await adminClient.rpc(
@@ -197,15 +227,15 @@ async function main() {
     if (exErr) throw new Error(`export: ${exErr.message}`);
     const rows = (exportData ?? []) as ExportRow[];
 
-    // alice + bob (walk-in) + 3 guests.
-    if (rows.length !== 5) {
-      throw new Error(`export rows expected 5, got ${rows.length}`);
+    // alice + bob and carol (walk-ins) + 3 guests.
+    if (rows.length !== 6) {
+      throw new Error(`export rows expected 6, got ${rows.length}`);
     }
     const members = rows.filter((r) => r.attendee_type === "member");
     const guests = rows.filter((r) => r.attendee_type === "guest");
-    if (members.length !== 2 || guests.length !== 3) {
+    if (members.length !== 3 || guests.length !== 3) {
       throw new Error(
-        `export split expected 2 members / 3 guests, got ${members.length}/${guests.length}`
+        `export split expected 3 members / 3 guests, got ${members.length}/${guests.length}`
       );
     }
     const walkIn = members.find((r) => r.rsvp_status === null);
@@ -219,7 +249,7 @@ async function main() {
         `expected 2 guests with a school email, got ${guestSchoolEmails.length}`
       );
     }
-    console.log("[smoke-event-export] OK: export returns 5 rows, sources split right");
+    console.log("[smoke-event-export] OK: export returns 6 rows, sources split right");
 
     // ===== Gates =====
     const { error: nonAdminErr } = await aliceClient.rpc(
@@ -251,7 +281,7 @@ async function main() {
     for (const id of createdEventIds) {
       await admin.from("events").delete().eq("id", id);
     }
-    for (const u of [adminUser, alice, bob]) {
+    for (const u of [adminUser, alice, bob, carol]) {
       await admin.auth.admin.deleteUser(u.id).catch(() => {});
     }
   }
