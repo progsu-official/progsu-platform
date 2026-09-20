@@ -34,6 +34,9 @@ type AnalyticsData = {
     waitlisted?: number;
     declined?: number;
     cancelled?: number;
+    members?: number;
+    guests?: number;
+    historical?: number;
   };
   attendance?: {
     total?: number;
@@ -133,6 +136,14 @@ export function AnalyticsTab({ data }: { data: Record<string, unknown> }) {
       >
         <div className="divide-y divide-border/60">
           <Row label="Going" value={rsvp.going ?? 0} />
+          {/* Going folds three sources; splitting them out here so the total
+              is checkable against the Attendees and Guests tabs instead of
+              looking like it drifted. */}
+          <Row label="— members" value={rsvp.members ?? 0} muted />
+          <Row label="— guests" value={rsvp.guests ?? 0} muted />
+          {(rsvp.historical ?? 0) > 0 ? (
+            <Row label="— imported" value={rsvp.historical ?? 0} muted />
+          ) : null}
           <Row label="Waitlisted" value={rsvp.waitlisted ?? 0} />
           <Row label="Declined" value={rsvp.declined ?? 0} />
           <Row label="Cancelled" value={rsvp.cancelled ?? 0} />

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Download, MapPin, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -204,6 +204,16 @@ export default async function AdminEventDetailPage({
               reachable the instant the page loads instead of after scrolling
               past the grid below. */}
           <div className="flex shrink-0 items-center gap-2">
+            {/* Plain anchor, not <Link>: this hits a route handler that
+                responds with a CSV attachment, so it must be a real browser
+                navigation and not a client-side router push. */}
+            <a
+              href={`/api/admin/events/${ev.id}/export`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+            >
+              <Download size={14} strokeWidth={1.75} aria-hidden />
+              Export CSV
+            </a>
             <ScanQrButton eventId={ev.id} />
             <CheckInInfoPopover />
           </div>
