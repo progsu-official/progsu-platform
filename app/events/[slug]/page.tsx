@@ -269,12 +269,11 @@ export default async function MemberEventDetailPage({
   const coverUrl = await resolveCoverUrl(supabase, event.cover_image_path);
   const nowMs = Date.now();
   const startDate = new Date(event.starts_at);
-  const startMs = startDate.getTime();
 
-  // RSVPs close when the event is over, cancelled, archived, or still a
-  // draft. The DB also enforces this — hide the form so we don't tease a
-  // button that will 400.
-  const rsvpOpen = event.status === "published" && startMs > nowMs;
+  // RSVPs stay open for any published event, including once it has started
+  // or ended: walk-ins RSVP at the door so they can be checked in. Only
+  // cancelled, archived, or draft events close — the DB enforces that too.
+  const rsvpOpen = event.status === "published";
 
   // Drives "231 went" vs "4 going". Keyed off the end, not the start — an
   // event in progress is still one people are going to.
