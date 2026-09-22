@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
 import QRCode from "qrcode";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import {
   isStaffCheckinAuthed,
@@ -21,6 +21,8 @@ import { StaffAttendeeSection } from "./_components/staff-attendee-actions";
 export const dynamic = "force-dynamic";
 
 type UpcomingEvent = { id: string; slug: string; title: string; starts_at: string };
+
+const STAFF_CHECKIN_GRACE_MS = 24 * 60 * 60 * 1000;
 
 // Staff check-in, no admin account. /checkin is a public middleware
 // path (self-auths via the STAFF_CHECKIN_TOKEN cookie, same pattern as
@@ -78,8 +80,20 @@ export default async function CheckinPage({
     redirect("/checkin");
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("public_upcoming_events", { p_limit: 50 });
+  // Not public_upcoming_events: that feed drops an event the moment its
+  // ends_at passes, which pulled a running-long workshop off this page while
+  // staff were still at the door. Keep events listed for a day after they
+  // end. Service role because the staff cookie is not a Supabase session;
+  // the isStaffCheckinAuthed() check above is the gate, same as the actions.
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("events")
+    .select("id, slug, title, starts_at")
+    .eq("status", "published")
+    .eq("visibility", "members")
+    .gte("ends_at", new Date(Date.now() - STAFF_CHECKIN_GRACE_MS).toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(50);
   const events = (data ?? []) as UpcomingEvent[];
   const selected = events.find((e) => e.id === eventId) ?? null;
 
