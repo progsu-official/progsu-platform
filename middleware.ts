@@ -124,8 +124,8 @@ export const config = {
   // + cron endpoints (which verify CRON_SECRET themselves) + smoketest routes
   // (only created during integration smoke scripts; they self-auth) + dev-login
   // (local-only Google OAuth bypass; self-gates on NODE_ENV) + team-finder-lookup/-discord
-  // (server-to-server call from hacklanta-ii, verifies TEAM_FINDER_SYNC_SECRET itself).
+  // (server-to-server calls from hacklanta-ii, verify TEAM_FINDER_SYNC_SECRET themselves).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|api/dev-login|api/team-finder-lookup|api/team-finder-discord|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/smoketest-|api/dev-login|api/hacklanta/acceptance-sms|api/team-finder-lookup|api/team-finder-discord|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
