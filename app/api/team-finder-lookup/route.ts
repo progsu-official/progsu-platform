@@ -1,42 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireTeamFinderSyncSecret } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log } from "@/lib/log";
+import { teamFinderSyncAuthed } from "@/lib/team-finder-sync-auth";
 
 // Server-to-server lookup for hacklanta-ii's team-finder: given a batch of
 // applicant emails, report which ones belong to an existing Progsu member and
 // hand back the profile fields team-finder mirrors (avatar, bio, discord,
 // links) so a member's Progsu profile is the single source of truth for
 // those once linked. Auth is the same shared-bearer pattern as the cron
-// routes (see event-notifications/route.ts for the constant-time compare this
-// copies); there is no per-user session, only a service calling in.
+// routes (see lib/team-finder-sync-auth.ts); there is no per-user session,
+// only a service calling in.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const MAX_EMAILS = 500;
 
-function authed(req: NextRequest): boolean {
-  const header = req.headers.get("authorization") ?? "";
-  let expected: string;
-  try {
-    expected = `Bearer ${requireTeamFinderSyncSecret()}`;
-  } catch {
-    return false;
-  }
-  if (header.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < header.length; i += 1) {
-    diff |= header.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
 type LookupBody = { emails?: unknown };
 
 export async function POST(req: NextRequest) {
-  if (!authed(req)) {
+  if (!teamFinderSyncAuthed(req)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
