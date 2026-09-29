@@ -224,14 +224,16 @@ What still applies: `sms_suppressions` (STOP, carrier 21610) at enqueue and agai
 at claim time; the number must still be in `hacklanta_sms_recipients` at claim
 time; the STOP wording, one-broadcast-at-a-time and typed-count rules.
 
-**Two audiences, sent in batches.** *Hacklanta II accepted* is every accepted
-applicant; *Hacklanta II emailed* is only those whose acceptance email has gone
-out (`applications.acceptance_email_sent_at`, the "email sent" mark on the
-Hacklanta admin cards). Both leave out anyone a Hacklanta broadcast already
-queued or sent to (`hacklanta_sms_is_sendable()`, migration
-`20260929140000`), so sending *emailed* again after the next email run texts
-only the new people. A `failed` row counts as texted, since a timeout can hide
-a text that arrived; `cancelled` and `skipped` do not.
+**One audience, sent in batches** (migration `20260929160000`). Picking
+*Hacklanta II accepted* shows a tracker (texted / total, delivered, failed,
+emailed, emailed-not-texted, opted out, accepted applicants with no usable
+number) and two options: a batch size (default 100) and "Only people who got the
+acceptance email" (default on, since the text points people at that email).
+Each send is the next batch: people no Hacklanta broadcast has queued or sent to
+(`hacklanta_sms_texted()`), earliest acceptance email first. A `failed` row
+counts as texted, since a timeout can hide a text that arrived; `cancelled` and
+`skipped` do not. The card count and the tracker's "left" drop as batches go
+out. The earlier separate `hacklanta_emailed` audience is gone.
 
 **Sync.** Every `/admin/sms` load runs `lib/sms/hacklanta-sync.ts` (needs
 `HACKLANTA_SUPABASE_URL` / `HACKLANTA_SUPABASE_SECRET_KEY`): upserts accepted

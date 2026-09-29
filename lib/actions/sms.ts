@@ -7,7 +7,11 @@ import { after } from "next/server";
 
 import { env, requireHacklantaSource } from "@/lib/env";
 import { log } from "@/lib/log";
-import { hacklantaClient, syncHacklantaRecipients } from "@/lib/sms/hacklanta-sync";
+import {
+  hacklantaClient,
+  type HacklantaSyncResult,
+  syncHacklantaRecipients,
+} from "@/lib/sms/hacklanta-sync";
 import { loadTwilioAuthToken, loadTwilioSendConfig } from "@/lib/sms/twilio";
 import { runSmsDeliveryWorker } from "@/lib/sms/worker";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -71,19 +75,23 @@ function kickWorker() {
 }
 
 // Pulls accepted applicants and their email-sent stamps from Hacklanta II so
-// the Hacklanta audience counts match the Hacklanta admin dashboard. Only
-// writes hacklanta_sms_recipients; a failure leaves the last sync in place.
-async function syncHacklanta(): Promise<string | null> {
+// the Hacklanta tracker matches the Hacklanta admin dashboard. Only writes
+// hacklanta_sms_recipients; a failure leaves the last sync in place.
+async function syncHacklanta(): Promise<
+  { roster: HacklantaSyncResult; error: null } | { roster: null; error: string }
+> {
   try {
     const src = requireHacklantaSource();
-    await syncHacklantaRecipients(hacklantaClient(src.url, src.secretKey), createAdminClient(), {
-      apply: true,
-    });
-    return null;
+    const roster = await syncHacklantaRecipients(
+      hacklantaClient(src.url, src.secretKey),
+      createAdminClient(),
+      { apply: true }
+    );
+    return { roster, error: null };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     log.error("hacklanta sms sync failed", { action: "hacklanta_sms_sync", error_message: message });
-    return message;
+    return { roster: null, error: message };
   }
 }
 
@@ -99,7 +107,7 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
   const { data: isAdmin } = await supabase.rpc("is_admin", { p_user_id: user.id });
   if (isAdmin !== true) return err("FORBIDDEN", "Admins only.");
 
-  const hacklantaSyncError = await syncHacklanta();
+  const sync = await syncHacklanta();
   const { data, error } = await supabase.rpc("admin_sms_overview");
   if (error) return mapPgError(error);
 
@@ -112,9 +120,16 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
 
   const payload = (data ?? {}) as Partial<SmsOverview> & {
     upcoming_reminders?: SmsOverview["upcomingReminders"];
+    hacklanta?: SmsOverview["hacklanta"];
   };
   return ok({
-    audiences: payload.audiences ?? { gsu: 0, all_consented: 0, hacklanta_accepted: 0, hacklanta_emailed: 0 },
+    audiences: payload.audiences ?? { gsu: 0, all_consented: 0, hacklanta_accepted: 0 },
+    hacklanta: payload.hacklanta ?? null,
+    hacklantaRoster: sync.roster && {
+      accepted: sync.roster.accepted,
+      skippedInvalid: sync.roster.skippedInvalid,
+      emailedNoNumber: sync.roster.emailedNoNumber,
+    },
     suppressed: payload.suppressed ?? 0,
     self: {
       ...(payload.self ?? { has_phone: false, phone_last4: null, is_suppressed: false }),
@@ -126,7 +141,7 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
       canSend: loadTwilioSendConfig() !== null,
       receipts: loadTwilioAuthToken() !== null,
       eventReminders: env.FEATURE_SMS_EVENT_REMINDERS,
-      hacklantaSyncError,
+      hacklantaSyncError: sync.error,
     },
     siteUrl: env.NEXT_PUBLIC_SITE_URL,
   });
@@ -172,6 +187,10 @@ export async function createSmsBroadcast(
     p_body: parsed.data.body,
     p_audience: parsed.data.audience,
     p_expected_count: parsed.data.expectedCount,
+    ...(parsed.data.audience === "hacklanta_accepted" && {
+      p_batch_size: parsed.data.batchSize ?? null,
+      p_emailed_only: parsed.data.emailedOnly ?? false,
+    }),
   });
   if (error) return mapPgError(error);
 

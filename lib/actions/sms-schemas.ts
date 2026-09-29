@@ -13,16 +13,51 @@ export const smsBodySchema = z
   .max(SMS_BODY_MAX, `Keep it to ${SMS_BODY_MAX} characters or fewer`)
   .regex(/\bstop\b/i, 'Every text has to say how to opt out, e.g. "Reply STOP to opt out."');
 
-export const smsAudienceSchema = z.enum(["gsu", "all_consented", "hacklanta_accepted", "hacklanta_emailed"]);
+export const smsAudienceSchema = z.enum(["gsu", "all_consented", "hacklanta_accepted"]);
 export type SmsAudience = z.infer<typeof smsAudienceSchema>;
 
-export const createSmsBroadcastSchema = z.object({
-  body: smsBodySchema,
-  audience: smsAudienceSchema,
-  // The count the officer confirmed. The database refuses the send if the
-  // audience has changed size since.
-  expectedCount: z.number().int().positive(),
-});
+export const SMS_BATCH_MAX = 1000;
+
+export const createSmsBroadcastSchema = z
+  .object({
+    body: smsBodySchema,
+    audience: smsAudienceSchema,
+    // The count the officer confirmed. The database refuses the send if the
+    // audience has changed size since.
+    expectedCount: z.number().int().positive(),
+    // Hacklanta only: text the next batchSize people not texted yet,
+    // optionally only those whose acceptance email has gone out.
+    batchSize: z
+      .number()
+      .int()
+      .min(1, "Batch size must be at least 1")
+      .max(SMS_BATCH_MAX, `Keep a batch to ${SMS_BATCH_MAX} or fewer`)
+      .optional(),
+    emailedOnly: z.boolean().optional(),
+  })
+  .refine((v) => v.audience === "hacklanta_accepted" || (v.batchSize == null && !v.emailedOnly), {
+    message: "Batches are only for the Hacklanta audience",
+    path: ["batchSize"],
+  });
+
+// hacklanta_sms_progress(): one row per usable number among accepted applicants.
+export type HacklantaProgress = {
+  numbers: number;
+  emailed: number;
+  texted: number;
+  delivered: number;
+  failed: number;
+  opted_out: number;
+  left: number;
+  left_emailed: number;
+};
+
+// From the Hacklanta II database on this page load (lib/sms/hacklanta-sync.ts).
+export type HacklantaRoster = {
+  accepted: number;
+  skippedInvalid: number;
+  emailedNoNumber: number;
+};
 
 export const sendSmsTestSchema = z.object({
   body: smsBodySchema,
@@ -77,6 +112,8 @@ export type SmsBroadcastRow = {
 
 export type SmsOverview = {
   audiences: Record<SmsAudience, number>;
+  hacklanta: HacklantaProgress | null;
+  hacklantaRoster: HacklantaRoster | null;
   suppressed: number;
   self: {
     has_phone: boolean;

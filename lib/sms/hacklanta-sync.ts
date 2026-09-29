@@ -21,6 +21,8 @@ export type HacklantaSyncResult = {
   recipients: number;
   emailed: number;
   skippedInvalid: number;
+  // Emailed applicants we can't text: no usable US number on the application.
+  emailedNoNumber: number;
   pruned: number;
 };
 
@@ -51,10 +53,12 @@ async function readAccepted(hack: SupabaseClient): Promise<Row[]> {
 export function toRecipients(rows: Row[]) {
   const byPhone = new Map<string, { first_name: string; email_sent_at: string | null }>();
   let skippedInvalid = 0;
+  let emailedNoNumber = 0;
   for (const r of rows) {
     const phone = toUsE164(r.phone);
     if (!phone) {
       skippedInvalid += 1;
+      if (r.acceptance_email_sent_at) emailedNoNumber += 1;
       continue;
     }
     const prev = byPhone.get(phone);
@@ -62,7 +66,7 @@ export function toRecipients(rows: Row[]) {
     if (!prev) byPhone.set(phone, { first_name: r.first_name, email_sent_at: sent });
     else if (sent && (!prev.email_sent_at || sent < prev.email_sent_at)) prev.email_sent_at = sent;
   }
-  return { byPhone, skippedInvalid };
+  return { byPhone, skippedInvalid, emailedNoNumber };
 }
 
 export async function syncHacklantaRecipients(
@@ -71,12 +75,13 @@ export async function syncHacklantaRecipients(
   { apply }: { apply: boolean }
 ): Promise<HacklantaSyncResult> {
   const rows = await readAccepted(hack);
-  const { byPhone, skippedInvalid } = toRecipients(rows);
+  const { byPhone, skippedInvalid, emailedNoNumber } = toRecipients(rows);
   const result: HacklantaSyncResult = {
     accepted: rows.length,
     recipients: byPhone.size,
     emailed: [...byPhone.values()].filter((v) => v.email_sent_at).length,
     skippedInvalid,
+    emailedNoNumber,
     pruned: 0,
   };
   if (!apply) return result;
@@ -118,9 +123,13 @@ if (process.argv[1]?.endsWith("hacklanta-sync.ts")) {
   const { byPhone, skippedInvalid } = toRecipients([
     { first_name: "a", phone: "+14042076509", acceptance_email_sent_at: null },
     { first_name: "b", phone: "4042076509", acceptance_email_sent_at: "2026-09-29T10:00:00Z" },
-    { first_name: "c", phone: "+4420", acceptance_email_sent_at: null },
+    { first_name: "c", phone: "+4420", acceptance_email_sent_at: "2026-09-29T11:00:00Z" },
+  ]);
+  const { emailedNoNumber } = toRecipients([
+    { first_name: "c", phone: "+4420", acceptance_email_sent_at: "2026-09-29T11:00:00Z" },
   ]);
   assert(byPhone.size === 1 && skippedInvalid === 1, "dedupes and skips");
+  assert(emailedNoNumber === 1, "counts emailed with no usable number");
   assert(byPhone.get("+14042076509")!.email_sent_at === "2026-09-29T10:00:00Z", "emailed if either was");
   console.log("hacklanta-sync self-check ok");
 }

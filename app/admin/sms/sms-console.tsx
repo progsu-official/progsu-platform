@@ -14,8 +14,11 @@ import {
   sendSmsTest,
 } from "@/lib/actions/sms";
 import {
+  SMS_BATCH_MAX,
   SMS_BODY_MAX,
   smsBodySchema,
+  type HacklantaProgress,
+  type HacklantaRoster,
   type SmsAudience,
   type SmsBroadcastRow,
   type SmsDeliveryStatus,
@@ -44,12 +47,7 @@ const AUDIENCES: { value: SmsAudience; label: string; hint: string }[] = [
   {
     value: "hacklanta_accepted",
     label: "Hacklanta II accepted",
-    hint: "Everyone accepted to Hacklanta II not texted yet. Not opt-in based; STOP still honored",
-  },
-  {
-    value: "hacklanta_emailed",
-    label: "Hacklanta II emailed",
-    hint: "Accepted, acceptance email sent, not texted yet. Send again as more emails go out",
+    hint: "Accepted applicants not texted yet, sent in batches. Not opt-in based; STOP still honored",
   },
 ];
 
@@ -57,7 +55,6 @@ const AUDIENCE_LABEL: Record<SmsBroadcastRow["audience"], string> = {
   gsu: "Georgia State",
   all_consented: "Everyone opted in",
   hacklanta_accepted: "Hacklanta II accepted",
-  hacklanta_emailed: "Hacklanta II emailed",
   self_test: "Test to self",
   event_reminder: "Event reminder",
 };
@@ -165,7 +162,19 @@ function Composer({ data }: { data: SmsOverview }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const count = data.audiences[audience];
+  const [batchSize, setBatchSize] = useState("100");
+  const [emailedOnly, setEmailedOnly] = useState(true);
+
+  const isHacklanta = audience === "hacklanta_accepted";
+  const hack = data.hacklanta;
+  const batchNum = Number(batchSize);
+  const batchValid = Number.isInteger(batchNum) && batchNum >= 1 && batchNum <= SMS_BATCH_MAX;
+  const hackPool = hack ? (emailedOnly ? hack.left_emailed : hack.left) : 0;
+  const count = isHacklanta
+    ? batchValid
+      ? Math.min(batchNum, hackPool)
+      : 0
+    : data.audiences[audience];
   const seg = useMemo(() => smsSegments(body.trim()), [body]);
   const validation = smsBodySchema.safeParse(body);
   const bodyError = validation.success ? null : validation.error.issues[0]?.message;
@@ -195,7 +204,12 @@ function Composer({ data }: { data: SmsOverview }) {
     setError(null);
     setNotice(null);
     startTransition(async () => {
-      const r = await createSmsBroadcast({ body, audience, expectedCount: count });
+      const r = await createSmsBroadcast({
+        body,
+        audience,
+        expectedCount: count,
+        ...(isHacklanta && { batchSize: batchNum, emailedOnly }),
+      });
       reset();
       if (!r.ok) {
         setError(r.error.message);
@@ -222,7 +236,7 @@ function Composer({ data }: { data: SmsOverview }) {
       <div className="space-y-5">
         <fieldset className="space-y-2">
           <legend className="text-xs font-medium text-muted-foreground">To</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-3">
             {AUDIENCES.map((a) => {
               const selected = a.value === audience;
               return (
@@ -263,6 +277,26 @@ function Composer({ data }: { data: SmsOverview }) {
             })}
           </div>
         </fieldset>
+
+        {isHacklanta ? (
+          <HacklantaBatch
+            progress={hack}
+            roster={data.hacklantaRoster}
+            batchSize={batchSize}
+            batchValid={batchValid}
+            emailedOnly={emailedOnly}
+            count={count}
+            disabled={pending}
+            onBatchSize={(v) => {
+              setBatchSize(v);
+              reset();
+            }}
+            onEmailedOnly={(v) => {
+              setEmailedOnly(v);
+              reset();
+            }}
+          />
+        ) : null}
 
         <div className="space-y-1.5">
           <label htmlFor="sms-body" className="text-xs font-medium text-muted-foreground">
@@ -305,7 +339,8 @@ function Composer({ data }: { data: SmsOverview }) {
         {confirming ? (
           <div className="space-y-3 rounded-xl border border-primary/40 bg-primary/5 p-4">
             <p className="text-sm text-foreground">
-              This texts <strong>{count.toLocaleString()}</strong>{" "}
+              This texts {isHacklanta ? "the next " : ""}
+              <strong>{count.toLocaleString()}</strong>{" "}
               {count === 1 ? "person" : "people"} right now and can&apos;t be
               unsent. Type {count} to confirm.
             </p>
@@ -382,6 +417,144 @@ function Composer({ data }: { data: SmsOverview }) {
         ) : null}
       </div>
     </Panel>
+  );
+}
+
+// Hacklanta progress and the next-batch picker. Everything counts numbers,
+// not applicants: the roster is one row per usable US number.
+function HacklantaBatch({
+  progress,
+  roster,
+  batchSize,
+  batchValid,
+  emailedOnly,
+  count,
+  disabled,
+  onBatchSize,
+  onEmailedOnly,
+}: {
+  progress: HacklantaProgress | null;
+  roster: HacklantaRoster | null;
+  batchSize: string;
+  batchValid: boolean;
+  emailedOnly: boolean;
+  count: number;
+  disabled: boolean;
+  onBatchSize: (v: string) => void;
+  onEmailedOnly: (v: boolean) => void;
+}) {
+  if (!progress) {
+    return <p className="text-xs text-amber-300">Couldn&apos;t load Hacklanta progress.</p>;
+  }
+  const total = progress.texted + progress.left;
+  const pct = total ? Math.round((progress.texted / total) * 100) : 0;
+  const pool = emailedOnly ? progress.left_emailed : progress.left;
+
+  return (
+    <div className="space-y-4 rounded-xl border border-border/70 bg-muted/20 p-4">
+      <div className="space-y-1.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm font-medium text-foreground">
+            Texted{" "}
+            <span className="tabular-nums">
+              {progress.texted.toLocaleString()}/{total.toLocaleString()}
+            </span>
+          </p>
+          <p className="text-xs tabular-nums text-muted-foreground">
+            {progress.delivered.toLocaleString()} delivered ·{" "}
+            {progress.failed ? `${progress.failed.toLocaleString()} failed · ` : ""}
+            {progress.left.toLocaleString()} left
+          </p>
+        </div>
+        <div
+          className="h-2 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={progress.texted}
+          aria-label="Hacklanta applicants texted"
+        >
+          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+        <HackStat label="Emailed, not texted" value={progress.left_emailed} strong />
+        <HackStat label="Emailed" value={progress.emailed} />
+        <HackStat label="Opted out (STOP)" value={progress.opted_out} />
+        <HackStat
+          label="No usable number"
+          value={roster?.skippedInvalid ?? null}
+          note={
+            roster && roster.emailedNoNumber > 0
+              ? `${roster.emailedNoNumber} of them emailed`
+              : undefined
+          }
+        />
+      </dl>
+      {roster ? (
+        <p className="text-xs text-muted-foreground">
+          {roster.accepted.toLocaleString()} accepted in Hacklanta,{" "}
+          {progress.numbers.toLocaleString()} with a number we can text.
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <label className="space-y-1">
+          <span className="block text-xs font-medium text-muted-foreground">Batch size</span>
+          <Input
+            value={batchSize}
+            onChange={(e) => onBatchSize(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            className="w-24 tabular-nums"
+            disabled={disabled}
+            aria-invalid={!batchValid}
+          />
+        </label>
+        <label className="flex items-center gap-2 pb-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={emailedOnly}
+            onChange={(e) => onEmailedOnly(e.target.checked)}
+            disabled={disabled}
+          />
+          Only people who got the acceptance email
+        </label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {!batchValid
+          ? `Pick a batch size from 1 to ${SMS_BATCH_MAX}.`
+          : pool === 0
+            ? emailedOnly
+              ? "Everyone emailed so far has been texted. Send more acceptance emails, then reload."
+              : "Everyone has been texted."
+            : `This batch: the next ${count.toLocaleString()} of ${pool.toLocaleString()} ${
+                emailedOnly ? "emailed and " : ""
+              }not texted yet, earliest email first.`}
+      </p>
+    </div>
+  );
+}
+
+function HackStat({
+  label,
+  value,
+  note,
+  strong,
+}: {
+  label: string;
+  value: number | null;
+  note?: string;
+  strong?: boolean;
+}) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={"tabular-nums " + (strong ? "text-sm font-semibold text-foreground" : "text-foreground")}>
+        {value == null ? "n/a" : value.toLocaleString()}
+        {note ? <span className="ml-1 text-muted-foreground">({note})</span> : null}
+      </dd>
+    </div>
   );
 }
 
