@@ -79,7 +79,7 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
     upcoming_reminders?: SmsOverview["upcomingReminders"];
   };
   return ok({
-    audiences: payload.audiences ?? { gsu: 0, all_consented: 0 },
+    audiences: payload.audiences ?? { gsu: 0, all_consented: 0, hacklanta_accepted: 0 },
     suppressed: payload.suppressed ?? 0,
     self: payload.self ?? { has_phone: false, phone_last4: null, is_suppressed: false },
     broadcasts: payload.broadcasts ?? [],

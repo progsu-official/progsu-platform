@@ -205,3 +205,34 @@ Validated before applying the same way as §6: the migration plus assertions ran
 in one rolled-back transaction against prod. That covered claim-time skips for a
 cancelled RSVP, a suppressed number and a cancelled event, which the smoke
 cannot exercise without racing the live worker.
+
+## 9 · Hacklanta II accepted applicants
+
+Migration `20260929120000_sms_hacklanta_audience.sql`, importer
+`scripts/import-hacklanta-sms-recipients.ts`, validation
+`scripts/validate-hacklanta-sms-audience.ts`.
+
+A third audience on `/admin/sms`, **Hacklanta II accepted**, texts everyone whose
+application has `review_status = 'accepted'` in the Hacklanta II database. It
+sends through the same composer, worker, Messaging Service and receipts as the
+others.
+
+**This audience is not opt-in based.** The application form collects a phone
+number but no SMS consent, so these numbers deliberately do not go through
+`sms_is_sendable()` (§1); that rule is unchanged for `gsu` and `all_consented`.
+What still applies: `sms_suppressions` (STOP, carrier 21610) at enqueue and again
+at claim time; the number must still be in `hacklanta_sms_recipients` at claim
+time; the STOP wording, one-broadcast-at-a-time and typed-count rules.
+
+**Getting the numbers in.** Nothing syncs automatically.
+`pnpm tsx scripts/import-hacklanta-sms-recipients.ts` is a dry run (counts, US
+numbers, how many are already suppressed); add `--apply` to upsert and to prune
+people who are no longer accepted. Re-run it right before a send. Removing a row
+from `hacklanta_sms_recipients` pulls that person out of a broadcast already in
+flight.
+
+`validate-hacklanta-sms-audience.ts` applies the migration and asserts the
+behaviour inside one transaction it always rolls back.
+
+Before the first real send: the toll-free verification declared 100 messages a
+month (§5), and the composer's count is the number of accepted applicants.

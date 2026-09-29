@@ -41,11 +41,17 @@ const AUDIENCES: { value: SmsAudience; label: string; hint: string }[] = [
     label: "Everyone opted in",
     hint: "Every school, including GSU",
   },
+  {
+    value: "hacklanta_accepted",
+    label: "Hacklanta II accepted",
+    hint: "Everyone accepted to Hacklanta II. Not opt-in based; STOP still honored",
+  },
 ];
 
 const AUDIENCE_LABEL: Record<SmsBroadcastRow["audience"], string> = {
   gsu: "Georgia State",
   all_consented: "Everyone opted in",
+  hacklanta_accepted: "Hacklanta II accepted",
   self_test: "Test to self",
   event_reminder: "Event reminder",
 };
@@ -203,7 +209,7 @@ function Composer({ data }: { data: SmsOverview }) {
       <div className="space-y-5">
         <fieldset className="space-y-2">
           <legend className="text-xs font-medium text-muted-foreground">To</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-3">
             {AUDIENCES.map((a) => {
               const selected = a.value === audience;
               return (
