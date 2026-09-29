@@ -69,7 +69,7 @@ async function main() {
 
   const platform = createClient(
     need("NEXT_PUBLIC_SUPABASE_URL"),
-    need("SUPABASE_SECRET_KEY"),
+    need("SUPABASE_SERVICE_ROLE_KEY"),
     { auth: { persistSession: false } }
   );
   const { data: supp, error: suppErr } = await platform
