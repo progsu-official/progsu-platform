@@ -75,13 +75,22 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
   const { data, error } = await supabase.rpc("admin_sms_overview");
   if (error) return mapPgError(error);
 
+  // Only for the test button's label; the overview RPC has no name.
+  const { data: auth } = await supabase.auth.getUser();
+  const { data: me } = auth.user
+    ? await supabase.from("profiles").select("first_name").eq("id", auth.user.id).maybeSingle()
+    : { data: null };
+
   const payload = (data ?? {}) as Partial<SmsOverview> & {
     upcoming_reminders?: SmsOverview["upcomingReminders"];
   };
   return ok({
     audiences: payload.audiences ?? { gsu: 0, all_consented: 0, hacklanta_accepted: 0 },
     suppressed: payload.suppressed ?? 0,
-    self: payload.self ?? { has_phone: false, phone_last4: null, is_suppressed: false },
+    self: {
+      ...(payload.self ?? { has_phone: false, phone_last4: null, is_suppressed: false }),
+      first_name: me?.first_name ?? null,
+    },
     broadcasts: payload.broadcasts ?? [],
     upcomingReminders: payload.upcoming_reminders ?? [],
     config: {

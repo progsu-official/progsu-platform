@@ -345,7 +345,7 @@ function Composer({ data }: { data: SmsOverview }) {
             >
               <Smartphone size={14} strokeWidth={1.75} aria-hidden />
               {data.self.has_phone
-                ? `Test to my phone (…${data.self.phone_last4})`
+                ? `Test to my phone (${data.self.first_name ? `${data.self.first_name.toLowerCase()} -` : "…"}${data.self.phone_last4})`
                 : "Test to my phone"}
             </Button>
           </div>

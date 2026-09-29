@@ -78,7 +78,12 @@ export type SmsBroadcastRow = {
 export type SmsOverview = {
   audiences: Record<SmsAudience, number>;
   suppressed: number;
-  self: { has_phone: boolean; phone_last4: string | null; is_suppressed: boolean };
+  self: {
+    has_phone: boolean;
+    phone_last4: string | null;
+    is_suppressed: boolean;
+    first_name?: string | null;
+  };
   broadcasts: SmsBroadcastRow[];
   upcomingReminders: SmsUpcomingReminder[];
   config: { canSend: boolean; receipts: boolean; eventReminders: boolean };
