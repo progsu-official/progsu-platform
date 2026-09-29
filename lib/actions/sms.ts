@@ -5,10 +5,12 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
-import { env } from "@/lib/env";
+import { env, requireHacklantaSource } from "@/lib/env";
 import { log } from "@/lib/log";
+import { hacklantaClient, syncHacklantaRecipients } from "@/lib/sms/hacklanta-sync";
 import { loadTwilioAuthToken, loadTwilioSendConfig } from "@/lib/sms/twilio";
 import { runSmsDeliveryWorker } from "@/lib/sms/worker";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { type ActionResult, err, ok } from "./result";
@@ -68,24 +70,51 @@ function kickWorker() {
   });
 }
 
+// Pulls accepted applicants and their email-sent stamps from Hacklanta II so
+// the Hacklanta audience counts match the Hacklanta admin dashboard. Only
+// writes hacklanta_sms_recipients; a failure leaves the last sync in place.
+async function syncHacklanta(): Promise<string | null> {
+  try {
+    const src = requireHacklantaSource();
+    await syncHacklantaRecipients(hacklantaClient(src.url, src.secretKey), createAdminClient(), {
+      apply: true,
+    });
+    return null;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    log.error("hacklanta sms sync failed", { action: "hacklanta_sms_sync", error_message: message });
+    return message;
+  }
+}
+
 export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
   if (!env.FEATURE_SMS) return err("NOT_FOUND", "SMS is turned off.");
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return err("FORBIDDEN", "Admins only.");
+  // Checked before the service-role sync runs; the overview RPC re-checks it.
+  const { data: isAdmin } = await supabase.rpc("is_admin", { p_user_id: user.id });
+  if (isAdmin !== true) return err("FORBIDDEN", "Admins only.");
+
+  const hacklantaSyncError = await syncHacklanta();
   const { data, error } = await supabase.rpc("admin_sms_overview");
   if (error) return mapPgError(error);
 
   // Only for the test button's label; the overview RPC has no name.
-  const { data: auth } = await supabase.auth.getUser();
-  const { data: me } = auth.user
-    ? await supabase.from("profiles").select("first_name").eq("id", auth.user.id).maybeSingle()
-    : { data: null };
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("first_name")
+    .eq("id", user.id)
+    .maybeSingle();
 
   const payload = (data ?? {}) as Partial<SmsOverview> & {
     upcoming_reminders?: SmsOverview["upcomingReminders"];
   };
   return ok({
-    audiences: payload.audiences ?? { gsu: 0, all_consented: 0, hacklanta_accepted: 0 },
+    audiences: payload.audiences ?? { gsu: 0, all_consented: 0, hacklanta_accepted: 0, hacklanta_emailed: 0 },
     suppressed: payload.suppressed ?? 0,
     self: {
       ...(payload.self ?? { has_phone: false, phone_last4: null, is_suppressed: false }),
@@ -97,6 +126,7 @@ export async function getSmsOverview(): Promise<ActionResult<SmsOverview>> {
       canSend: loadTwilioSendConfig() !== null,
       receipts: loadTwilioAuthToken() !== null,
       eventReminders: env.FEATURE_SMS_EVENT_REMINDERS,
+      hacklantaSyncError,
     },
     siteUrl: env.NEXT_PUBLIC_SITE_URL,
   });

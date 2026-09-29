@@ -127,6 +127,17 @@ export function requireTwilioSendConfig() {
   };
 }
 
+// Read access to the Hacklanta II database, for the SMS audience sync.
+export function requireHacklantaSource() {
+  return {
+    url: required("HACKLANTA_SUPABASE_URL", process.env.HACKLANTA_SUPABASE_URL),
+    secretKey: required(
+      "HACKLANTA_SUPABASE_SECRET_KEY",
+      process.env.HACKLANTA_SUPABASE_SECRET_KEY
+    ),
+  };
+}
+
 // Twilio signs webhooks with the account auth token and nothing else; an API
 // key secret cannot verify X-Twilio-Signature.
 export function requireTwilioAuthToken(): string {

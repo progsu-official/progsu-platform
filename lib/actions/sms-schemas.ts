@@ -13,7 +13,7 @@ export const smsBodySchema = z
   .max(SMS_BODY_MAX, `Keep it to ${SMS_BODY_MAX} characters or fewer`)
   .regex(/\bstop\b/i, 'Every text has to say how to opt out, e.g. "Reply STOP to opt out."');
 
-export const smsAudienceSchema = z.enum(["gsu", "all_consented", "hacklanta_accepted"]);
+export const smsAudienceSchema = z.enum(["gsu", "all_consented", "hacklanta_accepted", "hacklanta_emailed"]);
 export type SmsAudience = z.infer<typeof smsAudienceSchema>;
 
 export const createSmsBroadcastSchema = z.object({
@@ -86,6 +86,11 @@ export type SmsOverview = {
   };
   broadcasts: SmsBroadcastRow[];
   upcomingReminders: SmsUpcomingReminder[];
-  config: { canSend: boolean; receipts: boolean; eventReminders: boolean };
+  config: {
+    canSend: boolean;
+    receipts: boolean;
+    eventReminders: boolean;
+    hacklantaSyncError: string | null;
+  };
   siteUrl: string;
 };

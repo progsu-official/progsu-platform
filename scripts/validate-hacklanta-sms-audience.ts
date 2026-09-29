@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-// Validates migration 20260929120000 (hacklanta_accepted SMS audience) inside
+// Validates migration 20260929140000 (Hacklanta SMS audiences + batching) inside
 // ONE transaction that is always rolled back: applies the migration, seeds
 // fake recipients, and asserts audience counts, suppression, the create/claim
 // paths and that gsu / all_consented are unchanged. Nothing is committed and
@@ -32,7 +32,7 @@ class Rollback extends Error {}
 
 async function main() {
   const migration = fs.readFileSync(
-    "supabase/migrations/20260929120000_sms_hacklanta_audience.sql",
+    "supabase/migrations/20260929140000_sms_hacklanta_emailed_batches.sql",
     "utf8"
   );
 
@@ -49,6 +49,8 @@ async function main() {
                (select count(*) from public.sms_audience_numbers('all_consented'))::int as everyone`;
 
       await tx.unsafe(migration);
+      // Start from an empty roster; the real rows come back on rollback.
+      await tx`delete from public.hacklanta_sms_recipients`;
 
       const [after] = await tx`
         select (select count(*) from public.sms_audience_numbers('gsu'))::int as gsu,
@@ -56,7 +58,7 @@ async function main() {
                (select count(*) from public.sms_audience_numbers('hacklanta_accepted'))::int as hack`;
       check("gsu count unchanged by migration", after.gsu === before.gsu, { before, after });
       check("all_consented count unchanged by migration", after.everyone === before.everyone, { before, after });
-      check("hacklanta audience starts empty", after.hack === 0, after);
+      void after.hack;
 
       // Fake numbers in the 555-01xx range; rolled back with everything else.
       const A = "+12025550101";
@@ -146,16 +148,63 @@ async function main() {
         const [r] = await tx`select public.create_sms_broadcast(${body}, 'hacklanta_accepted', 1) as r`;
         return r.r as { broadcast_id: string };
       });
+      if (c2 instanceof Error) throw c2;
       await tx`select set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
       await tx`set local role service_role`;
       const claimed2 = await tx`select * from public.claim_sms_deliveries(10)`;
       await tx`reset role`;
       check("valid recipient is claimed for sending", claimed2.length === 1 && claimed2[0].to_phone === D, claimed2);
-      if (c2 instanceof Error) throw c2;
+
+      // Batching: only emailed people, and nobody texted twice across batches.
+      await tx`update public.sms_broadcasts set status = 'done' where id = ${c2.broadcast_id}`;
+      await tx`update public.sms_deliveries set status = 'delivered' where phone_e164 = ${D}`;
+      const E = "+12025550105"; // emailed
+      const F = "+12025550106"; // not emailed yet
+      await tx`insert into public.hacklanta_sms_recipients (phone_e164, email_sent_at) values (${E}, now()), (${F}, null)`;
+      await tx`update public.hacklanta_sms_recipients set email_sent_at = now() where phone_e164 = ${D}`;
+      const emailed = (await tx`select n from public.sms_audience_numbers('hacklanta_emailed') n`).map((r) => r.n as string);
+      check("emailed audience = emailed and not yet texted", emailed.length === 1 && emailed[0] === E, emailed);
+      const accepted = (await tx`select n from public.sms_audience_numbers('hacklanta_accepted') n`).map((r) => r.n as string);
+      check("accepted audience also skips already-texted D", !accepted.includes(D) && accepted.includes(E) && accepted.includes(F), accepted);
+
+      const b1 = await asAdmin(async () => {
+        const [r] = await tx`select public.create_sms_broadcast(${body}, 'hacklanta_emailed', 1) as r`;
+        return r.r as { broadcast_id: string };
+      });
+      if (b1 instanceof Error) throw b1;
+      const busy2 = await asAdmin(() => tx`select public.create_sms_broadcast(${body}, 'hacklanta_accepted', 2)`);
+      check("second Hacklanta send refused while one is sending", busy2 instanceof Error && /still sending/.test(busy2.message), busy2);
+      await tx`select set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
+      await tx`set local role service_role`;
+      const cb1 = await tx`select * from public.claim_sms_deliveries(10)`;
+      await tx`reset role`;
+      check("batch 1 claims E", cb1.length === 1 && cb1[0].to_phone === E, cb1);
+      await tx`update public.sms_deliveries set status = 'sent' where broadcast_id = ${b1.broadcast_id}`;
+      await tx`update public.sms_broadcasts set status = 'done' where id = ${b1.broadcast_id}`;
+
+      // F's email goes out later: batch 2 is F only.
+      await tx`update public.hacklanta_sms_recipients set email_sent_at = now() where phone_e164 = ${F}`;
+      const next = (await tx`select n from public.sms_audience_numbers('hacklanta_emailed') n`).map((r) => r.n as string);
+      check("batch 2 is only the newly emailed F", next.length === 1 && next[0] === F, next);
+
+      // Race: F gets texted by another broadcast after batch 2 was queued.
+      const b2 = await asAdmin(async () => {
+        const [r] = await tx`select public.create_sms_broadcast(${body}, 'hacklanta_emailed', 1) as r`;
+        return r.r as { broadcast_id: string };
+      });
+      if (b2 instanceof Error) throw b2;
+      const [other] = await tx`insert into public.sms_broadcasts (body, audience, status) values ('x STOP', 'hacklanta_accepted', 'done') returning id`;
+      await tx`insert into public.sms_deliveries (broadcast_id, phone_e164, status) values (${other.id}, ${F}, 'sent')`;
+      await tx`select set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
+      await tx`set local role service_role`;
+      const cb2 = await tx`select * from public.claim_sms_deliveries(10)`;
+      await tx`reset role`;
+      const [f2] = await tx`select status from public.sms_deliveries where broadcast_id = ${b2.broadcast_id}`;
+      check("send-time recheck skips someone texted meanwhile", cb2.length === 0 && f2.status === "skipped", { cb2, f2 });
 
       const ov = await asAdmin(async () => (await tx`select public.admin_sms_overview() as o`)[0].o);
       if (ov instanceof Error) throw ov;
-      check("overview exposes hacklanta_accepted", typeof ov.audiences.hacklanta_accepted === "number", ov.audiences);
+      check("overview exposes both Hacklanta audiences", typeof ov.audiences.hacklanta_accepted === "number" && typeof ov.audiences.hacklanta_emailed === "number", ov.audiences);
 
       const [rls] = await tx`
         select relrowsecurity as rls from pg_class where oid = 'public.hacklanta_sms_recipients'::regclass`;

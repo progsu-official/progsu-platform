@@ -44,7 +44,12 @@ const AUDIENCES: { value: SmsAudience; label: string; hint: string }[] = [
   {
     value: "hacklanta_accepted",
     label: "Hacklanta II accepted",
-    hint: "Everyone accepted to Hacklanta II. Not opt-in based; STOP still honored",
+    hint: "Everyone accepted to Hacklanta II not texted yet. Not opt-in based; STOP still honored",
+  },
+  {
+    value: "hacklanta_emailed",
+    label: "Hacklanta II emailed",
+    hint: "Accepted, acceptance email sent, not texted yet. Send again as more emails go out",
   },
 ];
 
@@ -52,6 +57,7 @@ const AUDIENCE_LABEL: Record<SmsBroadcastRow["audience"], string> = {
   gsu: "Georgia State",
   all_consented: "Everyone opted in",
   hacklanta_accepted: "Hacklanta II accepted",
+  hacklanta_emailed: "Hacklanta II emailed",
   self_test: "Test to self",
   event_reminder: "Event reminder",
 };
@@ -133,6 +139,13 @@ export function SmsConsole({
             </p>
           ) : null}
 
+          {data.config.hacklantaSyncError ? (
+            <p role="status" className="text-xs text-amber-300">
+              Couldn&apos;t refresh the Hacklanta lists, so those counts are from
+              the last sync: {data.config.hacklantaSyncError}
+            </p>
+          ) : null}
+
           <Composer data={data} />
           <Reminders data={data} />
           <History broadcasts={data.broadcasts} suppressed={data.suppressed} />
@@ -209,7 +222,7 @@ function Composer({ data }: { data: SmsOverview }) {
       <div className="space-y-5">
         <fieldset className="space-y-2">
           <legend className="text-xs font-medium text-muted-foreground">To</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             {AUDIENCES.map((a) => {
               const selected = a.value === audience;
               return (

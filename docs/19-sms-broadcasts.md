@@ -224,12 +224,22 @@ What still applies: `sms_suppressions` (STOP, carrier 21610) at enqueue and agai
 at claim time; the number must still be in `hacklanta_sms_recipients` at claim
 time; the STOP wording, one-broadcast-at-a-time and typed-count rules.
 
-**Getting the numbers in.** Nothing syncs automatically.
-`pnpm tsx scripts/import-hacklanta-sms-recipients.ts` is a dry run (counts, US
-numbers, how many are already suppressed); add `--apply` to upsert and to prune
-people who are no longer accepted. Re-run it right before a send. Removing a row
-from `hacklanta_sms_recipients` pulls that person out of a broadcast already in
-flight.
+**Two audiences, sent in batches.** *Hacklanta II accepted* is every accepted
+applicant; *Hacklanta II emailed* is only those whose acceptance email has gone
+out (`applications.acceptance_email_sent_at`, the "email sent" mark on the
+Hacklanta admin cards). Both leave out anyone a Hacklanta broadcast already
+queued or sent to (`hacklanta_sms_is_sendable()`, migration
+`20260929140000`), so sending *emailed* again after the next email run texts
+only the new people. A `failed` row counts as texted, since a timeout can hide
+a text that arrived; `cancelled` and `skipped` do not.
+
+**Sync.** Every `/admin/sms` load runs `lib/sms/hacklanta-sync.ts` (needs
+`HACKLANTA_SUPABASE_URL` / `HACKLANTA_SUPABASE_SECRET_KEY`): upserts accepted
+applicants with their email-sent time and prunes anyone no longer accepted. It
+only writes `hacklanta_sms_recipients` and never creates a broadcast. If it
+fails the page says so and keeps the last sync. An empty read is refused rather
+than wiping the list. `scripts/import-hacklanta-sms-recipients.ts` runs the same
+sync by hand (dry run unless `--apply`).
 
 `validate-hacklanta-sms-audience.ts` applies the migration and asserts the
 behaviour inside one transaction it always rolls back.
