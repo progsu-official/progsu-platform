@@ -162,9 +162,9 @@ export default async function MemberEventsPage({
     const { tab: rawAnonTab } = await searchParams;
     const anonTab = resolveTab(rawAnonTab, ANON_TABS);
     return (
-      <div className="mx-auto max-w-3xl space-y-10 py-8 sm:py-10">
+      <div className="mx-auto max-w-3xl space-y-12 pb-8 pt-10 sm:pt-14">
         <header className="flex flex-wrap items-end justify-between gap-4">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Events</h1>
+          <h1 className="text-5xl font-extrabold leading-none tracking-[-0.035em] sm:text-6xl">Events</h1>
           <TabNav tab={anonTab} tabs={ANON_TABS} />
         </header>
         {anonTab === "past" ? (
@@ -185,9 +185,9 @@ export default async function MemberEventsPage({
   const tab = resolveTab(rawTab);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10 py-8 sm:py-10">
+    <div className="mx-auto max-w-3xl space-y-12 pb-8 pt-10 sm:pt-14">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Events</h1>
+        <h1 className="text-5xl font-extrabold leading-none tracking-[-0.035em] sm:text-6xl">Events</h1>
         <TabNav tab={tab} tabs={TABS} />
       </header>
 
@@ -370,7 +370,7 @@ async function MyPlansTab({ supabase }: { supabase: SupabaseCtx }) {
     <div className="space-y-10">
       {pendingInvites.length > 0 ? (
         <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Needs your response
           </h2>
           <ul className="space-y-4">
@@ -711,7 +711,7 @@ function EventDayRail({
         return (
           <li
             key={dayKey}
-            className="relative pb-10 last:pb-0 sm:grid sm:grid-cols-[7.25rem_1fr] sm:gap-9"
+            className="relative pb-12 last:pb-0 sm:grid sm:grid-cols-[7.25rem_1fr] sm:gap-9"
           >
             <span
               aria-hidden
@@ -723,13 +723,13 @@ function EventDayRail({
             <div className="mb-3 flex items-baseline gap-2 sm:mb-0 sm:block sm:self-start">
               <p
                 className={
-                  "text-base font-semibold tracking-tight " +
+                  "text-lg font-bold leading-tight tracking-tight " +
                   (isToday ? "text-primary" : "text-foreground")
                 }
               >
                 {primary}
               </p>
-              <p className="text-sm text-muted-foreground">{secondary}</p>
+              <p className="text-sm font-medium text-muted-foreground">{secondary}</p>
             </div>
             <ul className="space-y-4">
               {dayItems.map((item) => (

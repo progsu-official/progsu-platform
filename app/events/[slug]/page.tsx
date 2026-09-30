@@ -306,7 +306,7 @@ export default async function MemberEventDetailPage({
         <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/55 to-background" />
       </div>
 
-      <div className="mx-auto max-w-4xl space-y-6 pt-6">
+      <div className="mx-auto max-w-4xl space-y-8 pt-8">
         <nav>
           <Link
             href="/events"
@@ -412,7 +412,7 @@ export default async function MemberEventDetailPage({
 
           {/* Right column: title, when/where, RSVP, about. */}
           <div className="min-w-0 space-y-6">
-            <h1 className="text-balance text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
+            <h1 className="text-balance text-5xl font-extrabold leading-[0.98] tracking-[-0.035em] sm:text-6xl">
               {event.title}
             </h1>
 
@@ -430,12 +430,12 @@ export default async function MemberEventDetailPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-base font-semibold text-foreground">
                     <time dateTime={event.starts_at}>
                       {fullDateFormatter.format(startDate)}
                     </time>
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm tabular-nums text-muted-foreground">
                     {formatTimeRange(event.starts_at, event.ends_at)}
                   </p>
                 </div>
@@ -459,12 +459,12 @@ export default async function MemberEventDetailPage({
                         href={event.location_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                        className="rounded-sm text-base font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {event.location_text ?? event.location_url}
                       </a>
                     ) : (
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-base font-semibold text-foreground">
                         {event.location_text}
                       </p>
                     )}

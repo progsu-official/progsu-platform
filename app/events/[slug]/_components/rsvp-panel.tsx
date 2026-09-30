@@ -100,7 +100,7 @@ export function RsvpPanel({
       <>
         <section className="space-y-3 rounded-2xl glass p-5">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">Your RSVP</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Register with your name, email, and phone number — no account
               needed.
@@ -153,10 +153,10 @@ export function RsvpPanel({
 
   return (
     <>
-      <section className="space-y-4 rounded-2xl glass p-5">
+      <section className="space-y-5 rounded-2xl glass p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Your RSVP</h2>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">Your RSVP</h2>
             <CurrentStateLine current={current} />
           </div>
         </div>

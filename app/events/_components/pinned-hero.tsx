@@ -155,7 +155,7 @@ function PosterLabel({
 function FeaturedChip({ color }: { color: string }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.16em]"
+      className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.16em]"
       style={{
         color,
         borderColor: `${color}59`,
@@ -390,7 +390,7 @@ function CoverPoster({ item }: { item: PinnedHeroItem }) {
 
   return (
     <PosterShell href={item.href}>
-      <div className="relative isolate min-h-[15rem] sm:min-h-[17rem]">
+      <div className="relative isolate min-h-[18rem] sm:min-h-[22rem]">
         {item.coverUrl ? (
           <>
             {/* Signed Supabase URL — next/image can't optimise it, same
@@ -420,17 +420,17 @@ function CoverPoster({ item }: { item: PinnedHeroItem }) {
           />
         )}
 
-        <div className="relative flex h-full min-h-[15rem] flex-col justify-end gap-3 p-5 sm:min-h-[17rem] sm:p-7">
+        <div className="relative flex h-full min-h-[18rem] flex-col justify-end gap-3 p-6 sm:min-h-[22rem] sm:p-8">
           <FeaturedChip color={PAPER} />
           <h2
-            className="text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-4xl font-extrabold leading-[0.95] tracking-[-0.035em] sm:text-6xl"
             style={{ color: PAPER }}
           >
             {item.title}
           </h2>
           <div
-            className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm"
-            style={{ color: `${PAPER}b8` }}
+            className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm font-medium sm:text-base"
+            style={{ color: `${PAPER}d9` }}
           >
             <span className="inline-flex items-center gap-1.5 tabular-nums">
               <CalendarDays size={14} strokeWidth={1.75} aria-hidden />
