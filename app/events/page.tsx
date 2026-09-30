@@ -64,10 +64,10 @@ function TabNav({ tab, tabs }: { tab: TabKey; tabs: typeof TABS }) {
             href={`/events?tab=${t.key}`}
             aria-current={active ? "page" : undefined}
             className={
-              "rounded-full px-4 py-1.5 text-sm transition-colors " +
+              "inline-flex h-9 items-center rounded-full px-4 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none " +
               (active
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground hover:text-foreground")
+                ? "bg-foreground font-medium text-background shadow-sm"
+                : "text-muted-foreground hover:bg-muted/70 hover:text-foreground")
             }
           >
             {t.label}
@@ -162,9 +162,9 @@ export default async function MemberEventsPage({
     const { tab: rawAnonTab } = await searchParams;
     const anonTab = resolveTab(rawAnonTab, ANON_TABS);
     return (
-      <div className="mx-auto max-w-3xl space-y-8 py-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-4xl font-bold tracking-tight">Events</h1>
+      <div className="mx-auto max-w-3xl space-y-10 py-8 sm:py-10">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Events</h1>
           <TabNav tab={anonTab} tabs={ANON_TABS} />
         </header>
         {anonTab === "past" ? (
@@ -185,9 +185,9 @@ export default async function MemberEventsPage({
   const tab = resolveTab(rawTab);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-4xl font-bold tracking-tight">Events</h1>
+    <div className="mx-auto max-w-3xl space-y-10 py-8 sm:py-10">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Events</h1>
         <TabNav tab={tab} tabs={TABS} />
       </header>
 
@@ -707,6 +707,7 @@ function EventDayRail({
       <ol>
         {groups.map(({ dayKey, day, items: dayItems }) => {
         const [primary, secondary] = dayLabels(day, now);
+        const isToday = primary === "Today";
         return (
           <li
             key={dayKey}
@@ -714,10 +715,18 @@ function EventDayRail({
           >
             <span
               aria-hidden
-              className="absolute top-2 hidden h-2 w-2 rounded-full bg-muted-foreground/40 sm:left-[calc(8.25rem-4px)] sm:block"
+              className={
+                "absolute top-2 hidden h-2 w-2 rounded-full ring-4 ring-background sm:left-[calc(8.25rem-4px)] sm:block " +
+                (isToday ? "bg-primary" : "bg-muted-foreground/40")
+              }
             />
             <div className="mb-3 flex items-baseline gap-2 sm:mb-0 sm:block sm:self-start">
-              <p className="text-base font-semibold text-foreground">
+              <p
+                className={
+                  "text-base font-semibold tracking-tight " +
+                  (isToday ? "text-primary" : "text-foreground")
+                }
+              >
                 {primary}
               </p>
               <p className="text-sm text-muted-foreground">{secondary}</p>
@@ -812,18 +821,18 @@ function EmptyState({
   icon?: LucideIcon;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border/80 px-8 py-14 text-center">
+    <div className="rounded-2xl glass px-8 py-16 text-center">
       {Icon ? (
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
-          <Icon size={20} className="text-muted-foreground" strokeWidth={1.5} />
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+          <Icon size={22} strokeWidth={1.75} aria-hidden />
         </div>
       ) : null}
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+      <p className="text-base font-semibold tracking-tight text-foreground">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">{body}</p>
       {cta ? (
         <Link
           href={cta.href}
-          className="mt-4 inline-block rounded-full border border-border px-4 py-1.5 text-sm text-foreground transition-colors hover:bg-muted/60"
+          className="mt-6 inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm shadow-primary/20 transition-colors duration-200 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           {cta.label}
         </Link>

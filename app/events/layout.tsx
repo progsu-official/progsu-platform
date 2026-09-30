@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -141,14 +142,20 @@ function NudgeBar({
   cta: string;
 }) {
   return (
-    <div className="border-b border-amber-500/30 bg-amber-500/20 px-4 py-1.5 text-center text-xs sm:text-sm">
+    <div className="border-b border-amber-500/25 bg-amber-100/90 px-4 py-2 text-center text-xs backdrop-blur-md dark:bg-amber-950/70 sm:text-sm">
       <div className="flex flex-wrap items-center justify-center gap-x-2">
         <span className="font-medium text-foreground">{headline}</span>
         <Link
           href={href}
-          className="font-semibold text-amber-700 underline-offset-2 hover:underline dark:text-amber-300"
+          className="group inline-flex items-center gap-1 rounded-sm font-semibold text-amber-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-300"
         >
-          {cta} →
+          {cta}
+          <ArrowRight
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+            className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+          />
         </Link>
       </div>
       <p className="mt-0.5 text-muted-foreground">{detail}</p>

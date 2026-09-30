@@ -63,15 +63,16 @@ export function EventCard({
     <li className="list-none">
       <Link
         href={href}
-        className={`group flex gap-4 rounded-2xl ${surface} p-4 transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0`}
+        style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+        className={`group flex gap-4 rounded-2xl ${surface} p-4 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-5`}
       >
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm text-muted-foreground">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-sm font-medium tabular-nums text-muted-foreground">
             <time dateTime={startsAt}>{timeLabel}</time>
           </p>
           <h3
             className={
-              "text-lg font-semibold leading-snug transition-colors group-hover:text-primary " +
+              "text-lg font-semibold leading-snug tracking-tight transition-colors duration-200 group-hover:text-primary " +
               (cancelled ? "text-muted-foreground line-through" : "text-foreground")
             }
           >
@@ -90,13 +91,18 @@ export function EventCard({
         </div>
         <div
           className={
-            "relative h-24 w-24 shrink-0 self-start overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted to-primary/20 sm:h-[6.5rem] sm:w-[6.5rem] " +
+            "relative h-24 w-24 shrink-0 self-start overflow-hidden rounded-xl bg-gradient-to-br from-muted to-primary/20 ring-1 ring-inset ring-foreground/5 sm:h-28 sm:w-28 " +
             (cancelled ? "opacity-50 grayscale" : "")
           }
         >
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverUrl} alt="" className="h-full w-full object-cover" />
+            <img
+              src={coverUrl}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <CalendarDays

@@ -306,13 +306,18 @@ export default async function MemberEventDetailPage({
         <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/55 to-background" />
       </div>
 
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6 pt-6">
         <nav>
           <Link
             href="/events"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="group inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <ArrowLeft size={15} aria-hidden />
+            <ArrowLeft
+              size={15}
+              strokeWidth={1.75}
+              aria-hidden
+              className="transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none"
+            />
             All events
           </Link>
         </nav>
@@ -340,7 +345,7 @@ export default async function MemberEventDetailPage({
         <div className="grid gap-8 lg:grid-cols-[19rem_1fr] lg:gap-12">
           {/* Left rail: cover art + hosts + crowd, Luma-style. */}
           <div className="space-y-5">
-            <div className="aspect-square w-full lg:max-w-[19rem] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-muted to-primary/20 shadow-2xl shadow-black/40">
+            <div className="aspect-square w-full overflow-hidden rounded-2xl bg-gradient-to-br from-muted to-primary/20 shadow-xl shadow-black/10 ring-1 ring-inset ring-foreground/5 dark:shadow-2xl dark:shadow-black/40 lg:max-w-[19rem]">
               {coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -358,7 +363,7 @@ export default async function MemberEventDetailPage({
             {onboardingState?.isAdmin ? (
               <Link
                 href={`/admin/events/${event.id}`}
-                className="glass flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors hover:bg-foreground/5"
+                className="glass glass-interactive flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="text-muted-foreground">
                   You can manage this event
@@ -383,7 +388,7 @@ export default async function MemberEventDetailPage({
                     >
                       <span
                         aria-hidden
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold uppercase text-primary"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold uppercase text-primary ring-1 ring-inset ring-primary/20"
                       >
                         {h.display_name.charAt(0)}
                       </span>
