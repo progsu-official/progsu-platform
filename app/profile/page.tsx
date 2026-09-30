@@ -236,7 +236,7 @@ export default async function DashboardHome() {
     : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div>
         <ProfileBanner bannerUrl={bannerUrl} />
 
@@ -286,7 +286,7 @@ export default async function DashboardHome() {
               negative margin so the padding buys reach without airing out
               the line. */}
           <div className="flex min-w-0 items-center gap-1">
-            <h1 className="truncate text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="truncate text-4xl font-extrabold leading-tight tracking-[-0.03em] sm:text-5xl">
               {displayName || "Member"}
             </h1>
             {profile?.linkedin_url || profile?.github_url ? (
@@ -328,7 +328,7 @@ export default async function DashboardHome() {
             ) : null}
             {attendedCount != null ? (
               <span>
-                <strong className="font-semibold tabular-nums text-foreground">
+                <strong className="font-bold tabular-nums text-foreground">
                   {attendedCount}
                 </strong>{" "}
                 Attended
@@ -336,7 +336,7 @@ export default async function DashboardHome() {
             ) : null}
             {upcomingCount != null ? (
               <span>
-                <strong className="font-semibold tabular-nums text-foreground">
+                <strong className="font-bold tabular-nums text-foreground">
                   {upcomingCount}
                 </strong>{" "}
                 Upcoming
@@ -409,7 +409,7 @@ export default async function DashboardHome() {
 
       {env.FEATURE_EVENTS && attendedList.length > 0 ? (
         <section aria-labelledby="attended-events-heading" className="space-y-4">
-          <h2 id="attended-events-heading" className="text-lg font-semibold tracking-tight text-foreground">
+          <h2 id="attended-events-heading" className="text-2xl font-bold tracking-tight text-foreground">
             Events attended
           </h2>
           <AttendedEvents

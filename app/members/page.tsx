@@ -58,9 +58,9 @@ export default async function MembersDirectoryPage({
   const members = cards.map(toConstellationMember);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10 pt-2 sm:pt-6">
       <header className="space-y-1.5">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Members</h1>
+        <h1 className="text-5xl font-extrabold leading-none tracking-[-0.035em] sm:text-6xl">Members</h1>
       </header>
 
       {hiddenFromDirectory ? <VisibilityNudge /> : null}

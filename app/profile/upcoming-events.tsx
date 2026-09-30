@@ -62,14 +62,14 @@ export function UpcomingEvents({
       <div className="flex items-center justify-between gap-4">
         <h2
           id="upcoming-events-heading"
-          className="text-lg font-semibold tracking-tight text-foreground"
+          className="text-2xl font-bold tracking-tight text-foreground"
         >
           Upcoming events
         </h2>
         {seeAllHref ? (
           <Link
             href={seeAllHref}
-            className="rounded-md text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             See all
           </Link>

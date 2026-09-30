@@ -167,7 +167,7 @@ export default async function MemberProfilePage({
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <nav>
         <Link
           href="/members"
@@ -191,7 +191,7 @@ export default async function MemberProfilePage({
             line, school in a right rail — minus the owner-only controls
             (no AvatarButton, no Edit profile button). */}
         <header className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
-          <div className="relative -mt-16 shrink-0 sm:-mt-20">
+          <div className="relative -mt-16 shrink-0 self-start sm:-mt-20">
             {card.note ? (
               <div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2">
                 <StaticNote note={card.note} />
@@ -208,7 +208,7 @@ export default async function MemberProfilePage({
           </div>
           <div className="min-w-0 flex-1 space-y-2 sm:pt-2">
             <div className="flex min-w-0 items-center gap-1">
-              <h1 className="truncate text-3xl font-bold tracking-tight sm:text-4xl">
+              <h1 className="truncate text-4xl font-extrabold leading-tight tracking-[-0.03em] sm:text-5xl">
                 {card.display_name ?? "Member"}
               </h1>
               {card.linkedin_url || card.github_url ? (
