@@ -36,7 +36,7 @@ export default async function ProfileSettingsPage() {
     <>
       <SettingsHeader title="Profile" />
 
-      <div id="photo" className="scroll-mt-24">
+      <div id="photo" className="mb-8 scroll-mt-24">
         <SettingsGroup title="Photo">
           <SettingBlock>
             <PhotoSettings

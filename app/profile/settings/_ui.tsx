@@ -14,8 +14,8 @@ export function SettingsHeader({
   description?: string;
 }) {
   return (
-    <header className="mb-5">
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+    <header className="mb-6">
+      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       {description ? (
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       ) : null}
@@ -33,7 +33,7 @@ export function SettingsGroup({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-6 last:mb-0">
+    <section className="mb-8 last:mb-0">
       {title ? (
         <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {title}
@@ -58,7 +58,7 @@ export function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+    <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="min-w-0">
         <label
           htmlFor={htmlFor}
@@ -88,7 +88,7 @@ export function SettingBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="px-4 py-4">
+    <div className="p-5">
       {title ? (
         <p className="text-sm font-medium text-foreground">{title}</p>
       ) : null}

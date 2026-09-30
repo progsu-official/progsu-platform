@@ -286,7 +286,7 @@ export default async function DashboardHome() {
               negative margin so the padding buys reach without airing out
               the line. */}
           <div className="flex min-w-0 items-center gap-1">
-            <h1 className="truncate text-3xl font-bold tracking-tight">
+            <h1 className="truncate text-3xl font-bold tracking-tight sm:text-4xl">
               {displayName || "Member"}
             </h1>
             {profile?.linkedin_url || profile?.github_url ? (
@@ -328,7 +328,7 @@ export default async function DashboardHome() {
             ) : null}
             {attendedCount != null ? (
               <span>
-                <strong className="font-semibold text-foreground">
+                <strong className="font-semibold tabular-nums text-foreground">
                   {attendedCount}
                 </strong>{" "}
                 Attended
@@ -336,7 +336,7 @@ export default async function DashboardHome() {
             ) : null}
             {upcomingCount != null ? (
               <span>
-                <strong className="font-semibold text-foreground">
+                <strong className="font-semibold tabular-nums text-foreground">
                   {upcomingCount}
                 </strong>{" "}
                 Upcoming
@@ -374,7 +374,7 @@ export default async function DashboardHome() {
       {/* Pending-domain banner stays — it's a "your school isn't supported yet"
           admin-ops message, not a profile-completion nudge. */}
       {!profile?.student_email_verified && profile?.pending_domain_name ? (
-        <section className="flex items-start justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm">
           <div>
             <p className="font-medium text-foreground">
               {profile.pending_domain_name} is coming soon
@@ -409,7 +409,7 @@ export default async function DashboardHome() {
 
       {env.FEATURE_EVENTS && attendedList.length > 0 ? (
         <section aria-labelledby="attended-events-heading" className="space-y-4">
-          <h2 id="attended-events-heading" className="text-sm font-semibold text-foreground">
+          <h2 id="attended-events-heading" className="text-lg font-semibold tracking-tight text-foreground">
             Events attended
           </h2>
           <AttendedEvents

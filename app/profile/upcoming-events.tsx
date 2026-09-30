@@ -62,7 +62,7 @@ export function UpcomingEvents({
       <div className="flex items-center justify-between gap-4">
         <h2
           id="upcoming-events-heading"
-          className="text-sm font-semibold text-foreground"
+          className="text-lg font-semibold tracking-tight text-foreground"
         >
           Upcoming events
         </h2>
@@ -274,21 +274,16 @@ function BrowseMoreCard() {
 
 function EmptyPlans() {
   return (
-    <div className="rounded-2xl border border-dashed border-border/80 px-6 py-10 text-center">
-      <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-muted/60">
-        <CalendarDays
-          size={19}
-          strokeWidth={1.5}
-          className="text-muted-foreground"
-          aria-hidden
-        />
+    <div className="rounded-2xl glass px-6 py-12 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+        <CalendarDays size={20} strokeWidth={1.75} aria-hidden />
       </div>
-      <p className="text-sm font-medium text-foreground">Nothing on the calendar</p>
+      <p className="text-base font-semibold tracking-tight text-foreground">Nothing on the calendar</p>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
         RSVP to an event and it shows up here with the date, place, and who else
         is going.
       </p>
-      <Button asChild size="sm" className="mt-4 rounded-full">
+      <Button asChild size="sm" className="mt-5 rounded-full px-5">
         <Link href="/events">Browse events</Link>
       </Button>
     </div>
