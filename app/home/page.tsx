@@ -21,7 +21,7 @@ export default async function HomePage() {
   return (
     <div className="space-y-12 pb-8 pt-10 sm:space-y-16 sm:pt-14">
       <header>
-        <h1 className="text-5xl font-extrabold leading-none tracking-[-0.035em] sm:text-7xl">
+        <h1 className="text-5xl font-extrabold leading-none tracking-[-0.035em] sm:text-6xl">
           Home
         </h1>
       </header>

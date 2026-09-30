@@ -162,7 +162,9 @@ explicit white ladder instead of tokens:
 
 Tailwind's 4px scale: `1, 1.5, 2, 3, 4, 5, 6, 8, 10`. Card padding is `p-5`
 (content) or `p-4` (dense row). Section gaps are `space-y-6` inside a card and
-`space-y-8` between page sections.
+`space-y-10` between page sections (`space-y-12`, `sm:space-y-16` on `/home`
+and `/events`, where each section is a large image surface and needs the
+air to read as separate). Page tops are `pt-10 sm:pt-14` under the header.
 
 **Anti-pattern:** `p-3.5`, `gap-[7px]`, `mt-7`, `mt-9`.
 
@@ -234,8 +236,13 @@ someone else's artwork.
 | Size | Role |
 |---|---|
 | `text-5xl`–`text-6xl` + `font-serif` | The single display moment on a screen (composer event name) |
-| `text-4xl font-bold tracking-tight sm:text-5xl` | Page title (`Home`, `Members`, `Events`). A person's name in a profile header steps down one: `text-3xl sm:text-4xl` |
-| `text-2xl font-semibold tracking-tight` | Section or dialog title |
+| `text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.92] tracking-[-0.035em]` | The single display moment on `/home`: the featured event title, set on its art |
+| `text-5xl sm:text-6xl font-extrabold leading-none tracking-[-0.035em]` | Page title (`Home`, `Events`, `Members`) and the event detail title |
+| `text-4xl sm:text-5xl font-extrabold tracking-[-0.03em]` | A person's name in a profile header |
+| `text-3xl sm:text-4xl font-bold tracking-tight` | Settings page title; the one section title on `/home`, paired with a hairline that runs out to the right edge |
+| `text-2xl font-bold tracking-tight` | Section title (`Upcoming events`, `Events attended`) |
+| `text-xl font-bold` | Event title on a member list card (admin keeps `text-lg font-semibold`; it is the dense room) |
+| `text-lg font-bold` | Panel heading (`Your RSVP`), day label on the events rail |
 | `text-base font-semibold` | Card heading |
 | `text-[15px]` | Field value, list row primary |
 | `text-sm` | Body, descriptions, most UI copy |
@@ -247,8 +254,15 @@ display-scale element on a screen.
 
 ### Tracking
 
-`tracking-tight` on `text-2xl` and up. Floor is `-0.03em`; never go past
-`-0.04em`. Default tracking everywhere else.
+`tracking-tight` on `text-2xl` and up; `-0.03em` to `-0.035em` on the
+extrabold titles at `text-4xl` and up, where default tight tracking leaves
+heavy glyphs looking gappy. Never go past `-0.04em`. Default tracking
+everywhere else.
+
+Hierarchy comes from weight contrast as much as size: titles are
+`font-bold` to `font-black`, metadata beneath them stays regular or medium
+in `text-muted-foreground`. Two adjacent lines at the same weight read as
+one block.
 
 ---
 
@@ -313,6 +327,14 @@ Two variants, both in `app/events/_components/pinned-hero.tsx`:
 
 Adding a campaign is one `BRAND_KITS` entry plus its assets under
 `public/<campaign>/`. It is not a new component and it is not a migration.
+
+The `/home` featured hero and its "more from progsu" tiles are the same
+family as the Cover variant, not a new one: full-bleed art on a black base,
+an ink scrim that owns the copy column, `ring-1 ring-black/5` (`ring-white/10`
+in dark) for a crisp edge, and white type on the scrim. They are not
+`.glass`; there is no field behind an opaque image to refract. On the hero,
+the date is an inverse white plate so it is the second thing read after the
+title, and the countdown sits opposite it on a frosted dark plate.
 
 ### Empty state
 
