@@ -228,7 +228,7 @@ someone else's artwork.
 | Size | Role |
 |---|---|
 | `text-5xl`–`text-6xl` + `font-serif` | The single display moment on a screen (composer event name) |
-| `text-4xl font-bold tracking-tight` | Page title (`Members`, `Events`) |
+| `text-4xl font-bold tracking-tight sm:text-5xl` | Page title (`Home`, `Members`, `Events`). A person's name in a profile header steps down one: `text-3xl sm:text-4xl` |
 | `text-2xl font-semibold tracking-tight` | Section or dialog title |
 | `text-base font-semibold` | Card heading |
 | `text-[15px]` | Field value, list row primary |
@@ -264,6 +264,11 @@ Named animations in `tailwind.config.ts`: `fade-up` (0.6s, entrance),
 
 Every transition pairs with `motion-reduce:transition-none`.
 
+Press feedback is `active:scale-[0.97]` on buttons and pill CTAs (already in
+`components/ui/button.tsx`), paired with `motion-reduce:active:scale-100`. It
+is a transform, so it costs nothing, and it is the difference between a
+control that reacts and one that only changes color.
+
 **Anti-pattern:** an entrance animation on every section of a page. Transitions
 on `all`. Motion that starts from `opacity: 0` on server-rendered content —
 if JS is slow the user sees nothing.
@@ -272,7 +277,7 @@ if JS is slow the user sees nothing.
 
 ## 6 · Surface families
 
-Almost all UI should be Card, Grouped rows, or Popover. Invent a fifth and
+Almost all UI should be Card (including its empty state), Grouped rows, or Popover. Invent a fifth and
 it is a smell. Branded poster is listed here because it shipped, not because
 the shape generalises — it exists to host one pinned campaign per feed.
 
@@ -302,6 +307,15 @@ Two variants, both in `app/events/_components/pinned-hero.tsx`:
 
 Adding a campaign is one `BRAND_KITS` entry plus its assets under
 `public/<campaign>/`. It is not a new component and it is not a migration.
+
+### Empty state
+
+A Card, not a dashed outline: `rounded-2xl glass px-8 py-16 text-center`, a
+`h-14 w-14 rounded-2xl bg-primary/10 text-primary ring-1 ring-inset
+ring-primary/20` icon tile, a `text-base font-semibold` title, one
+`text-sm text-muted-foreground` line, and at most one primary pill CTA. The
+dashed box read as "something failed to load"; an empty list is a normal
+state and should look finished. See `EmptyState` in `app/events/page.tsx`.
 
 ### Grouped rows
 
