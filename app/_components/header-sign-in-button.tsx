@@ -16,7 +16,7 @@ export function HeaderSignInButton() {
       type="button"
       onClick={() => signIn()}
       disabled={pending}
-      className="rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 disabled:opacity-60"
+      className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background transition-[opacity,transform] duration-200 hover:opacity-90 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none motion-reduce:active:scale-100"
     >
       {pending ? "Redirecting…" : "Sign in"}
     </button>

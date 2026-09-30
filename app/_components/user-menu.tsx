@@ -118,7 +118,7 @@ export function UserMenu({
   }
 
   const itemClass =
-    "block w-full rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted focus:bg-muted focus:outline-none";
+    "block w-full rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors duration-200 hover:bg-muted focus:bg-muted focus:outline-none";
 
   return (
     <div ref={containerRef} className="relative">
@@ -131,7 +131,7 @@ export function UserMenu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={`Account menu for ${displayName}`}
-        className="flex shrink-0 items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform duration-200 hover:scale-[1.04] active:scale-[0.97] motion-reduce:transition-none motion-reduce:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <Avatar src={avatarUrl} name={displayName} className="h-8 w-8 rounded-full" />
       </button>
@@ -141,9 +141,9 @@ export function UserMenu({
           id={menuId}
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-border/80 bg-popover shadow-xl shadow-black/10 dark:shadow-black/40"
+          className="absolute right-0 top-full z-50 mt-1 w-64 origin-top-right overflow-hidden rounded-xl border border-border/80 bg-popover shadow-2xl shadow-black/10 animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-200 motion-reduce:animate-none dark:shadow-black/50"
         >
-          <div className="flex items-center gap-3 px-3 py-3">
+          <div className="flex items-center gap-3 px-4 py-4">
             <Avatar
               src={avatarUrl}
               name={displayName}
@@ -206,7 +206,8 @@ export function UserMenu({
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
+                      style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-transform duration-200 motion-reduce:transition-none ${
                         isDark ? "translate-x-4" : "translate-x-0.5"
                       }`}
                     />

@@ -33,7 +33,8 @@ export async function SiteFooter() {
     <footer
       className={`${theme === "dark" ? "dark " : ""}bg-background text-foreground`}
     >
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-4 py-8 text-center">
+      <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-4 pb-10 pt-12 text-center">
+        <span aria-hidden className="mb-3 h-px w-16 bg-gradient-to-r from-transparent via-border to-transparent" />
         <div className="flex items-center">
           {SOCIAL_LINKS.map(({ href, label, Mark }) => (
             <a
@@ -42,7 +43,7 @@ export async function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={label}
-              className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="-mx-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-[color,transform] duration-200 hover:-translate-y-0.5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <Mark className="h-4 w-4" />
             </a>
@@ -55,7 +56,7 @@ export async function SiteFooter() {
             href="https://discord.com/invite/GjyeW2Mh6q"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-foreground"
+            className="rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             community hub
           </a>

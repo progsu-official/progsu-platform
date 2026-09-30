@@ -117,7 +117,7 @@ export function SiteNav({
       {items.map(({ href, label, icon: Icon, gated }) => {
         const active = activeHref === href;
         const itemClassName = cn(
-          "relative z-10 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm transition-colors sm:px-3",
+          "relative z-10 inline-flex h-10 min-w-11 items-center justify-center gap-1.5 rounded-full px-3 text-sm transition-colors duration-200 sm:px-4",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           active
             ? "font-medium text-foreground"

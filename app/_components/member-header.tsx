@@ -29,12 +29,12 @@ export function MemberHeader({
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-4">
         <Link
           href={displayName ? "/profile" : "/"}
-          className="flex items-baseline gap-1.5 text-[15px] font-bold tracking-tight text-foreground"
+          className="flex items-center gap-1.5 rounded-lg text-base font-bold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           progsu
           <span
             title="Progsu is in beta — things may move around while we build."
-            className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-widest text-primary"
+            className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wider text-primary ring-1 ring-inset ring-primary/25"
           >
             beta
           </span>
