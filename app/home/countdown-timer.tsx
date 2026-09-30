@@ -17,11 +17,11 @@ function diffParts(targetMs: number, nowMs: number) {
 // instead of the timer looking like a separate, louder component.
 function Segment({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-xl font-black tabular-nums tracking-tight text-white sm:text-2xl">
+    <div className="flex min-w-[2ch] flex-col items-center">
+      <span className="text-2xl font-black leading-none tabular-nums tracking-tight text-white sm:text-4xl">
         {String(value).padStart(2, "0")}
       </span>
-      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 sm:text-[11px]">
+      <span className="mt-1.5 text-[10px] font-bold uppercase leading-none tracking-[0.2em] text-white/60 sm:text-[11px]">
         {label}
       </span>
     </div>
@@ -33,9 +33,9 @@ function Segment({ value, label }: { value: number; label: string }) {
 // above their labels instead of centering across the taller two-row block.
 function Colon() {
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-xl font-black text-white sm:text-2xl">:</span>
-      <span aria-hidden className="invisible text-[9px] sm:text-[11px]">
+    <div aria-hidden className="flex flex-col items-center">
+      <span className="text-2xl font-black leading-none text-white/35 sm:text-4xl">:</span>
+      <span aria-hidden className="invisible mt-1.5 text-[10px] leading-none sm:text-[11px]">
         :
       </span>
     </div>
@@ -55,7 +55,7 @@ export function CountdownTimer({ target }: { target: string }) {
   }, [targetMs]);
 
   return (
-    <div className="flex items-start gap-1.5 sm:gap-2">
+    <div className="flex items-start gap-1.5 sm:gap-2.5">
       <Segment value={parts.days} label="days" />
       <Colon />
       <Segment value={parts.hours} label="hrs" />

@@ -19,14 +19,16 @@ export default async function HomePage() {
   const { pinnedEvent, nextEvent } = await loadHomeEvents();
 
   return (
-    <div className="space-y-12 py-8 sm:py-10">
+    <div className="space-y-12 pb-8 pt-10 sm:space-y-16 sm:pt-14">
       <header>
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Home</h1>
+        <h1 className="text-5xl font-extrabold leading-none tracking-[-0.035em] sm:text-7xl">
+          Home
+        </h1>
       </header>
 
       {pinnedEvent ? (
         <section className={`${STAGGER} delay-0`}>
-          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground">
             <span aria-hidden className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
@@ -41,13 +43,17 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      <section className="space-y-5">
-        <h2
-          className={`text-2xl font-semibold tracking-tight text-foreground ${STAGGER} delay-[90ms]`}
-        >
-          more from progsu
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+      <section className="space-y-8">
+        <div className={`flex items-center gap-6 ${STAGGER} delay-[90ms]`}>
+          <h2 className="shrink-0 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            more from progsu
+          </h2>
+          <span
+            aria-hidden
+            className="h-px flex-1 bg-gradient-to-r from-foreground/15 to-transparent"
+          />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
           {nextEvent ? (
             <div className={`sm:col-span-2 lg:col-span-1 ${STAGGER} delay-[170ms]`}>
               <UpcomingEventCard event={nextEvent} />
@@ -133,7 +139,7 @@ function InitiativeCard({
   external?: boolean;
   children: React.ReactNode;
 }) {
-  const classes = `group flex h-full flex-col overflow-hidden rounded-2xl glass glass-interactive transition-transform duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0`;
+  const classes = `group flex h-full flex-col overflow-hidden rounded-2xl bg-black shadow-lg shadow-black/10 ring-1 ring-black/5 transition-[transform,box-shadow] duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/20 dark:shadow-black/40 dark:ring-white/10 dark:hover:shadow-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0`;
 
   if (external) {
     return (
@@ -158,28 +164,21 @@ const EASE = { transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" };
 // just on glass.
 function CardBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide text-white backdrop-blur-sm">
+    <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 text-xs font-semibold leading-none tracking-wide text-white backdrop-blur-sm">
       {children}
     </span>
   );
 }
 
-// `light`: white-on-image variant for the overlay tiles below, instead of
-// the default foreground-on-panel styling.
-function CardVisitLink({ label, light }: { label: string; light?: boolean }) {
+function CardVisitLink({ label }: { label: string }) {
   return (
-    <span
-      className={`mt-auto inline-flex items-center gap-1 text-xs font-medium ${
-        light
-          ? "pt-1 text-white/80 transition-colors duration-200 group-hover:text-white"
-          : "pt-3 text-sm text-foreground group-hover:text-primary"
-      }`}
-    >
+    <span className="mt-auto inline-flex items-center gap-1 pt-2 text-sm font-semibold text-white">
       {label}
       <ArrowUpRight
-        size={12}
-        strokeWidth={1.75}
-        className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+        size={15}
+        strokeWidth={2}
+        aria-hidden
+        className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
       />
     </span>
   );
@@ -208,16 +207,19 @@ function OfferTile({
 }) {
   return (
     <InitiativeCard href={href} external={external}>
-      <div className="relative aspect-[16/9] overflow-hidden">
+      <div className="relative h-80 overflow-hidden sm:h-72 lg:h-[26rem]">
         {image}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 from-0% via-black/70 via-30% to-transparent to-70%" />
-        <div className="absolute right-3 top-3">{badge}</div>
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
-          <p className="text-lg font-bold leading-tight tracking-tight text-white drop-shadow-lg">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-t from-black from-5% via-black/65 via-40% to-transparent to-75%"
+        />
+        <div className="absolute right-4 top-4">{badge}</div>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-5 sm:p-6">
+          <p className="text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-lg sm:text-[1.75rem]">
             {name}
           </p>
-          <p className="line-clamp-2 text-xs leading-relaxed text-white/75">{caption}</p>
-          <CardVisitLink label={visitLabel} light />
+          <p className="line-clamp-2 text-sm leading-relaxed text-white/80">{caption}</p>
+          <CardVisitLink label={visitLabel} />
         </div>
       </div>
     </InitiativeCard>
@@ -240,7 +242,8 @@ function UpcomingEventCard({ event }: { event: HomeEvent }) {
           <img
             src={event.coverUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            style={EASE}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-primary/20">
@@ -255,12 +258,12 @@ function UpcomingEventCard({ event }: { event: HomeEvent }) {
       }
       badge={
         <div className="inline-flex w-fit shrink-0 items-center overflow-hidden rounded-full border border-white/20 bg-black/50 backdrop-blur-sm">
-          <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[11px] font-semibold leading-none tracking-wide tabular-nums text-white/90">
+          <span className="inline-flex items-center gap-1.5 py-1.5 pl-3 pr-2.5 text-xs font-semibold leading-none tracking-wide tabular-nums text-white/90">
             <Users size={12} strokeWidth={2} aria-hidden />
             {event.going_count} going
           </span>
           <span aria-hidden className="h-3 w-px bg-white/25" />
-          <span className="py-1 pl-2 pr-2.5 text-[11px] font-bold leading-none tracking-tight tabular-nums text-white">
+          <span className="py-1.5 pl-2.5 pr-3 text-xs font-bold leading-none tracking-tight tabular-nums text-white">
             {monthFormatter.format(start).toLowerCase()} {dayFormatter.format(start)}
           </span>
         </div>
@@ -289,7 +292,8 @@ function WikiCard() {
           src="/wiki-preview.png"
           alt="Progsu wiki: an open wiki for breaking into tech"
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          className="object-cover transition-transform duration-700 group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            style={EASE}
         />
       }
       badge={<CardBadge>
@@ -315,7 +319,8 @@ function ProgsuSiteCard() {
           src="/progsu-site-preview.jpg"
           alt="progsu.com: builders and dreamers of ATL"
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          className="object-cover transition-transform duration-700 group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            style={EASE}
         />
       }
       badge={
