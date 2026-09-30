@@ -45,7 +45,7 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
       href={heroHref}
       target={event.external_url ? "_blank" : undefined}
       rel={event.external_url ? "noopener noreferrer" : undefined}
-      className="group block h-full w-full"
+      className="group block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
     >
       <div className="relative h-full w-full bg-gradient-to-br from-muted to-primary/20">
         {event.coverUrl ? (
@@ -56,7 +56,7 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
           <img
             src={event.coverUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
@@ -78,14 +78,14 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
         <div className="absolute left-4 top-4 rounded-xl border border-white/20 bg-black/50 px-3 py-1.5 backdrop-blur-md sm:left-6 sm:top-6">
           <CountdownTimer target={event.starts_at} />
         </div>
-        <div className="absolute inset-x-0 bottom-0 p-4 pr-24 sm:p-6 sm:pr-28">
-          <p className="text-2xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl">
+        <div className="absolute inset-x-0 bottom-0 p-4 pb-10 pr-24 sm:p-6 sm:pr-28">
+          <p className="text-balance text-3xl font-black leading-none tracking-tight text-white drop-shadow-lg sm:text-5xl">
             {event.title.toLowerCase()}
           </p>
-          <p className="mt-1 line-clamp-2 text-sm text-white/80">
+          <p className="mt-3 line-clamp-2 max-w-md text-sm text-white/80 sm:text-base">
             progsu&apos;s biggest event of the year, rsvp now, slots are limited.
           </p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
+          <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
             {hosts ? <span>by {hosts}</span> : null}
             {event.location_text ? (
               <span className="flex items-center gap-1.5">
@@ -97,7 +97,7 @@ function EventSlide({ event, hosts }: { event: HeroEvent; hosts: string | null }
         </div>
         {/* Meaningful stand-in for a price badge: an actual date, not a
             fake currency value — there's nothing being sold here. */}
-        <div className="absolute bottom-4 right-4 flex flex-col items-center rounded-xl border border-white/20 bg-black/50 px-3 py-1.5 leading-none backdrop-blur-md sm:bottom-6 sm:right-6">
+        <div className="absolute bottom-10 right-4 flex flex-col items-center rounded-xl border border-white/20 bg-black/50 px-3 py-1.5 leading-none backdrop-blur-md sm:bottom-6 sm:right-6">
           <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
             {monthFormatter.format(start).toLowerCase()}
           </span>
@@ -264,12 +264,17 @@ export function HeroCarousel({
         type="button"
         aria-label="next slide"
         onClick={advance}
-        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm hover:bg-black/70"
+        className="group/next absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition-colors duration-200 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
       >
-        <ChevronRight size={18} />
+        <ChevronRight
+          size={18}
+          strokeWidth={2}
+          aria-hidden
+          className="transition-transform duration-300 group-hover/next:translate-x-0.5 motion-reduce:transition-none"
+        />
       </button>
 
-      <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-2">
+      <div className="absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 justify-center">
         {Array.from({ length: REAL_SLIDES }).map((_, i) => (
           <button
             key={i}
@@ -278,10 +283,16 @@ export function HeroCarousel({
             onClick={() => {
               if (i !== activeDot) advance();
             }}
-            className={`h-1.5 w-6 rounded-full transition-colors ${
-              i === activeDot ? "bg-white" : "bg-white/30"
-            }`}
-          />
+            aria-current={i === activeDot ? "true" : undefined}
+            className="group/dot flex h-11 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
+            <span
+              aria-hidden
+              className={`h-1.5 w-6 rounded-full transition-colors duration-200 motion-reduce:transition-none ${
+                i === activeDot ? "bg-white" : "bg-white/35 group-hover/dot:bg-white/60"
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>

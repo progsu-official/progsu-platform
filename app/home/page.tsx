@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, Globe, Users } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Globe, Sparkles, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
@@ -19,22 +19,20 @@ export default async function HomePage() {
   const { pinnedEvent, nextEvent } = await loadHomeEvents();
 
   return (
-    <div className="space-y-8 py-8">
+    <div className="space-y-12 py-8 sm:py-10">
       <header>
-        <h1 className="text-4xl font-bold tracking-tight">Home</h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Home</h1>
       </header>
 
       {pinnedEvent ? (
         <section className={`${STAGGER} delay-0`}>
-          <div className="mb-2 flex justify-start">
-            {/* Same chip recipe as the date plate and countdown timer inside
-                the hero below (rounded-xl, border-white/20, bg-black/50,
-                backdrop-blur-md) so this reads as the first piece of the
-                same hero-chrome family, not a standalone sticker. */}
-            <span className="rounded-xl border border-white/20 bg-black/50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.2em] text-white backdrop-blur-md">
-              featured
+          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <span aria-hidden className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-          </div>
+            featured
+          </p>
           <HeroCarousel
             event={pinnedEvent}
             hosts={joinHosts(pinnedEvent.hosts)}
@@ -43,15 +41,15 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      <section className="space-y-6">
+      <section className="space-y-5">
         <h2
-          className={`text-2xl font-bold tracking-tight text-foreground sm:text-4xl ${STAGGER} delay-[90ms]`}
+          className={`text-2xl font-semibold tracking-tight text-foreground ${STAGGER} delay-[90ms]`}
         >
           more from progsu
         </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {nextEvent ? (
-            <div className={`${STAGGER} delay-[170ms]`}>
+            <div className={`sm:col-span-2 lg:col-span-1 ${STAGGER} delay-[170ms]`}>
               <UpcomingEventCard event={nextEvent} />
             </div>
           ) : null}
@@ -135,21 +133,23 @@ function InitiativeCard({
   external?: boolean;
   children: React.ReactNode;
 }) {
-  const classes = `group flex h-full flex-col overflow-hidden rounded-2xl glass glass-interactive transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0`;
+  const classes = `group flex h-full flex-col overflow-hidden rounded-2xl glass glass-interactive transition-transform duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0`;
 
   if (external) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={classes} style={EASE}>
         {children}
       </a>
     );
   }
   return (
-    <Link href={href} className={classes}>
+    <Link href={href} className={classes} style={EASE}>
       {children}
     </Link>
   );
 }
+
+const EASE = { transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" };
 
 // Tinted-glass chip instead of a flat gray pill, so it reads as an accent
 // on top of `.glass`/image surfaces rather than a disconnected gray sticker.
@@ -158,7 +158,7 @@ function InitiativeCard({
 // just on glass.
 function CardBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold leading-none tracking-wide text-primary backdrop-blur-sm dark:border-primary/25 dark:bg-primary/15">
+    <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide text-white backdrop-blur-sm">
       {children}
     </span>
   );
@@ -171,7 +171,7 @@ function CardVisitLink({ label, light }: { label: string; light?: boolean }) {
     <span
       className={`mt-auto inline-flex items-center gap-1 text-xs font-medium ${
         light
-          ? "text-white/80 group-hover:text-white"
+          ? "pt-1 text-white/80 transition-colors duration-200 group-hover:text-white"
           : "pt-3 text-sm text-foreground group-hover:text-primary"
       }`}
     >
@@ -179,7 +179,7 @@ function CardVisitLink({ label, light }: { label: string; light?: boolean }) {
       <ArrowUpRight
         size={12}
         strokeWidth={1.75}
-        className="transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
+        className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-hover:translate-y-0"
       />
     </span>
   );
@@ -212,11 +212,11 @@ function OfferTile({
         {image}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 from-0% via-black/70 via-30% to-transparent to-70%" />
         <div className="absolute right-3 top-3">{badge}</div>
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-3">
-          <p className="text-base font-bold tracking-tight text-white drop-shadow-lg">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
+          <p className="text-lg font-bold leading-tight tracking-tight text-white drop-shadow-lg">
             {name}
           </p>
-          <p className="line-clamp-2 text-xs text-white/70">{caption}</p>
+          <p className="line-clamp-2 text-xs leading-relaxed text-white/75">{caption}</p>
           <CardVisitLink label={visitLabel} light />
         </div>
       </div>
@@ -240,7 +240,7 @@ function UpcomingEventCard({ event }: { event: HomeEvent }) {
           <img
             src={event.coverUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-primary/20">
@@ -255,12 +255,12 @@ function UpcomingEventCard({ event }: { event: HomeEvent }) {
       }
       badge={
         <div className="inline-flex w-fit shrink-0 items-center overflow-hidden rounded-full border border-white/20 bg-black/50 backdrop-blur-sm">
-          <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[10px] font-semibold leading-none tracking-wide text-primary">
-            <Users size={12} strokeWidth={2} />
+          <span className="inline-flex items-center gap-1.5 py-1 pl-2.5 pr-2 text-[11px] font-semibold leading-none tracking-wide tabular-nums text-white/90">
+            <Users size={12} strokeWidth={2} aria-hidden />
             {event.going_count} going
           </span>
           <span aria-hidden className="h-3 w-px bg-white/25" />
-          <span className="py-1 pl-2 pr-2.5 text-[11px] font-bold leading-none tracking-tight text-white">
+          <span className="py-1 pl-2 pr-2.5 text-[11px] font-bold leading-none tracking-tight tabular-nums text-white">
             {monthFormatter.format(start).toLowerCase()} {dayFormatter.format(start)}
           </span>
         </div>
@@ -289,10 +289,13 @@ function WikiCard() {
           src="/wiki-preview.png"
           alt="Progsu wiki: an open wiki for breaking into tech"
           fill
-          className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       }
-      badge={<CardBadge>just dropped ❕</CardBadge>}
+      badge={<CardBadge>
+          <Sparkles size={11} strokeWidth={2} aria-hidden />
+          just dropped
+        </CardBadge>}
       name="wiki: zero to hero"
       caption="the real guide on how to break into tech, starting from nothing."
       visitLabel="visit wiki.progsu.com"
@@ -312,12 +315,12 @@ function ProgsuSiteCard() {
           src="/progsu-site-preview.jpg"
           alt="progsu.com: builders and dreamers of ATL"
           fill
-          className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       }
       badge={
         <CardBadge>
-          <Globe size={11} strokeWidth={2} />
+          <Globe size={11} strokeWidth={2} aria-hidden />
           official site
         </CardBadge>
       }
