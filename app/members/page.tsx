@@ -60,25 +60,25 @@ export default async function MembersDirectoryPage({
   return (
     <div className="space-y-8">
       <header className="space-y-1.5">
-        <h1 className="text-4xl font-bold tracking-tight">Members</h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Members</h1>
       </header>
 
       {hiddenFromDirectory ? <VisibilityNudge /> : null}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <form method="get" className="relative w-full max-w-sm">
           <Search
             size={15}
             strokeWidth={1.75}
             aria-hidden
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
           />
           <input
             type="search"
             name="q"
             defaultValue={q}
             placeholder="Search by name"
-            className="w-full rounded-full border border-border/70 bg-card py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="glass h-11 w-full rounded-full pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
             maxLength={64}
           />
         </form>
@@ -90,8 +90,11 @@ export default async function MembersDirectoryPage({
       </div>
 
       {members.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/80 px-8 py-14 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="rounded-2xl glass px-8 py-16 text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+            <Search size={22} strokeWidth={1.75} aria-hidden />
+          </div>
+          <p className="mx-auto max-w-sm text-sm text-muted-foreground">
             {q
               ? `No members match "${q}".`
               : "No members have opted into the directory yet."}

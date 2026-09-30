@@ -6,9 +6,9 @@ import {
 export default function EventsLoading() {
   return (
     <LoadingRegion label="Loading events">
-      <div className="mx-auto max-w-3xl space-y-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-4xl font-bold tracking-tight">Events</h1>
+      <div className="mx-auto max-w-3xl space-y-10 py-8 sm:py-10">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Events</h1>
           <Skeleton className="h-10 w-64 rounded-full" />
         </header>
         <Skeleton className="h-[19rem] w-full rounded-2xl sm:h-[23rem]" />

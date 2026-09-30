@@ -142,14 +142,43 @@ export default async function MemberProfilePage({
         ? `Class of ${card.grad_year}`
         : null;
 
+  const interestedIn = (
+    <section className="rounded-2xl glass p-5">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Interested in
+      </h2>
+      {card.interested_roles && card.interested_roles.length > 0 ? (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {card.interested_roles.map((role) => (
+            <li
+              key={role}
+              className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium capitalize text-primary ring-1 ring-inset ring-primary/20"
+            >
+              {role.replaceAll("_", " ")}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Nothing listed yet.
+        </p>
+      )}
+    </section>
+  );
+
   return (
     <div className="space-y-8">
       <nav>
         <Link
           href="/members"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="group inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <ArrowLeft size={15} aria-hidden />
+          <ArrowLeft
+            size={15}
+            strokeWidth={1.75}
+            aria-hidden
+            className="transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none"
+          />
           All members
         </Link>
       </nav>
@@ -179,7 +208,7 @@ export default async function MemberProfilePage({
           </div>
           <div className="min-w-0 flex-1 space-y-2 sm:pt-2">
             <div className="flex min-w-0 items-center gap-1">
-              <h1 className="truncate text-3xl font-bold tracking-tight">
+              <h1 className="truncate text-3xl font-bold tracking-tight sm:text-4xl">
                 {card.display_name ?? "Member"}
               </h1>
               {card.linkedin_url || card.github_url ? (
@@ -225,7 +254,7 @@ export default async function MemberProfilePage({
                   .join(" · ")}
               </p>
             ) : null}
-            {card.bio ? <p className="text-sm">{card.bio}</p> : null}
+            {card.bio ? <p className="max-w-prose text-[15px] leading-relaxed text-foreground/90">{card.bio}</p> : null}
             {card.portfolio_url ? (
               <a
                 href={card.portfolio_url}
@@ -290,30 +319,12 @@ export default async function MemberProfilePage({
               <p className="text-sm text-muted-foreground">No resume shared.</p>
             )}
           </div>
-        ) : null}
+        ) : (
+          interestedIn
+        )}
       </div>
 
-      <section className="rounded-2xl border border-border/70 bg-card p-5">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Interested in
-        </h2>
-        {card.interested_roles && card.interested_roles.length > 0 ? (
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {card.interested_roles.map((role) => (
-              <li
-                key={role}
-                className="rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs capitalize"
-              >
-                {role.replaceAll("_", " ")}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Nothing listed yet.
-          </p>
-        )}
-      </section>
+      {env.FEATURE_PUBLIC_PROFILE_RESUME ? interestedIn : null}
 
       {card.share_attended_events ? (
         <section className="space-y-3">
@@ -346,20 +357,20 @@ export default async function MemberProfilePage({
             </p>
           ) : (
             <>
-              <ul className="divide-y divide-border/60 rounded-2xl border border-border/70 bg-card">
+              <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl glass">
                 {sharedEvents.named_events.map((ev) => (
                   <li
                     key={ev.event_id}
-                    className="flex items-center justify-between gap-4 px-5 py-3.5"
+                    className="flex items-center justify-between gap-4 px-5 py-4"
                   >
                     <div className="min-w-0">
                       <Link
                         href={`/events/${ev.event_slug}`}
-                        className="truncate text-sm font-medium hover:text-primary"
+                        className="truncate rounded-sm text-sm font-medium transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {ev.event_title}
                       </Link>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs tabular-nums text-muted-foreground">
                         {new Date(ev.starts_at).toLocaleDateString(undefined, {
                           weekday: "short",
                           month: "short",
