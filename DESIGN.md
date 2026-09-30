@@ -183,13 +183,19 @@ Three classes in `app/globals.css`, and the difference matters:
 |---|---|---|
 | `.glass` | **No** | Content surfaces: cards in a scrolling grid, panels, banners |
 | `.glass-blur` | Yes, `blur(20px) saturate(180%)` | Fixed or sticky chrome only: the member header, modal scrims |
-| `.glass-interactive` | — | Add to `.glass` when the surface is clickable; brightens the hairline on hover |
+| `.glass-interactive` | — | Add to `.glass` when the surface is clickable; brightens the hairline and swaps `--glass-shadow` for `--glass-shadow-raised` on hover |
 
 **Why the split:** a backdrop filter forces the GPU to re-sample what's behind
 the element on every scroll frame, for every element. On a grid of member
 cards that is a dropped-frame machine. `.glass` gets its read from a
 translucent fill over the ambient field, a specular top edge, and a hairline —
 no resampling.
+
+The light-theme shadow is layered and faintly violet-tinted (hue 262, the
+primary's), not neutral black: a grey drop shadow under a violet field reads
+as dirt, a tinted one reads as the surface lifting off the field. The raised
+variant is the same recipe pulled further out, so hover is a change in
+height, not a second shadow stack.
 
 Both variants are theme-aware by design. Light glass is white-on-light with a
 dark hairline; dark glass is a white veil on dark with a light hairline.

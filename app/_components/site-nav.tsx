@@ -120,8 +120,8 @@ export function SiteNav({
           "relative z-10 inline-flex h-10 min-w-11 items-center justify-center gap-1.5 rounded-full px-3 text-sm transition-colors duration-200 sm:px-4",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           active
-            ? "font-medium text-foreground"
-            : "text-muted-foreground hover:text-foreground"
+            ? "font-semibold text-foreground"
+            : "font-medium text-muted-foreground hover:text-foreground"
         );
 
         if (gated && !signedIn) {

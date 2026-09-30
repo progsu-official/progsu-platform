@@ -111,16 +111,20 @@
   :root {
     --glass-fill: 0 0% 100%;
     --glass-fill-opacity: 0.72;
-    --glass-hairline: 0 0% 0% / 0.07;
+    --glass-hairline: 0 0% 0% / 0.09;
     --glass-specular: 0 0% 100% / 0.9;
-    --glass-shadow: 0 1px 2px hsl(0 0% 0% / 0.04), 0 10px 30px -14px hsl(0 0% 0% / 0.18);
+    --glass-shadow: 0 1px 2px hsl(0 0% 0% / 0.05), 0 4px 10px -4px hsl(262 30% 20% / 0.06),
+      0 18px 40px -20px hsl(262 40% 20% / 0.3);
+    --glass-shadow-raised: 0 1px 2px hsl(0 0% 0% / 0.05), 0 8px 18px -8px hsl(262 30% 20% / 0.1),
+      0 28px 56px -24px hsl(262 50% 30% / 0.38);
   }
   .dark {
     --glass-fill: 260 20% 70%;
     --glass-fill-opacity: 0.07;
-    --glass-hairline: 0 0% 100% / 0.1;
+    --glass-hairline: 0 0% 100% / 0.12;
     --glass-specular: 0 0% 100% / 0.14;
     --glass-shadow: 0 1px 0 hsl(0 0% 100% / 0.02), 0 18px 40px -24px hsl(0 0% 0% / 0.8);
+    --glass-shadow-raised: 0 1px 0 hsl(0 0% 100% / 0.03), 0 28px 56px -24px hsl(0 0% 0% / 0.9);
   }
 }
 
@@ -196,11 +200,13 @@
   .glass-interactive:hover {
     --glass-hairline: 258 92% 60% / 0.35;
     --glass-fill-opacity: 0.85;
+    --glass-shadow: var(--glass-shadow-raised);
   }
   .dark .glass-interactive:hover {
     --glass-hairline: 258 92% 75% / 0.35;
     --glass-fill-opacity: 0.11;
     --glass-specular: 0 0% 100% / 0.2;
+    --glass-shadow: var(--glass-shadow-raised);
   }
   @media (prefers-reduced-motion: reduce) {
     .glass-interactive {
