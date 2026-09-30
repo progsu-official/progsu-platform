@@ -66,15 +66,19 @@ export default async function LoginPage({
 
   return (
     <main className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-[#151515] px-4 py-12 text-foreground">
-      <div className="relative w-full max-w-sm animate-fade-up space-y-8">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 h-[32rem] w-[48rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-[radial-gradient(closest-side,hsl(258_92%_69%/0.18),transparent)]"
+      />
+      <div className="relative w-full max-w-sm animate-fade-up space-y-8 motion-reduce:animate-none">
         <header className="space-y-3 text-center">
-          <p className="text-[15px] font-semibold tracking-tight text-white/40">
+          <p className="text-[15px] font-semibold tracking-tight text-white/60">
             progsu
           </p>
-          <h1 className="text-4xl font-medium tracking-[-0.01em] text-white">
+          <h1 className="text-4xl font-semibold tracking-tight text-white">
             Welcome back
           </h1>
-          <p className="text-base text-white/50">
+          <p className="text-base text-white/60">
             Sign in to continue to the member platform.
           </p>
         </header>
@@ -91,7 +95,7 @@ export default async function LoginPage({
         <div className="space-y-5">
           <GoogleSignInButton next={params.next} autoStart={!errorMessage} />
 
-          <p className="text-center text-sm text-white/40">
+          <p className="text-center text-sm text-white/45">
             You&apos;ll verify your student email in the next step.
           </p>
         </div>
