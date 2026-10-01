@@ -18,7 +18,7 @@ function diffParts(targetMs: number, nowMs: number) {
 function Segment({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex min-w-[2ch] flex-col items-center">
-      <span className="text-2xl font-black leading-none tabular-nums tracking-tight text-white sm:text-4xl">
+      <span suppressHydrationWarning className="text-2xl font-black leading-none tabular-nums tracking-tight text-white sm:text-4xl">
         {String(value).padStart(2, "0")}
       </span>
       <span className="mt-1.5 text-[10px] font-bold uppercase leading-none tracking-[0.2em] text-white/60 sm:text-[11px]">
