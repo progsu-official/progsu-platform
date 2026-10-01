@@ -207,15 +207,15 @@ function OfferTile({
 }) {
   return (
     <InitiativeCard href={href} external={external}>
-      <div className="relative h-80 overflow-hidden sm:h-72 lg:h-[26rem]">
+      <div className="relative aspect-[16/9] overflow-hidden">
         {image}
         <div
           aria-hidden
           className="absolute inset-0 bg-gradient-to-t from-black from-5% via-black/65 via-40% to-transparent to-75%"
         />
         <div className="absolute right-4 top-4">{badge}</div>
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-5 sm:p-6">
-          <p className="text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-lg sm:text-[1.75rem]">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-4 sm:p-5">
+          <p className="text-xl font-bold leading-tight tracking-tight text-white drop-shadow-lg sm:text-2xl lg:text-xl">
             {name}
           </p>
           <p className="line-clamp-2 text-sm leading-relaxed text-white/80">{caption}</p>
