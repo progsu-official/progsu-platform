@@ -181,7 +181,7 @@ function BrandedPoster({
 }) {
   if (kit.flyer) {
     return (
-      <div className="max-w-[538px] sm:ml-[9.5rem]">
+      <div>
         <PosterShell href={item.href}>
           <Image
             src={kit.flyer.src}
