@@ -1,7 +1,10 @@
-import { pgTable, index, unique, pgPolicy, check, text, boolean, timestamp, foreignKey, uuid, uniqueIndex, integer, bigint, inet, jsonb, bigserial, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, unique, pgPolicy, check, text, boolean, timestamp, foreignKey, uuid, integer, uniqueIndex, bigint, inet, jsonb, bigserial, doublePrecision, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const attendanceMethodT = pgEnum("attendance_method_t", ['admin_click', 'self_code', 'qr_token'])
+export const affiliationT = pgEnum("affiliation_t", ['gsu_student', 'other_student', 'nonstudent', 'unknown'])
+export const announcementAudienceT = pgEnum("announcement_audience_t", ['all', 'event_rsvps', 'hacklanta'])
+export const announcementPriorityT = pgEnum("announcement_priority_t", ['normal', 'important'])
+export const attendanceMethodT = pgEnum("attendance_method_t", ['admin_click', 'self_code', 'qr_token', 'self_qr'])
 export const classStandingT = pgEnum("class_standing_t", ['freshman', 'sophomore', 'junior', 'senior', 'graduate', 'phd', 'alumni'])
 export const consentTypeT = pgEnum("consent_type_t", ['privacy_policy', 'terms_of_service', 'recruiter_resume_sharing', 'email_marketing', 'sms_marketing', 'age_confirmation'])
 export const deletionRequestStatusT = pgEnum("deletion_request_status_t", ['pending', 'processing', 'completed', 'cancelled'])
@@ -9,7 +12,10 @@ export const eventNotificationKindT = pgEnum("event_notification_kind_t", ['conf
 export const eventNotificationStatusT = pgEnum("event_notification_status_t", ['pending', 'in_flight', 'sent', 'failed', 'skipped'])
 export const eventStatusT = pgEnum("event_status_t", ['draft', 'published', 'cancelled', 'archived'])
 export const eventVisibilityT = pgEnum("event_visibility_t", ['members', 'private_invite'])
+export const hacklantaSessionStatusT = pgEnum("hacklanta_session_status_t", ['scheduled', 'cancelled', 'moved'])
+export const hacklantaThemeOverrideT = pgEnum("hacklanta_theme_override_t", ['auto', 'force_on', 'force_off'])
 export const interestedRoleT = pgEnum("interested_role_t", ['software_engineering', 'data_science', 'data_engineering', 'machine_learning', 'product_management', 'ui_ux_design', 'devops_sre', 'cybersecurity', 'research', 'consulting', 'quant_finance', 'other'])
+export const pointEntryKindT = pgEnum("point_entry_kind_t", ['award', 'reversal', 'adjustment'])
 export const referralHitKindT = pgEnum("referral_hit_kind_t", ['click', 'rsvp', 'signup'])
 export const resumeStatusT = pgEnum("resume_status_t", ['pending', 'active', 'deleted'])
 export const rsvpStatusT = pgEnum("rsvp_status_t", ['going', 'waitlisted', 'declined', 'cancelled'])
@@ -31,29 +37,40 @@ export const schoolDomains = pgTable("school_domains", {
 	check("school_domains_school_slug_check", sql`school_slug ~ '^[a-z0-9\-]+$'::text`),
 ]);
 
-export const referralLinks = pgTable("referral_links", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	eventId: uuid("event_id").notNull(),
-	slug: text().notNull(),
-	label: text().notNull(),
-	createdBy: uuid("created_by"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
+export const consentVersions = pgTable("consent_versions", {
+	consentType: consentTypeT("consent_type").primaryKey().notNull(),
+	version: text().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("referral_links_event_idx").using("btree", table.eventId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	pgPolicy("consent_versions_select_auth", { as: "permissive", for: "select", to: ["authenticated"], using: sql`true` }),
+	pgPolicy("consent_versions_write_admin", { as: "permissive", for: "all", to: ["authenticated"] }),
+	check("consent_versions_version_check", sql`version ~ '^v[0-9]+(\.[0-9]+)?$'::text`),
+]);
+
+export const emailVerificationCodes = pgTable("email_verification_codes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	email: text("email").notNull(),
+	codeHash: text("code_hash").notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	attempts: integer().default(0).notNull(),
+	maxAttempts: integer("max_attempts").default(5).notNull(),
+	consumedAt: timestamp("consumed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("email_verification_codes_expires_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(consumed_at IS NULL)`),
+	index("email_verification_codes_user_email_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.email.asc().nullsLast().op("uuid_ops")).where(sql`(consumed_at IS NULL)`),
 	foreignKey({
-			columns: [table.createdBy],
+			columns: [table.userId],
 			foreignColumns: [profiles.id],
-			name: "referral_links_created_by_fkey"
-		}).onDelete("set null"),
-	foreignKey({
-			columns: [table.eventId],
-			foreignColumns: [events.id],
-			name: "referral_links_event_id_fkey"
+			name: "email_verification_codes_user_id_fkey"
 		}).onDelete("cascade"),
-	unique("referral_links_slug_key").on(table.slug),
-	check("referral_links_label_len", sql`(char_length(TRIM(BOTH FROM label)) >= 1) AND (char_length(TRIM(BOTH FROM label)) <= 80)`),
-	check("referral_links_slug_format", sql`slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'::text`),
+	pgPolicy("evc_no_select", { as: "permissive", for: "select", to: ["authenticated"], using: sql`false` }),
+	pgPolicy("evc_no_insert", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("evc_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("evc_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
+	check("evc_attempts_range", sql`(attempts >= 0) AND (attempts <= (max_attempts + 1))`),
+	check("evc_email_has_at", sql`POSITION(('@'::text) IN ((email)::text)) > 0`),
 ]);
 
 export const profiles = pgTable("profiles", {
@@ -99,8 +116,10 @@ END`),
 	bannerUrl: text("banner_url"),
 	checkinCode: uuid("checkin_code").defaultRandom().notNull(),
 	phoneE164: text("phone_e164").generatedAlwaysAs(sql`normalize_phone_e164(phone_number)`),
+	affiliation: affiliationT().default('unknown').notNull(),
+	institutionName: text("institution_name"),
 }, (table) => [
-	index("profiles_archived_idx").using("btree", table.isArchived.asc().nullsLast().op("bool_ops"), table.archivedAt.asc().nullsLast().op("bool_ops")),
+	index("profiles_archived_idx").using("btree", table.isArchived.asc().nullsLast().op("timestamptz_ops"), table.archivedAt.asc().nullsLast().op("bool_ops")),
 	index("profiles_class_standing_idx").using("btree", table.classStanding.asc().nullsLast().op("enum_ops")),
 	index("profiles_first_name_trgm").using("gin", table.firstName.asc().nullsLast().op("gin_trgm_ops")),
 	uniqueIndex("profiles_google_email_idx").using("btree", table.googleEmail.asc().nullsLast().op("citext_ops")),
@@ -124,65 +143,13 @@ END`),
 	check("profiles_github_url_check", sql`(github_url IS NULL) OR (github_url ~* '^https?://([a-z0-9-]+\.)*github\.com/'::text)`),
 	check("profiles_grad_term_check", sql`(grad_term IS NULL) OR (grad_term ~ '^(Spring|Summer|Fall|Winter) [0-9]{4}$'::text)`),
 	check("profiles_grad_year_check", sql`(grad_year IS NULL) OR ((grad_year >= 2000) AND (grad_year <= 2100))`),
+	check("profiles_institution_name_check", sql`(institution_name IS NULL) OR (length(institution_name) <= 150)`),
 	check("profiles_interested_roles_max_six", sql`cardinality(interested_roles) <= 6`),
 	check("profiles_linkedin_url_check", sql`(linkedin_url IS NULL) OR (linkedin_url ~* '^https?://([a-z0-9-]+\.)*linkedin\.com/'::text)`),
 	check("profiles_major_other_text_check", sql`(major_other_text IS NULL) OR ((length(btrim(major_other_text)) >= 1) AND (length(btrim(major_other_text)) <= 100))`),
 	check("profiles_note_check", sql`(note IS NULL) OR ((length(note) <= 80) AND (note !~ '[\r\n]'::text))`),
 	check("profiles_phone_number_check", sql`(phone_number IS NULL) OR (phone_number ~ '^\+?[0-9\-\(\) ]{7,20}$'::text)`),
 	check("profiles_portfolio_url_check", sql`(portfolio_url IS NULL) OR (portfolio_url ~* '^https?://'::text)`),
-]);
-
-export const referralLinkHits = pgTable("referral_link_hits", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity({ name: "referral_link_hits_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
-	linkId: uuid("link_id").notNull(),
-	kind: referralHitKindT().notNull(),
-	isNewVisitor: boolean("is_new_visitor").default(true).notNull(),
-	occurredAt: timestamp("occurred_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("referral_link_hits_link_kind_idx").using("btree", table.linkId.asc().nullsLast().op("uuid_ops"), table.kind.asc().nullsLast().op("uuid_ops")),
-	index("referral_link_hits_link_time_idx").using("btree", table.linkId.asc().nullsLast().op("uuid_ops"), table.occurredAt.desc().nullsFirst().op("uuid_ops")),
-	foreignKey({
-			columns: [table.linkId],
-			foreignColumns: [referralLinks.id],
-			name: "referral_link_hits_link_id_fkey"
-		}).onDelete("cascade"),
-]);
-
-export const consentVersions = pgTable("consent_versions", {
-	consentType: consentTypeT("consent_type").primaryKey().notNull(),
-	version: text().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	pgPolicy("consent_versions_select_auth", { as: "permissive", for: "select", to: ["authenticated"], using: sql`true` }),
-	pgPolicy("consent_versions_write_admin", { as: "permissive", for: "all", to: ["authenticated"] }),
-	check("consent_versions_version_check", sql`version ~ '^v[0-9]+(\.[0-9]+)?$'::text`),
-]);
-
-export const emailVerificationCodes = pgTable("email_verification_codes", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	email: text("email").notNull(),
-	codeHash: text("code_hash").notNull(),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
-	attempts: integer().default(0).notNull(),
-	maxAttempts: integer("max_attempts").default(5).notNull(),
-	consumedAt: timestamp("consumed_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("email_verification_codes_expires_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(consumed_at IS NULL)`),
-	index("email_verification_codes_user_email_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.email.asc().nullsLast().op("uuid_ops")).where(sql`(consumed_at IS NULL)`),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [profiles.id],
-			name: "email_verification_codes_user_id_fkey"
-		}).onDelete("cascade"),
-	pgPolicy("evc_no_select", { as: "permissive", for: "select", to: ["authenticated"], using: sql`false` }),
-	pgPolicy("evc_no_insert", { as: "permissive", for: "insert", to: ["authenticated"] }),
-	pgPolicy("evc_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("evc_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
-	check("evc_attempts_range", sql`(attempts >= 0) AND (attempts <= (max_attempts + 1))`),
-	check("evc_email_has_at", sql`POSITION(('@'::text) IN ((email)::text)) > 0`),
 ]);
 
 export const resumes = pgTable("resumes", {
@@ -310,6 +277,27 @@ export const rateLimitHits = pgTable("rate_limit_hits", {
 	pgPolicy("rate_limit_hits_no_auth_write", { as: "permissive", for: "all", to: ["authenticated"] }),
 ]);
 
+export const domainRequests = pgTable("domain_requests", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	domain: text("domain").notNull(),
+	userId: uuid("user_id").notNull(),
+	exampleEmail: text("example_email"),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("domain_requests_domain_idx").using("btree", table.domain.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("citext_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "domain_requests_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("domain_requests_unique_per_user").on(table.domain, table.userId),
+	pgPolicy("domain_requests_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("domain_requests_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("domain_requests_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("domain_requests_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("domain_requests_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
+]);
+
 export const eventNotificationJobs = pgTable("event_notification_jobs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	eventId: uuid("event_id").notNull(),
@@ -343,6 +331,84 @@ export const eventNotificationJobs = pgTable("event_notification_jobs", {
 	check("event_notification_jobs_attempts_check", sql`(attempts >= 0) AND (attempts <= 10)`),
 	check("event_notification_jobs_error_text_check", sql`(error_text IS NULL) OR (length(error_text) <= 2000)`),
 	check("event_notification_jobs_sent_shape", sql`((status = ANY (ARRAY['sent'::event_notification_status_t, 'skipped'::event_notification_status_t])) AND (sent_at IS NOT NULL)) OR (status <> ALL (ARRAY['sent'::event_notification_status_t, 'skipped'::event_notification_status_t]))`),
+]);
+
+export const profileVisibilitySettings = pgTable("profile_visibility_settings", {
+	userId: uuid("user_id").primaryKey().notNull(),
+	discoverable: boolean().default(true).notNull(),
+	shareAttendedEvents: boolean("share_attended_events").default(false).notNull(),
+	shareSharedEventCounts: boolean("share_shared_event_counts").default(false).notNull(),
+	profileSlug: text("profile_slug"),
+	lastDiscoverabilityChangeAt: timestamp("last_discoverability_change_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("profile_visibility_settings_discoverable_idx").using("btree", table.lastDiscoverabilityChangeAt.desc().nullsFirst().op("timestamptz_ops"), table.userId.asc().nullsLast().op("timestamptz_ops")).where(sql`(discoverable = true)`),
+	uniqueIndex("profile_visibility_settings_slug_discoverable_idx").using("btree", table.profileSlug.asc().nullsLast().op("text_ops")).where(sql`((discoverable = true) AND (profile_slug IS NOT NULL))`),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "profile_visibility_settings_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("pvs_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("pvs_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	pgPolicy("pvs_no_client_insert", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("pvs_no_client_update", { as: "permissive", for: "update", to: ["authenticated"] }),
+	pgPolicy("pvs_no_client_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
+	check("profile_visibility_settings_profile_slug_check", sql`(profile_slug IS NULL) OR (profile_slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'::text)`),
+	check("pvs_share_counts_requires_discoverable", sql`(share_shared_event_counts = false) OR (discoverable = true)`),
+]);
+
+export const historicalEventAttendances = pgTable("historical_event_attendances", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	eventId: uuid("event_id").notNull(),
+	legacyMemberId: uuid("legacy_member_id").notNull(),
+	registeredAt: timestamp("registered_at", { withTimezone: true, mode: 'string' }),
+	approvalStatus: text("approval_status"),
+	checkedInAt: timestamp("checked_in_at", { withTimezone: true, mode: 'string' }),
+	ticketName: text("ticket_name"),
+	sourceDetail: text("source_detail"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("historical_event_attendances_event_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "historical_event_attendances_event_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.legacyMemberId],
+			foreignColumns: [legacyMembers.id],
+			name: "historical_event_attendances_legacy_member_id_fkey"
+		}).onDelete("cascade"),
+	unique("historical_event_attendances_unique").on(table.eventId, table.legacyMemberId),
+	pgPolicy("historical_event_attendances_admin_all", { as: "permissive", for: "all", to: ["public"], using: sql`is_admin(auth.uid())`, withCheck: sql`is_admin(auth.uid())`  }),
+]);
+
+export const majors = pgTable("majors", {
+	slug: text().primaryKey().notNull(),
+	label: text().notNull(),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	pgPolicy("majors_select_active", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(is_active = true)` }),
+	pgPolicy("majors_admin_write", { as: "permissive", for: "all", to: ["authenticated"] }),
+	pgPolicy("majors_select_active_anon", { as: "permissive", for: "select", to: ["anon"] }),
+	check("majors_label_check", sql`(length(label) >= 1) AND (length(label) <= 100)`),
+	check("majors_slug_check", sql`slug ~ '^[a-z0-9_]+$'::text`),
+]);
+
+export const smsSuppressions = pgTable("sms_suppressions", {
+	phoneE164: text("phone_e164").primaryKey().notNull(),
+	reason: text().notNull(),
+	note: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	pgPolicy("sms_suppressions_no_client_access", { as: "permissive", for: "all", to: ["anon", "authenticated"], using: sql`false`, withCheck: sql`false`  }),
+	check("sms_suppressions_phone_e164_check", sql`phone_e164 ~ '^\+1[2-9][0-9]{9}$'::text`),
+	check("sms_suppressions_reason_check", sql`reason = ANY (ARRAY['stop_keyword'::text, 'manual'::text, 'carrier'::text])`),
 ]);
 
 export const legacyMembers = pgTable("legacy_members", {
@@ -384,51 +450,496 @@ export const legacyMembers = pgTable("legacy_members", {
 	check("legacy_members_has_email", sql`(personal_email IS NOT NULL) OR (campus_email IS NOT NULL)`),
 ]);
 
-export const profileVisibilitySettings = pgTable("profile_visibility_settings", {
-	userId: uuid("user_id").primaryKey().notNull(),
-	discoverable: boolean().default(true).notNull(),
-	shareAttendedEvents: boolean("share_attended_events").default(false).notNull(),
-	shareSharedEventCounts: boolean("share_shared_event_counts").default(false).notNull(),
-	profileSlug: text("profile_slug"),
-	lastDiscoverabilityChangeAt: timestamp("last_discoverability_change_at", { withTimezone: true, mode: 'string' }),
+export const eventGuestRsvps = pgTable("event_guest_rsvps", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	eventId: uuid("event_id").notNull(),
+	name: text().notNull(),
+	email: text("email").notNull(),
+	phone: text().notNull(),
+	status: rsvpStatusT().default('going').notNull(),
+	waitlistedAt: timestamp("waitlisted_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	statusChangedAt: timestamp("status_changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	checkinToken: uuid("checkin_token"),
+	claimToken: uuid("claim_token").defaultRandom().notNull(),
+}, (table) => [
+	uniqueIndex("event_guest_rsvps_checkin_token_idx").using("btree", table.checkinToken.asc().nullsLast().op("uuid_ops")).where(sql`(checkin_token IS NOT NULL)`),
+	uniqueIndex("event_guest_rsvps_claim_token_idx").using("btree", table.claimToken.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("event_guest_rsvps_event_email_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.email.asc().nullsLast().op("uuid_ops")),
+	index("event_guest_rsvps_event_status_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("enum_ops")),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "event_guest_rsvps_event_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("event_guest_rsvps_no_client_access", { as: "permissive", for: "all", to: ["anon", "authenticated"], using: sql`false`, withCheck: sql`false`  }),
+	check("event_guest_rsvps_status_check", sql`status = ANY (ARRAY['going'::rsvp_status_t, 'waitlisted'::rsvp_status_t, 'cancelled'::rsvp_status_t])`),
+]);
+
+export const smsBroadcasts = pgTable("sms_broadcasts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	body: text().notNull(),
+	audience: text().notNull(),
+	status: text().default('sending').notNull(),
+	recipientCount: integer("recipient_count").default(0).notNull(),
+	createdBy: uuid("created_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	cancelledAt: timestamp("cancelled_at", { withTimezone: true, mode: 'string' }),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+	eventId: uuid("event_id"),
+}, (table) => [
+	index("sms_broadcasts_created_idx").using("btree", table.createdAt.desc().nullsFirst().op("uuid_ops"), table.id.desc().nullsFirst().op("timestamptz_ops")),
+	index("sms_broadcasts_event_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops")).where(sql`(event_id IS NOT NULL)`),
+	uniqueIndex("sms_broadcasts_one_sending_idx").using("btree", sql`(true)`).where(sql`((status = 'sending'::text) AND (audience = ANY (ARRAY['gsu'::text, 'all_consented'::text, 'hacklanta_accepted'::text])))`),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [profiles.id],
+			name: "sms_broadcasts_created_by_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "sms_broadcasts_event_id_fkey"
+		}).onDelete("set null"),
+	check("sms_broadcasts_audience_check", sql`audience = ANY (ARRAY['gsu'::text, 'all_consented'::text, 'hacklanta_accepted'::text, 'self_test'::text, 'event_reminder'::text])`),
+	check("sms_broadcasts_body_len", sql`(char_length(body) >= 1) AND (char_length(body) <= 480)`),
+	check("sms_broadcasts_status_check", sql`status = ANY (ARRAY['sending'::text, 'done'::text, 'cancelled'::text])`),
+]);
+
+export const smsDeliveries = pgTable("sms_deliveries", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	broadcastId: uuid("broadcast_id").notNull(),
+	phoneE164: text("phone_e164").notNull(),
+	status: text().default('queued').notNull(),
+	attempts: integer().default(0).notNull(),
+	twilioSid: text("twilio_sid"),
+	errorCode: text("error_code"),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }),
+	statusUpdatedAt: timestamp("status_updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("sms_deliveries_broadcast_status_idx").using("btree", table.broadcastId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("uuid_ops")),
+	index("sms_deliveries_phone_idx").using("btree", table.phoneE164.asc().nullsLast().op("text_ops")),
+	index("sms_deliveries_queued_idx").using("btree", table.createdAt.asc().nullsLast().op("uuid_ops"), table.id.asc().nullsLast().op("uuid_ops")).where(sql`(status = 'queued'::text)`),
+	foreignKey({
+			columns: [table.broadcastId],
+			foreignColumns: [smsBroadcasts.id],
+			name: "sms_deliveries_broadcast_id_fkey"
+		}).onDelete("cascade"),
+	unique("sms_deliveries_broadcast_id_phone_e164_key").on(table.broadcastId, table.phoneE164),
+	unique("sms_deliveries_twilio_sid_key").on(table.twilioSid),
+	check("sms_deliveries_phone_e164_check", sql`phone_e164 ~ '^\+1[2-9][0-9]{9}$'::text`),
+	check("sms_deliveries_status_check", sql`status = ANY (ARRAY['queued'::text, 'sending'::text, 'sent'::text, 'delivered'::text, 'undelivered'::text, 'failed'::text, 'suppressed'::text, 'skipped'::text, 'cancelled'::text])`),
+]);
+
+export const hacklantaSmsRecipients = pgTable("hacklanta_sms_recipients", {
+	phoneE164: text("phone_e164").primaryKey().notNull(),
+	firstName: text("first_name"),
+	importedAt: timestamp("imported_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	emailSentAt: timestamp("email_sent_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	check("hacklanta_sms_recipients_phone_e164_check", sql`phone_e164 ~ '^\+1[2-9][0-9]{9}$'::text`),
+]);
+
+export const pointRules = pgTable("point_rules", {
+	eventId: uuid("event_id").primaryKey().notNull(),
+	points: integer(),
+	ruleVersion: integer("rule_version").default(1).notNull(),
+	updatedBy: uuid("updated_by"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("profile_visibility_settings_discoverable_idx").using("btree", table.lastDiscoverabilityChangeAt.desc().nullsFirst().op("timestamptz_ops"), table.userId.asc().nullsLast().op("timestamptz_ops")).where(sql`(discoverable = true)`),
-	uniqueIndex("profile_visibility_settings_slug_discoverable_idx").using("btree", table.profileSlug.asc().nullsLast().op("text_ops")).where(sql`((discoverable = true) AND (profile_slug IS NOT NULL))`),
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [profiles.id],
-			name: "profile_visibility_settings_user_id_fkey"
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "point_rules_event_id_fkey"
 		}).onDelete("cascade"),
-	pgPolicy("pvs_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("pvs_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
-	pgPolicy("pvs_no_client_insert", { as: "permissive", for: "insert", to: ["authenticated"] }),
-	pgPolicy("pvs_no_client_update", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("pvs_no_client_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
-	check("profile_visibility_settings_profile_slug_check", sql`(profile_slug IS NULL) OR (profile_slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'::text)`),
-	check("pvs_share_counts_requires_discoverable", sql`(share_shared_event_counts = false) OR (discoverable = true)`),
+	foreignKey({
+			columns: [table.updatedBy],
+			foreignColumns: [profiles.id],
+			name: "point_rules_updated_by_fkey"
+		}).onDelete("set null"),
+	pgPolicy("point_rules_select_authenticated", { as: "permissive", for: "select", to: ["authenticated"], using: sql`can_view_event(event_id, auth.uid())` }),
+	check("point_rules_points_check", sql`(points IS NULL) OR ((points >= 0) AND (points <= 10000))`),
+	check("point_rules_rule_version_check", sql`rule_version >= 1`),
 ]);
 
-export const domainRequests = pgTable("domain_requests", {
+export const pointLedger = pgTable("point_ledger", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	domain: text("domain").notNull(),
 	userId: uuid("user_id").notNull(),
-	exampleEmail: text("example_email"),
-	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	eventId: uuid("event_id"),
+	entitlementKey: text("entitlement_key").notNull(),
+	amount: integer().notNull(),
+	kind: pointEntryKindT().notNull(),
+	ruleVersion: integer("rule_version"),
+	pointsSnapshot: integer("points_snapshot"),
+	source: text().notNull(),
+	reason: text(),
+	actor: uuid(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	index("domain_requests_domain_idx").using("btree", table.domain.asc().nullsLast().op("timestamptz_ops"), table.requestedAt.desc().nullsFirst().op("citext_ops")),
+	index("point_ledger_user_event_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.eventId.asc().nullsLast().op("uuid_ops")),
+	index("point_ledger_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops"), table.id.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.actor],
+			foreignColumns: [profiles.id],
+			name: "point_ledger_actor_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "point_ledger_event_id_fkey"
+		}).onDelete("set null"),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [profiles.id],
-			name: "domain_requests_user_id_fkey"
+			name: "point_ledger_user_id_fkey"
 		}).onDelete("cascade"),
-	unique("domain_requests_unique_per_user").on(table.domain, table.userId),
-	pgPolicy("domain_requests_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("domain_requests_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
-	pgPolicy("domain_requests_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
-	pgPolicy("domain_requests_no_update", { as: "permissive", for: "update", to: ["authenticated"] }),
-	pgPolicy("domain_requests_no_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
+	unique("point_ledger_entitlement_key_key").on(table.entitlementKey),
+	pgPolicy("point_ledger_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("point_ledger_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	check("point_ledger_adjustment_reason", sql`(kind <> 'adjustment'::point_entry_kind_t) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))`),
+	check("point_ledger_entitlement_key_check", sql`length(entitlement_key) <= 200`),
+	check("point_ledger_reason_check", sql`(reason IS NULL) OR (length(reason) <= 500)`),
+	check("point_ledger_sign", sql`((kind = 'award'::point_entry_kind_t) AND (amount > 0)) OR ((kind = 'reversal'::point_entry_kind_t) AND (amount < 0)) OR ((kind = 'adjustment'::point_entry_kind_t) AND (amount <> 0))`),
+	check("point_ledger_source_check", sql`source = ANY (ARRAY['mobile_staff_scan'::text, 'mobile_staff_manual'::text, 'attendance_removed'::text, 'officer_adjustment'::text])`),
+]);
+
+export const eventStaffAssignments = pgTable("event_staff_assignments", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	eventId: uuid("event_id").notNull(),
+	userId: uuid("user_id").notNull(),
+	grantedBy: uuid("granted_by"),
+	grantedAt: timestamp("granted_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }),
+	revokedAt: timestamp("revoked_at", { withTimezone: true, mode: 'string' }),
+	revokedBy: uuid("revoked_by"),
+}, (table) => [
+	uniqueIndex("event_staff_assignments_active_uniq").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(revoked_at IS NULL)`),
+	index("event_staff_assignments_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(revoked_at IS NULL)`),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "event_staff_assignments_event_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.grantedBy],
+			foreignColumns: [profiles.id],
+			name: "event_staff_assignments_granted_by_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.revokedBy],
+			foreignColumns: [profiles.id],
+			name: "event_staff_assignments_revoked_by_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "event_staff_assignments_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("event_staff_assignments_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("event_staff_assignments_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	check("event_staff_assignments_revoke_pair", sql`((revoked_at IS NULL) AND (revoked_by IS NULL)) OR (revoked_at IS NOT NULL)`),
+]);
+
+export const eventPassTokens = pgTable("event_pass_tokens", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	eventId: uuid("event_id").notNull(),
+	userId: uuid("user_id").notNull(),
+	serial: uuid().notNull(),
+	tokenHash: text("token_hash").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	revokedAt: timestamp("revoked_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	uniqueIndex("event_pass_tokens_active_uniq").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")).where(sql`(revoked_at IS NULL)`),
+	index("event_pass_tokens_serial_idx").using("btree", table.serial.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "event_pass_tokens_event_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "event_pass_tokens_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("event_pass_tokens_token_hash_key").on(table.tokenHash),
+	check("event_pass_tokens_token_hash_check", sql`token_hash ~ '^[0-9a-f]{64}$'::text`),
+]);
+
+export const hacklantaEditions = pgTable("hacklanta_editions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	eventId: uuid("event_id"),
+	slug: text().notNull(),
+	name: text().notNull(),
+	startsAt: timestamp("starts_at", { withTimezone: true, mode: 'string' }).notNull(),
+	endsAt: timestamp("ends_at", { withTimezone: true, mode: 'string' }).notNull(),
+	timeZone: text("time_zone").default('America/New_York').notNull(),
+	venueName: text("venue_name"),
+	venueAddress: text("venue_address"),
+	lat: doublePrecision(),
+	lng: doublePrecision(),
+	theme: jsonb().default({}).notNull(),
+	themeOverride: hacklantaThemeOverrideT("theme_override").default('auto').notNull(),
+	scheduleTentative: boolean("schedule_tentative").default(true).notNull(),
+	publishedAt: timestamp("published_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "hacklanta_editions_event_id_fkey"
+		}).onDelete("set null"),
+	unique("hacklanta_editions_slug_key").on(table.slug),
+	pgPolicy("hacklanta_editions_public_read", { as: "permissive", for: "select", to: ["anon", "authenticated"], using: sql`((published_at IS NOT NULL) AND (published_at <= now()))` }),
+	pgPolicy("hacklanta_editions_admin_all", { as: "permissive", for: "all", to: ["authenticated"] }),
+	check("hacklanta_editions_lat_check", sql`(lat IS NULL) OR ((lat >= ('-90'::integer)::double precision) AND (lat <= (90)::double precision))`),
+	check("hacklanta_editions_lng_check", sql`(lng IS NULL) OR ((lng >= ('-180'::integer)::double precision) AND (lng <= (180)::double precision))`),
+	check("hacklanta_editions_name_check", sql`(length(name) >= 1) AND (length(name) <= 120)`),
+	check("hacklanta_editions_slug_check", sql`slug ~ '^[a-z0-9](?:[a-z0-9\-]{0,62}[a-z0-9])?$'::text`),
+	check("hacklanta_editions_time_order", sql`starts_at < ends_at`),
+	check("hacklanta_editions_time_zone_check", sql`(length(time_zone) >= 1) AND (length(time_zone) <= 64)`),
+	check("hacklanta_editions_venue_address_check", sql`(venue_address IS NULL) OR (length(venue_address) <= 500)`),
+	check("hacklanta_editions_venue_name_check", sql`(venue_name IS NULL) OR (length(venue_name) <= 200)`),
+]);
+
+export const hacklantaFloors = pgTable("hacklanta_floors", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	editionId: uuid("edition_id").notNull(),
+	name: text().notNull(),
+	sort: integer().default(0).notNull(),
+	imagePath: text("image_path"),
+	version: integer().default(1).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("hacklanta_floors_edition_idx").using("btree", table.editionId.asc().nullsLast().op("int4_ops"), table.sort.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.editionId],
+			foreignColumns: [hacklantaEditions.id],
+			name: "hacklanta_floors_edition_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("hacklanta_floors_public_read", { as: "permissive", for: "select", to: ["anon", "authenticated"], using: sql`hacklanta_edition_is_published(edition_id)` }),
+	pgPolicy("hacklanta_floors_admin_all", { as: "permissive", for: "all", to: ["authenticated"] }),
+	check("hacklanta_floors_image_path_check", sql`(image_path IS NULL) OR (length(image_path) <= 500)`),
+	check("hacklanta_floors_name_check", sql`(length(name) >= 1) AND (length(name) <= 80)`),
+	check("hacklanta_floors_version_check", sql`version >= 1`),
+]);
+
+export const hacklantaRooms = pgTable("hacklanta_rooms", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	editionId: uuid("edition_id").notNull(),
+	floorId: uuid("floor_id"),
+	name: text().notNull(),
+	kind: text().default('room').notNull(),
+	description: text(),
+	x: doublePrecision(),
+	y: doublePrecision(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("hacklanta_rooms_edition_idx").using("btree", table.editionId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.editionId],
+			foreignColumns: [hacklantaEditions.id],
+			name: "hacklanta_rooms_edition_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.floorId],
+			foreignColumns: [hacklantaFloors.id],
+			name: "hacklanta_rooms_floor_id_fkey"
+		}).onDelete("set null"),
+	pgPolicy("hacklanta_rooms_public_read", { as: "permissive", for: "select", to: ["anon", "authenticated"], using: sql`hacklanta_edition_is_published(edition_id)` }),
+	pgPolicy("hacklanta_rooms_admin_all", { as: "permissive", for: "all", to: ["authenticated"] }),
+	check("hacklanta_rooms_description_check", sql`(description IS NULL) OR (length(description) <= 1000)`),
+	check("hacklanta_rooms_kind_check", sql`kind ~ '^[a-z_]{1,32}$'::text`),
+	check("hacklanta_rooms_name_check", sql`(length(name) >= 1) AND (length(name) <= 120)`),
+	check("hacklanta_rooms_x_check", sql`(x IS NULL) OR ((x >= (0)::double precision) AND (x <= (1)::double precision))`),
+	check("hacklanta_rooms_y_check", sql`(y IS NULL) OR ((y >= (0)::double precision) AND (y <= (1)::double precision))`),
+]);
+
+export const hacklantaSessions = pgTable("hacklanta_sessions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	editionId: uuid("edition_id").notNull(),
+	key: text().notNull(),
+	title: text().notNull(),
+	description: text(),
+	kind: text().default('session').notNull(),
+	track: text(),
+	roomId: uuid("room_id"),
+	roomLabel: text("room_label"),
+	startsAt: timestamp("starts_at", { withTimezone: true, mode: 'string' }).notNull(),
+	endsAt: timestamp("ends_at", { withTimezone: true, mode: 'string' }),
+	status: hacklantaSessionStatusT().default('scheduled').notNull(),
+	pointsNote: text("points_note"),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("hacklanta_sessions_edition_idx").using("btree", table.editionId.asc().nullsLast().op("uuid_ops"), table.startsAt.asc().nullsLast().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.editionId],
+			foreignColumns: [hacklantaEditions.id],
+			name: "hacklanta_sessions_edition_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.roomId],
+			foreignColumns: [hacklantaRooms.id],
+			name: "hacklanta_sessions_room_id_fkey"
+		}).onDelete("set null"),
+	unique("hacklanta_sessions_key_uniq").on(table.editionId, table.key),
+	pgPolicy("hacklanta_sessions_public_read", { as: "permissive", for: "select", to: ["anon", "authenticated"], using: sql`hacklanta_edition_is_published(edition_id)` }),
+	pgPolicy("hacklanta_sessions_admin_all", { as: "permissive", for: "all", to: ["authenticated"] }),
+	check("hacklanta_sessions_description_check", sql`(description IS NULL) OR (length(description) <= 4000)`),
+	check("hacklanta_sessions_key_check", sql`key ~ '^[a-z0-9][a-z0-9\-]{0,79}$'::text`),
+	check("hacklanta_sessions_kind_check", sql`kind ~ '^[a-z_]{1,32}$'::text`),
+	check("hacklanta_sessions_points_note_check", sql`(points_note IS NULL) OR (length(points_note) <= 200)`),
+	check("hacklanta_sessions_room_label_check", sql`(room_label IS NULL) OR (length(room_label) <= 120)`),
+	check("hacklanta_sessions_time_order", sql`(ends_at IS NULL) OR (starts_at < ends_at)`),
+	check("hacklanta_sessions_title_check", sql`(length(title) >= 1) AND (length(title) <= 200)`),
+	check("hacklanta_sessions_track_check", sql`(track IS NULL) OR (length(track) <= 80)`),
+]);
+
+export const hacklantaLinks = pgTable("hacklanta_links", {
+	userId: uuid("user_id").primaryKey().notNull(),
+	applicationId: uuid("application_id").notNull(),
+	email: text("email").notNull(),
+	linkedAt: timestamp("linked_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "hacklanta_links_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("hacklanta_links_application_id_key").on(table.applicationId),
+	pgPolicy("hacklanta_links_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("hacklanta_links_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+]);
+
+export const hacklantaLinkCodes = pgTable("hacklanta_link_codes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	email: text("email").notNull(),
+	applicationId: uuid("application_id"),
+	codeHash: text("code_hash").notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	attempts: integer().default(0).notNull(),
+	maxAttempts: integer("max_attempts").default(5).notNull(),
+	consumedAt: timestamp("consumed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("hacklanta_link_codes_user_idx").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(consumed_at IS NULL)`),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "hacklanta_link_codes_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const accountDeletionJobs = pgTable("account_deletion_jobs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	status: text().default('pending').notNull(),
+	source: text().default('mobile').notNull(),
+	steps: jsonb().default({}).notNull(),
+	attempts: integer().default(0).notNull(),
+	lastError: text("last_error"),
+	requestedAt: timestamp("requested_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	unique("account_deletion_jobs_user_id_key").on(table.userId),
+	check("account_deletion_jobs_source_check", sql`source = ANY (ARRAY['mobile'::text, 'web'::text, 'admin'::text])`),
+	check("account_deletion_jobs_status_check", sql`status = ANY (ARRAY['pending'::text, 'completed'::text, 'failed'::text])`),
+]);
+
+export const announcements = pgTable("announcements", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	title: text().notNull(),
+	body: text().notNull(),
+	audience: announcementAudienceT().default('all').notNull(),
+	eventId: uuid("event_id"),
+	priority: announcementPriorityT().default('normal').notNull(),
+	deepLink: text("deep_link"),
+	publishedAt: timestamp("published_at", { withTimezone: true, mode: 'string' }),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }),
+	createdBy: uuid("created_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("announcements_feed_idx").using("btree", table.publishedAt.desc().nullsFirst().op("timestamptz_ops"), table.id.desc().nullsFirst().op("timestamptz_ops")).where(sql`(published_at IS NOT NULL)`),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [profiles.id],
+			name: "announcements_created_by_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.eventId],
+			foreignColumns: [events.id],
+			name: "announcements_event_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("announcements_read", { as: "permissive", for: "select", to: ["anon", "authenticated"], using: sql`announcement_visible_to(id, auth.uid())` }),
+	pgPolicy("announcements_admin_read", { as: "permissive", for: "select", to: ["authenticated"] }),
+	check("announcements_body_check", sql`(length(body) >= 1) AND (length(body) <= 4000)`),
+	check("announcements_deep_link_check", sql`(deep_link IS NULL) OR ((length(deep_link) <= 500) AND (deep_link ~ '^(progsu://|https://)'::text))`),
+	check("announcements_event_audience", sql`((audience = 'event_rsvps'::announcement_audience_t) AND (event_id IS NOT NULL)) OR (audience <> 'event_rsvps'::announcement_audience_t)`),
+	check("announcements_expiry", sql`(expires_at IS NULL) OR (published_at IS NULL) OR (expires_at > published_at)`),
+	check("announcements_title_check", sql`(length(title) >= 1) AND (length(title) <= 120)`),
+]);
+
+export const appleProviderTokens = pgTable("apple_provider_tokens", {
+	userId: uuid("user_id").primaryKey().notNull(),
+	clientId: text("client_id").notNull(),
+	refreshTokenCiphertext: text("refresh_token_ciphertext").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "apple_provider_tokens_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const deviceTokens = pgTable("device_tokens", {
+	token: text().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	env: text().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("device_tokens_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "device_tokens_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("device_tokens_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	check("device_tokens_env_check", sql`env = ANY (ARRAY['sandbox'::text, 'production'::text])`),
+	check("device_tokens_token_check", sql`token ~ '^[0-9a-fA-F]{32,200}$'::text`),
+]);
+
+export const pushOutbox = pgTable("push_outbox", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	announcementId: uuid("announcement_id"),
+	userId: uuid("user_id").notNull(),
+	status: text().default('pending').notNull(),
+	attempts: integer().default(0).notNull(),
+	lastError: text("last_error"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("push_outbox_pending_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = 'pending'::text)`),
+	foreignKey({
+			columns: [table.announcementId],
+			foreignColumns: [announcements.id],
+			name: "push_outbox_announcement_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "push_outbox_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("push_outbox_once").on(table.announcementId, table.userId),
+	check("push_outbox_status_check", sql`status = ANY (ARRAY['pending'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text])`),
 ]);
 
 export const events = pgTable("events", {
@@ -497,139 +1008,87 @@ export const events = pgTable("events", {
 	check("events_title_check", sql`(length(title) >= 1) AND (length(title) <= 200)`),
 ]);
 
-export const eventGuestRsvps = pgTable("event_guest_rsvps", {
+export const referralLinks = pgTable("referral_links", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	eventId: uuid("event_id").notNull(),
-	name: text().notNull(),
-	email: text("email").notNull(),
-	phone: text().notNull(),
-	status: rsvpStatusT().default('going').notNull(),
-	waitlistedAt: timestamp("waitlisted_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	statusChangedAt: timestamp("status_changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	checkinToken: uuid("checkin_token"),
-	claimToken: uuid("claim_token").defaultRandom().notNull(),
-}, (table) => [
-	uniqueIndex("event_guest_rsvps_checkin_token_idx").using("btree", table.checkinToken.asc().nullsLast().op("uuid_ops")).where(sql`(checkin_token IS NOT NULL)`),
-	uniqueIndex("event_guest_rsvps_claim_token_idx").using("btree", table.claimToken.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("event_guest_rsvps_event_email_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.email.asc().nullsLast().op("uuid_ops")),
-	index("event_guest_rsvps_event_status_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("enum_ops")),
-	foreignKey({
-			columns: [table.eventId],
-			foreignColumns: [events.id],
-			name: "event_guest_rsvps_event_id_fkey"
-		}).onDelete("cascade"),
-	pgPolicy("event_guest_rsvps_no_client_access", { as: "permissive", for: "all", to: ["anon", "authenticated"], using: sql`false`, withCheck: sql`false`  }),
-	check("event_guest_rsvps_status_check", sql`status = ANY (ARRAY['going'::rsvp_status_t, 'waitlisted'::rsvp_status_t, 'cancelled'::rsvp_status_t])`),
-]);
-
-export const historicalEventAttendances = pgTable("historical_event_attendances", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	eventId: uuid("event_id").notNull(),
-	legacyMemberId: uuid("legacy_member_id").notNull(),
-	registeredAt: timestamp("registered_at", { withTimezone: true, mode: 'string' }),
-	approvalStatus: text("approval_status"),
-	checkedInAt: timestamp("checked_in_at", { withTimezone: true, mode: 'string' }),
-	ticketName: text("ticket_name"),
-	sourceDetail: text("source_detail"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("historical_event_attendances_event_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.eventId],
-			foreignColumns: [events.id],
-			name: "historical_event_attendances_event_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.legacyMemberId],
-			foreignColumns: [legacyMembers.id],
-			name: "historical_event_attendances_legacy_member_id_fkey"
-		}).onDelete("cascade"),
-	unique("historical_event_attendances_unique").on(table.eventId, table.legacyMemberId),
-	pgPolicy("historical_event_attendances_admin_all", { as: "permissive", for: "all", to: ["public"], using: sql`is_admin(auth.uid())`, withCheck: sql`is_admin(auth.uid())`  }),
-]);
-
-export const majors = pgTable("majors", {
-	slug: text().primaryKey().notNull(),
+	slug: text().notNull(),
 	label: text().notNull(),
-	sortOrder: integer("sort_order").default(0).notNull(),
-	isActive: boolean("is_active").default(true).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	pgPolicy("majors_select_active", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(is_active = true)` }),
-	pgPolicy("majors_admin_write", { as: "permissive", for: "all", to: ["authenticated"] }),
-	pgPolicy("majors_select_active_anon", { as: "permissive", for: "select", to: ["anon"] }),
-	check("majors_label_check", sql`(length(label) >= 1) AND (length(label) <= 100)`),
-	check("majors_slug_check", sql`slug ~ '^[a-z0-9_]+$'::text`),
-]);
-
-export const smsDeliveries = pgTable("sms_deliveries", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	broadcastId: uuid("broadcast_id").notNull(),
-	phoneE164: text("phone_e164").notNull(),
-	status: text().default('queued').notNull(),
-	attempts: integer().default(0).notNull(),
-	twilioSid: text("twilio_sid"),
-	errorCode: text("error_code"),
-	errorMessage: text("error_message"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
-	sentAt: timestamp("sent_at", { withTimezone: true, mode: 'string' }),
-	statusUpdatedAt: timestamp("status_updated_at", { withTimezone: true, mode: 'string' }),
-}, (table) => [
-	index("sms_deliveries_broadcast_status_idx").using("btree", table.broadcastId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("text_ops")),
-	index("sms_deliveries_queued_idx").using("btree", table.createdAt.asc().nullsLast().op("uuid_ops"), table.id.asc().nullsLast().op("uuid_ops")).where(sql`(status = 'queued'::text)`),
-	foreignKey({
-			columns: [table.broadcastId],
-			foreignColumns: [smsBroadcasts.id],
-			name: "sms_deliveries_broadcast_id_fkey"
-		}).onDelete("cascade"),
-	unique("sms_deliveries_broadcast_id_phone_e164_key").on(table.broadcastId, table.phoneE164),
-	unique("sms_deliveries_twilio_sid_key").on(table.twilioSid),
-	check("sms_deliveries_phone_e164_check", sql`phone_e164 ~ '^\+1[2-9][0-9]{9}$'::text`),
-	check("sms_deliveries_status_check", sql`status = ANY (ARRAY['queued'::text, 'sending'::text, 'sent'::text, 'delivered'::text, 'undelivered'::text, 'failed'::text, 'suppressed'::text, 'skipped'::text, 'cancelled'::text])`),
-]);
-
-export const smsBroadcasts = pgTable("sms_broadcasts", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	body: text().notNull(),
-	audience: text().notNull(),
-	status: text().default('sending').notNull(),
-	recipientCount: integer("recipient_count").default(0).notNull(),
 	createdBy: uuid("created_by"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	cancelledAt: timestamp("cancelled_at", { withTimezone: true, mode: 'string' }),
-	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
-	eventId: uuid("event_id"),
+	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
-	index("sms_broadcasts_created_idx").using("btree", table.createdAt.desc().nullsFirst().op("uuid_ops"), table.id.desc().nullsFirst().op("timestamptz_ops")),
-	index("sms_broadcasts_event_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops")).where(sql`(event_id IS NOT NULL)`),
-	uniqueIndex("sms_broadcasts_one_sending_idx").using("btree", sql`(true)`).where(sql`((status = 'sending'::text) AND (audience = ANY (ARRAY['gsu'::text, 'all_consented'::text])))`),
+	index("referral_links_event_idx").using("btree", table.eventId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
 	foreignKey({
 			columns: [table.createdBy],
 			foreignColumns: [profiles.id],
-			name: "sms_broadcasts_created_by_fkey"
+			name: "referral_links_created_by_fkey"
 		}).onDelete("set null"),
 	foreignKey({
 			columns: [table.eventId],
 			foreignColumns: [events.id],
-			name: "sms_broadcasts_event_id_fkey"
-		}).onDelete("set null"),
-	check("sms_broadcasts_audience_check", sql`audience = ANY (ARRAY['gsu'::text, 'all_consented'::text, 'self_test'::text, 'event_reminder'::text])`),
-	check("sms_broadcasts_body_len", sql`(char_length(body) >= 1) AND (char_length(body) <= 480)`),
-	check("sms_broadcasts_status_check", sql`status = ANY (ARRAY['sending'::text, 'done'::text, 'cancelled'::text])`),
+			name: "referral_links_event_id_fkey"
+		}).onDelete("cascade"),
+	unique("referral_links_slug_key").on(table.slug),
+	check("referral_links_label_len", sql`(char_length(TRIM(BOTH FROM label)) >= 1) AND (char_length(TRIM(BOTH FROM label)) <= 80)`),
+	check("referral_links_slug_format", sql`slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'::text`),
 ]);
 
-export const smsSuppressions = pgTable("sms_suppressions", {
-	phoneE164: text("phone_e164").primaryKey().notNull(),
-	reason: text().notNull(),
-	note: text(),
+export const referralLinkHits = pgTable("referral_link_hits", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity({ name: "referral_link_hits_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
+	linkId: uuid("link_id").notNull(),
+	kind: referralHitKindT().notNull(),
+	isNewVisitor: boolean("is_new_visitor").default(true).notNull(),
+	occurredAt: timestamp("occurred_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("referral_link_hits_link_kind_idx").using("btree", table.linkId.asc().nullsLast().op("uuid_ops"), table.kind.asc().nullsLast().op("uuid_ops")),
+	index("referral_link_hits_link_time_idx").using("btree", table.linkId.asc().nullsLast().op("uuid_ops"), table.occurredAt.desc().nullsFirst().op("uuid_ops")),
+	foreignKey({
+			columns: [table.linkId],
+			foreignColumns: [referralLinks.id],
+			name: "referral_link_hits_link_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const sessionBookmarks = pgTable("session_bookmarks", {
+	userId: uuid("user_id").notNull(),
+	sessionId: uuid("session_id").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	pgPolicy("sms_suppressions_no_client_access", { as: "permissive", for: "all", to: ["anon", "authenticated"], using: sql`false`, withCheck: sql`false`  }),
-	check("sms_suppressions_phone_e164_check", sql`phone_e164 ~ '^\+1[2-9][0-9]{9}$'::text`),
-	check("sms_suppressions_reason_check", sql`reason = ANY (ARRAY['stop_keyword'::text, 'manual'::text, 'carrier'::text])`),
+	foreignKey({
+			columns: [table.sessionId],
+			foreignColumns: [hacklantaSessions.id],
+			name: "session_bookmarks_session_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "session_bookmarks_user_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.userId, table.sessionId], name: "session_bookmarks_pk"}),
+	pgPolicy("session_bookmarks_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("session_bookmarks_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
+	pgPolicy("session_bookmarks_delete_own", { as: "permissive", for: "delete", to: ["authenticated"] }),
+]);
+
+export const announcementReads = pgTable("announcement_reads", {
+	announcementId: uuid("announcement_id").notNull(),
+	userId: uuid("user_id").notNull(),
+	readAt: timestamp("read_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.announcementId],
+			foreignColumns: [announcements.id],
+			name: "announcement_reads_announcement_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [profiles.id],
+			name: "announcement_reads_user_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.announcementId, table.userId], name: "announcement_reads_pk"}),
+	pgPolicy("announcement_reads_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("announcement_reads_insert_own", { as: "permissive", for: "insert", to: ["authenticated"] }),
 ]);
 
 export const eventHosts = pgTable("event_hosts", {
@@ -690,7 +1149,7 @@ export const eventGuestAttendances = pgTable("event_guest_attendances", {
 	eventId: uuid("event_id").notNull(),
 	guestRsvpId: uuid("guest_rsvp_id").notNull(),
 	method: attendanceMethodT().notNull(),
-	checkedInBy: uuid("checked_in_by").notNull(),
+	checkedInBy: uuid("checked_in_by"),
 	checkedInAt: timestamp("checked_in_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	note: text(),
 }, (table) => [
@@ -778,6 +1237,37 @@ export const eventRsvps = pgTable("event_rsvps", {
 	pgPolicy("event_rsvps_no_client_delete", { as: "permissive", for: "delete", to: ["authenticated"] }),
 	check("event_rsvps_comment_check", sql`(comment IS NULL) OR (length(comment) <= 500)`),
 	check("event_rsvps_waitlist_consistency", sql`((status = 'waitlisted'::rsvp_status_t) AND (waitlisted_at IS NOT NULL)) OR ((status <> 'waitlisted'::rsvp_status_t) AND (waitlisted_at IS NULL))`),
+]);
+
+export const eventAttendanceAffiliations = pgTable("event_attendance_affiliations", {
+	eventId: uuid("event_id").notNull(),
+	userId: uuid("user_id").notNull(),
+	category: affiliationT().notNull(),
+	verifiedGsu: boolean("verified_gsu").notNull(),
+	institution: text(),
+	snapshotAt: timestamp("snapshot_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	source: text().notNull(),
+	correctedBy: uuid("corrected_by"),
+	correctionReason: text("correction_reason"),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("event_attendance_affiliations_event_idx").using("btree", table.eventId.asc().nullsLast().op("uuid_ops"), table.category.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.eventId, table.userId],
+			foreignColumns: [eventAttendances.eventId, eventAttendances.userId],
+			name: "event_attendance_affiliations_attendance_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.correctedBy],
+			foreignColumns: [profiles.id],
+			name: "event_attendance_affiliations_corrected_by_fkey"
+		}).onDelete("set null"),
+	primaryKey({ columns: [table.eventId, table.userId], name: "event_attendance_affiliations_pk"}),
+	pgPolicy("event_attendance_affiliations_select_own", { as: "permissive", for: "select", to: ["authenticated"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("event_attendance_affiliations_select_admin", { as: "permissive", for: "select", to: ["authenticated"] }),
+	check("event_attendance_affiliations_correction_pair", sql`((source = 'checkin_trigger'::text) AND (correction_reason IS NULL)) OR ((source = 'officer_correction'::text) AND (correction_reason IS NOT NULL))`),
+	check("event_attendance_affiliations_correction_reason_check", sql`(correction_reason IS NULL) OR ((length(correction_reason) >= 3) AND (length(correction_reason) <= 500))`),
+	check("event_attendance_affiliations_source_check", sql`source = ANY (ARRAY['checkin_trigger'::text, 'officer_correction'::text])`),
 ]);
 export const recruiterEligibleMembers = pgView("recruiter_eligible_members", {	id: uuid(),
 	firstName: text("first_name"),
