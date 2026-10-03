@@ -29,18 +29,35 @@ const urlOrEmpty = (host: RegExp | null) =>
 // updateProfileSchema below. Verify-email auto-populates school if the user
 // verifies first; this form also exposes a school picker so users who haven't
 // verified yet can still finish onboarding.
+// Affiliation is self-reported (never proof of GSU enrollment — that is
+// is_verified_gsu(), from a verified student email). School and major are
+// required only for students; nonstudents may leave both empty. Mirrors
+// lib/auth/onboarding.ts + is_fully_onboarded() (20261003100000).
+export const SELF_REPORTED_AFFILIATIONS = [
+  "gsu_student",
+  "other_student",
+  "nonstudent",
+] as const;
+
+const optionalTrimmed = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v.length === 0 ? null : v))
+    .nullable()
+    .optional();
+
 export const minimalSignupProfileSchema = z
   .object({
     firstName: z.string().trim().min(1).max(100),
     lastName: z.string().trim().min(1).max(100),
-    preferredName: z
-      .string()
-      .trim()
-      .max(100)
-      .transform((v) => (v.length === 0 ? null : v))
-      .nullable()
-      .optional(),
-    school: z.string().trim().min(1, "Pick your school").max(150),
+    preferredName: optionalTrimmed(100),
+    affiliation: z.enum(SELF_REPORTED_AFFILIATIONS, {
+      message: "Tell us how you're connected to Progsu",
+    }),
+    institutionName: optionalTrimmed(150),
+    school: optionalTrimmed(150),
     phoneNumber: z
       .string()
       .trim()
@@ -48,23 +65,19 @@ export const minimalSignupProfileSchema = z
       .refine(isValidUsPhone, US_PHONE_ERROR),
     // Slug validation is done at call time against the majors table so admins
     // can add majors without a redeploy. Zod just checks the shape here.
-    major: z.string().trim().min(1, "Pick a major from the list").max(100),
-    majorOtherText: z
-      .string()
-      .trim()
-      .max(100)
-      .transform((v) => (v.length === 0 ? null : v))
-      .nullable()
-      .optional(),
-    minor: z
-      .string()
-      .trim()
-      .max(150)
-      .transform((v) => (v.length === 0 ? null : v))
-      .nullable()
-      .optional(),
+    major: optionalTrimmed(100),
+    majorOtherText: optionalTrimmed(100),
+    minor: optionalTrimmed(150),
   })
   .strict()
+  .refine((v) => v.affiliation === "nonstudent" || Boolean(v.school), {
+    message: "Pick your school",
+    path: ["school"],
+  })
+  .refine((v) => v.affiliation === "nonstudent" || Boolean(v.major), {
+    message: "Pick a major from the list",
+    path: ["major"],
+  })
   .refine(
     (v) => v.major !== "other" || (v.majorOtherText && v.majorOtherText.trim().length > 0),
     { message: "Tell us your major", path: ["majorOtherText"] }

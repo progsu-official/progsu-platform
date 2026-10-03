@@ -12,7 +12,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   enqueueEventCancellation,
   enqueueEventReminder,
-  sendEventRsvpConfirmation,
   sendGuestRsvpConfirmation,
 } from "@/lib/email/events";
 import {
@@ -20,7 +19,11 @@ import {
   recordReferralConversion,
 } from "@/lib/events/referral-record";
 import { notifyRsvpInBackground } from "@/lib/discord/notify-rsvp";
-import type { RsvpAlertKind } from "@/lib/discord/rsvp-alert";
+import {
+  type EffectiveRsvpStatus,
+  rsvpAsMember,
+  runRsvpSideEffects,
+} from "@/lib/domain/rsvp";
 import { type ActionResult, err, ok } from "./result";
 import {
   SMS_CONSENT_COPY,
@@ -715,25 +718,6 @@ function revalidateMemberEventPaths(slug?: string) {
   }
 }
 
-type EffectiveRsvpStatus = "going" | "waitlisted" | "declined" | "cancelled";
-
-// Which RSVP transitions are worth announcing in Discord, and as what.
-//
-// Edges, not states: re-saving 'going' is not news, and a member who declines
-// an event they were never going to is not either. The three that are news
-// are someone joining, someone landing on the waitlist, and a seat opening
-// back up — that last one is the cue for whoever is watching the waitlist.
-function rsvpAlertKindFor(
-  previous: EffectiveRsvpStatus | null,
-  next: EffectiveRsvpStatus
-): RsvpAlertKind | null {
-  if (next === previous) return null;
-  if (next === "going") return "going";
-  if (next === "waitlisted") return "waitlisted";
-  if (previous === "going") return "cancelled";
-  return null;
-}
-
 export async function rsvpToEvent(
   eventId: string,
   desired: RsvpDesired,
@@ -750,76 +734,35 @@ export async function rsvpToEvent(
   const { supabase, user } = await requireAuthenticatedContext();
   if (!user) return err("UNAUTHORIZED", "Sign in required.");
 
-  // Read prior RSVP state + event's send_rsvp_email flag so we can decide
-  // whether to fire a confirmation email after the RPC. RLS on event_rsvps
-  // is self-only; events is readable via can_view_event.
-  const [{ data: priorRsvp }, { data: eventRow }] = await Promise.all([
-    supabase
-      .from("event_rsvps")
-      .select("status")
-      .eq("event_id", parsed.data.eventId)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("events")
-      .select("send_rsvp_email")
-      .eq("id", parsed.data.eventId)
-      .maybeSingle(),
-  ]);
-
-  const { data, error } = await supabase.rpc("rsvp_to_event", {
-    p_event_id: parsed.data.eventId,
-    p_desired: parsed.data.desired,
-    p_comment: parsed.data.comment ?? null,
+  const result = await rsvpAsMember(supabase, user.id, {
+    eventId: parsed.data.eventId,
+    desired: parsed.data.desired,
+    comment: parsed.data.comment ?? null,
   });
-  if (error) return mapPgError(error);
-
-  const status = typeof data === "string" ? (data as EffectiveRsvpStatus) : null;
-  if (!status) {
+  if (!result.ok) {
+    if (result.error.code) return mapPgError(result.error);
     return err("INTERNAL", "RSVP saved but effective status missing.");
   }
-
-  // Fire-and-forget: confirmation email only on transition INTO 'going' and
-  // only when the event has send_rsvp_email = true. Don't await — the user
-  // shouldn't wait for SMTP before seeing their RSVP succeed.
-  const previousStatus = priorRsvp?.status ?? null;
+  const { status, previous: previousStatus } = result;
 
   // Campaign attribution, on the transition into 'going' rather than on every
   // save — otherwise a member toggling their answer inflates the campaign that
-  // brought them. Awaited, unlike the email below, because it writes a dedupe
-  // flag back to the cookie and a lost flag double-counts.
+  // brought them. Awaited because it writes a dedupe flag back to the cookie
+  // and a lost flag double-counts.
   if (status === "going" && previousStatus !== "going") {
     await recordReferralConversion("rsvp");
   }
 
-  if (
-    status === "going" &&
-    previousStatus !== "going" &&
-    eventRow?.send_rsvp_email === true
-  ) {
-    void sendEventRsvpConfirmation({
-      eventId: parsed.data.eventId,
-      userId: user.id,
-    }).catch((e) => {
-      console.error("[events] rsvp confirmation send failed:", e);
-    });
-  }
-
-  // Discord announcement. The cookie read has to happen here rather than
-  // inside the notifier: notifyRsvpInBackground is deliberately not awaited,
+  // The cookie read has to happen here: the Discord notifier is not awaited,
   // and cookies() is only readable while the request is still alive.
-  const alertKind = rsvpAlertKindFor(
-    previousStatus as EffectiveRsvpStatus | null,
-    status
-  );
-  if (alertKind) {
-    notifyRsvpInBackground({
-      eventId: parsed.data.eventId,
-      kind: alertKind,
-      userId: user.id,
-      campaignSlug: await readReferralSlug(),
-    });
-  }
+  runRsvpSideEffects({
+    eventId: parsed.data.eventId,
+    userId: user.id,
+    previous: previousStatus,
+    status,
+    sendRsvpEmail: result.sendRsvpEmail,
+    campaignSlug: await readReferralSlug(),
+  });
 
   // We don't have the slug here (RPC only returns status); revalidate the
   // /events list + dashboard unconditionally and let the detail page

@@ -30,6 +30,7 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^1.8.0",
     "next": "15.5.15",
+    "passkit-generator": "^3.6.1",
     "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
     "react": "19.1.0",

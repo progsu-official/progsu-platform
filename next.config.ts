@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
       dynamic: 30,
       static: 180,
     },
+    // /admin/hacklanta uploads floor-plan images (bucket cap 5 MB) through a
+    // server action form; the 1 MB default rejects most real floor plans.
+    serverActions: {
+      bodySizeLimit: "6mb",
+    },
   },
 
   // /dashboard became /profile. Members have this bookmarked and it has gone

@@ -80,6 +80,10 @@ export const env = {
     process.env.FEATURE_SMS_EVENT_REMINDERS
   ),
 
+  // Native iOS app API (/api/mobile/v1/**). Route-edge kill switch: off makes
+  // every mobile route answer 404 feature_off before any auth work runs.
+  FEATURE_MOBILE_API: parseBool(process.env.FEATURE_MOBILE_API),
+
   // Dev-only onboarding walkthrough: forms come pre-filled with dummy values,
   // no OTP email is sent, the code is always 000000, and OTP rate limits are
   // skipped. Hard-gated on NODE_ENV like DEV_AUTO_LOGIN so it can never be
@@ -150,4 +154,60 @@ export function requireStaffCheckinToken(): string {
 
 export function requireWalletWalletApiKey(): string {
   return required("WALLETWALLET_API_KEY", process.env.WALLETWALLET_API_KEY);
+}
+
+function optional(value: string | undefined): string | null {
+  return value && value.trim().length > 0 ? value : null;
+}
+
+// PEM values arrive from Vercel env with literal "\n" sequences.
+function pem(value: string | undefined): string | null {
+  const v = optional(value);
+  return v ? v.replace(/\\n/g, "\n") : null;
+}
+
+// Optional integrations for the mobile API. Each getter returns null when any
+// piece is missing so callers can no-op (push) or answer 503 (Wallet, Apple).
+export function apnsConfig() {
+  const keyId = optional(process.env.APNS_KEY_ID);
+  const teamId = optional(process.env.APNS_TEAM_ID);
+  const privateKey = pem(process.env.APNS_PRIVATE_KEY);
+  const bundleId = optional(process.env.APNS_BUNDLE_ID);
+  if (!keyId || !teamId || !privateKey || !bundleId) return null;
+  return { keyId, teamId, privateKey, bundleId };
+}
+
+export function appleSignInConfig() {
+  const teamId = optional(process.env.APPLE_TEAM_ID);
+  const keyId = optional(process.env.APPLE_KEY_ID);
+  const privateKey = pem(process.env.APPLE_PRIVATE_KEY);
+  // Native Sign in with Apple: the app's bundle id. Web flow: the Services ID.
+  const clientId = optional(process.env.APPLE_SERVICES_ID);
+  if (!teamId || !keyId || !privateKey || !clientId) return null;
+  return { teamId, keyId, privateKey, clientId };
+}
+
+export function walletConfig() {
+  const passTypeId = optional(process.env.PASS_TYPE_ID);
+  const teamId = optional(process.env.PASS_TEAM_ID);
+  const signerCert = pem(process.env.PASS_SIGNER_CERT);
+  const signerKey = pem(process.env.PASS_SIGNER_KEY);
+  const wwdr = pem(process.env.PASS_WWDR_CERT);
+  if (!passTypeId || !teamId || !signerCert || !signerKey || !wwdr) return null;
+  return {
+    passTypeId,
+    teamId,
+    signerCert,
+    signerKey,
+    signerKeyPassphrase: optional(process.env.PASS_SIGNER_KEY_PASSPHRASE) ?? undefined,
+    wwdr,
+  };
+}
+
+// 32 bytes, base64. Used for AES-256-GCM of stored provider tokens.
+export function appEncryptionKey(): Buffer | null {
+  const v = optional(process.env.APP_ENCRYPTION_KEY);
+  if (!v) return null;
+  const key = Buffer.from(v, "base64");
+  return key.length === 32 ? key : null;
 }

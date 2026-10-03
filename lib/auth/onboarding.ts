@@ -24,20 +24,30 @@ export type OnboardingState = {
 };
 
 // Required profile fields for `profile_fields_complete` (as of migration
-// 20260427000300). Minimum bar for low-friction signup: first/last/school/major/
-// phone. class_standing, grad_year, grad_term, interested_roles live on the
+// 20261003100000). Everyone: first/last/phone + an affiliation other than
+// 'unknown'. Students (gsu_student, other_student) also need school + major;
+// nonstudents may leave both empty. class_standing, grad_year, grad_term, interested_roles live on the
 // soft /onboarding/links step (like resume, reachable in the funnel but not
 // hard-gated by nextStep below) rather than blocking here. Must stay in sync
 // with public.is_fully_onboarded(), smoke-onboarding-parity.ts is the merge gate.
-const REQUIRED_PROFILE_FIELDS: Array<
-  keyof ProfileRow
-> = [
+const REQUIRED_PROFILE_FIELDS: Array<keyof ProfileRow> = [
   "first_name",
   "last_name",
-  "school",
-  "major",
   "phone_number",
 ];
+const STUDENT_PROFILE_FIELDS: Array<keyof ProfileRow> = ["school", "major"];
+
+export const AFFILIATIONS = [
+  "gsu_student",
+  "other_student",
+  "nonstudent",
+  "unknown",
+] as const;
+export type Affiliation = (typeof AFFILIATIONS)[number];
+
+export function isStudentAffiliation(a: Affiliation | null | undefined): boolean {
+  return a === "gsu_student" || a === "other_student";
+}
 
 // Required-to-finish-onboarding consent types per reconciliation #12 + decision D3.
 // Age 18+ gate is tracked as its own consent row so it appears in the audit trail
@@ -58,6 +68,7 @@ type ProfileRow = {
   major: string | null;
   major_other_text: string | null;
   phone_number: string | null;
+  affiliation: Affiliation | null;
 };
 
 export async function loadOnboardingState(
@@ -69,7 +80,7 @@ export async function loadOnboardingState(
       supabase
         .from("profiles")
         .select(
-          "id, is_admin, student_email_verified, first_name, last_name, school, major, major_other_text, phone_number"
+          "id, is_admin, student_email_verified, first_name, last_name, school, major, major_other_text, phone_number, affiliation"
         )
         .eq("id", userId)
         .single(),
@@ -102,15 +113,21 @@ export async function loadOnboardingState(
   }
 
   const p = profile as ProfileRow;
-  const majorOtherSatisfied =
-    (p.major ?? "").trim().toLowerCase() !== "other" ||
-    (p.major_other_text ?? "").trim().length > 0;
+  const filled = (f: keyof ProfileRow) => {
+    const v = p[f];
+    if (typeof v === "string") return v.trim().length > 0;
+    return v !== null && v !== undefined;
+  };
+  const affiliation = p.affiliation ?? "unknown";
+  const studentFieldsSatisfied =
+    affiliation === "nonstudent" ||
+    (STUDENT_PROFILE_FIELDS.every(filled) &&
+      ((p.major ?? "").trim().toLowerCase() !== "other" ||
+        (p.major_other_text ?? "").trim().length > 0));
   const profileFieldsComplete =
-    REQUIRED_PROFILE_FIELDS.every((f) => {
-      const v = p[f];
-      if (typeof v === "string") return v.trim().length > 0;
-      return v !== null && v !== undefined;
-    }) && majorOtherSatisfied;
+    REQUIRED_PROFILE_FIELDS.every(filled) &&
+    affiliation !== "unknown" &&
+    studentFieldsSatisfied;
 
   const hasCurrentResume = Boolean(resume?.id);
 

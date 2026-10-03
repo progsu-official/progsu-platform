@@ -16,6 +16,9 @@ export interface OtpEmailProps {
   code: string;
   expiresInMinutes: number;
   siteName?: string;
+  // What the code proves, as a verb phrase. Defaults to the student-email flow.
+  purpose?: string;
+  title?: string;
 }
 
 export default function OtpEmail({
@@ -23,6 +26,7 @@ export default function OtpEmail({
   code,
   expiresInMinutes,
   siteName = "Progsu",
+  purpose = "verify your student email",
 }: OtpEmailProps) {
   const greeting = firstName ? `Hi ${firstName},` : "Hi,";
   return (
@@ -38,7 +42,7 @@ export default function OtpEmail({
 
             <Text className="text-slate-700">{greeting}</Text>
             <Text className="text-slate-700">
-              Use the code below to verify your student email. It expires in{" "}
+              Use the code below to {purpose}. It expires in{" "}
               {expiresInMinutes} minutes.
             </Text>
 
@@ -66,10 +70,11 @@ export function otpPlainText({
   code,
   expiresInMinutes,
   siteName = "Progsu",
+  title = "student email verification",
 }: OtpEmailProps): string {
   const greeting = firstName ? `Hi ${firstName},` : "Hi,";
   return [
-    `${siteName} — student email verification`,
+    `${siteName} — ${title}`,
     ``,
     greeting,
     ``,

@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/sms-deliveries",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/push-outbox",
+      "schedule": "* * * * *"
     }
   ]
 }

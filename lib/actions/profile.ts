@@ -93,17 +93,19 @@ export async function updateMinimalProfile(
   // Membership check against majors. Free-text slugs not in the table are
   // rejected — the only way to store a custom string is via major='other'
   // + major_other_text.
-  const { data: majorRow, error: majorErr } = await supabase
-    .from("majors")
-    .select("slug")
-    .eq("slug", data.major)
-    .eq("is_active", true)
-    .maybeSingle();
-  if (majorErr) return err("INTERNAL", majorErr.message);
-  if (!majorRow) {
-    return err("INVALID_INPUT", "Pick a major from the list.", {
-      field: "major",
-    });
+  if (data.major) {
+    const { data: majorRow, error: majorErr } = await supabase
+      .from("majors")
+      .select("slug")
+      .eq("slug", data.major)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (majorErr) return err("INTERNAL", majorErr.message);
+    if (!majorRow) {
+      return err("INVALID_INPUT", "Pick a major from the list.", {
+        field: "major",
+      });
+    }
   }
 
   const isOther = data.major === "other";
@@ -113,9 +115,11 @@ export async function updateMinimalProfile(
       first_name: data.firstName,
       last_name: data.lastName,
       preferred_name: data.preferredName ?? null,
-      school: data.school,
+      affiliation: data.affiliation,
+      institution_name: data.institutionName ?? null,
+      school: data.school ?? null,
       phone_number: data.phoneNumber,
-      major: data.major,
+      major: data.major ?? null,
       major_other_text: isOther ? (data.majorOtherText ?? null) : null,
       minor: data.minor ?? null,
     })
