@@ -187,6 +187,15 @@ export function appleSignInConfig() {
   return { teamId, keyId, privateKey, clientId };
 }
 
+// apple-app-site-association: null until the team id is set, so the file 404s
+// instead of advertising an app id Apple cannot match.
+export function appSiteAssociationConfig() {
+  const teamId = optional(process.env.APPLE_TEAM_ID);
+  if (!teamId) return null;
+  const bundleId = optional(process.env.IOS_BUNDLE_ID) ?? "com.progsu.app";
+  return { appId: `${teamId}.${bundleId}` };
+}
+
 export function walletConfig() {
   const passTypeId = optional(process.env.PASS_TYPE_ID);
   const teamId = optional(process.env.PASS_TEAM_ID);

@@ -26,6 +26,7 @@ const PUBLIC_PREFIXES = [
   "/home",
   "/login",
   "/privacy",
+  "/support",
   "/terms",
   "/auth/callback",
   "/tickets",
@@ -125,8 +126,10 @@ export const config = {
   // (only created during integration smoke scripts; they self-auth) + dev-login
   // (local-only Google OAuth bypass; self-gates on NODE_ENV) + team-finder-lookup/-discord
   // (server-to-server calls from hacklanta-ii, verify TEAM_FINDER_SYNC_SECRET themselves)
-  // + mobile API (bearer tokens, verified per route in lib/mobile/auth.ts).
+  // + mobile API (bearer tokens, verified per route in lib/mobile/auth.ts)
+  // + .well-known (Apple's CDN fetches the app-site-association file with no
+  // session; a /login redirect there silently breaks universal links).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/mobile/|api/smoketest-|api/dev-login|api/hacklanta/acceptance-sms|api/team-finder-lookup|api/team-finder-discord|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks/|api/cron/|api/mobile/|\\.well-known/|api/smoketest-|api/dev-login|api/hacklanta/acceptance-sms|api/team-finder-lookup|api/team-finder-discord|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
