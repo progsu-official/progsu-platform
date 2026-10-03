@@ -11,6 +11,7 @@ enum DeepLink: Equatable, Sendable {
     /// `progsu://pass`, `progsu://auth-callback?...`, and universal links on the members host mirroring web routes.
     static func parse(_ url: URL, universalLinkHost: String = AppConfiguration.current.universalLinkHost) -> DeepLink? {
         let parts: [String]
+        let isCustomScheme = url.scheme?.lowercased() == "progsu"
         if url.scheme?.lowercased() == "progsu" {
             guard let host = url.host?.lowercased() else { return nil }
             if host == "auth-callback" { return .authCallback(url) }
@@ -32,7 +33,8 @@ enum DeepLink: Equatable, Sendable {
             return valid(safe[1]) ? .announcement(id: safe[1]) : nil
         case ("hacklanta", 3) where ["session", "sessions"].contains(safe[1].lowercased()):
             return valid(safe[2]) ? .hacklantaSession(id: safe[2]) : nil
-        case ("pass", 1), ("checkin", 1):
+        // Custom scheme only: the AASA claims /events/*, /announcements/*, /hacklanta/sessions/*, never /checkin.
+        case ("pass", 1) where isCustomScheme, ("checkin", 1) where isCustomScheme:
             return .myQR
         default:
             return nil

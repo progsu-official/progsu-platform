@@ -56,6 +56,10 @@ struct SignInPanel: View {
             .buttonStyle(SecondaryButtonStyle())
             .disabled(busy || !model.configuration.isAuthConfigured)
 
+            #if DEBUG
+            DebugPasswordSignIn(busy: $busy)
+            #endif
+
             if busy { ProgressView("Signing in").font(.footnote) }
             if let err = model.signInError {
                 Label(err, systemImage: "exclamationmark.circle")
@@ -66,3 +70,50 @@ struct SignInPanel: View {
         .glassCard()
     }
 }
+
+#if DEBUG
+/// Email/password sign-in for the local Supabase stack. DEBUG builds only; Release never compiles it.
+private struct DebugPasswordSignIn: View {
+    @Environment(AppModel.self) private var model
+    @Binding var busy: Bool
+    @State private var shown = false
+    @State private var email = ""
+    @State private var password = ""
+
+    var body: some View {
+        Button("DEBUG: local email/password sign-in") { shown = true }
+            .font(.footnote)
+            .accessibilityIdentifier("debug-signin-open")
+            .sheet(isPresented: $shown) {
+                NavigationStack {
+                    Form {
+                        Section {
+                            Text("DEBUG BUILD ONLY. Signs in with a password account on the local Supabase stack. Not available in Release.")
+                                .font(.footnote)
+                        }
+                        Section {
+                            TextField("Email", text: $email)
+                                .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.emailAddress)
+                                .accessibilityIdentifier("debug-signin-email")
+                            SecureField("Password", text: $password)
+                                .accessibilityIdentifier("debug-signin-password")
+                        }
+                        Button("Sign in (local)") {
+                            busy = true
+                            Task {
+                                await model.debugSignIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+                                busy = false
+                                if model.signInError == nil { shown = false }
+                            }
+                        }
+                        .accessibilityIdentifier("debug-signin-submit")
+                        .disabled(busy || email.isEmpty || password.isEmpty)
+                        if let err = model.signInError { Text(err).font(.footnote).foregroundStyle(.red) }
+                    }
+                    .navigationTitle("DEBUG sign-in")
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { shown = false } } }
+                }
+            }
+    }
+}
+#endif

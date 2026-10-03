@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		052B8C8B98EE3F20A76C42FD /* error_unavailable.json in Resources */ = {isa = PBXBuildFile; fileRef = 9E1B5CB2D2F7FA69C19A1469 /* error_unavailable.json */; };
 		05C084ADEB465B6C9A09D01B /* StaffViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23BA2C8AC898326AC1EF0799 /* StaffViews.swift */; };
+		094F071CAAA7496A7D8FBE71 /* bookmarks.json in Resources */ = {isa = PBXBuildFile; fileRef = 55E19C3681C63EBE7B4603BA /* bookmarks.json */; };
 		0971579F195022B7AA25AF65 /* event_detail.json in Resources */ = {isa = PBXBuildFile; fileRef = 3CD9A1D97C9ADC64120CEFCB /* event_detail.json */; };
 		0A667818C81D35733BF28FAE /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9678015E0798DA57E1B48E5E /* AppConfiguration.swift */; };
 		0AA119F413DD842CF2E0BACD /* hacklanta_me.json in Resources */ = {isa = PBXBuildFile; fileRef = 1F616448C1ABF85455C0D13B /* hacklanta_me.json */; };
 		197E53D64ECEEC5CCA9FB607 /* events.json in Resources */ = {isa = PBXBuildFile; fileRef = 3913717683E3C72F81A7BCEE /* events.json */; };
 		1AF18681D5F23AC72AEF180F /* Nonce.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9752D503F11DAF8AB6710367 /* Nonce.swift */; };
+		1B24D0D8C7ECFF764E7D5038 /* staff_scan_invalid.json in Resources */ = {isa = PBXBuildFile; fileRef = 2C12F4C4A427661F39E33B06 /* staff_scan_invalid.json */; };
+		2719BE40CD71218C2E792770 /* error_forbidden.json in Resources */ = {isa = PBXBuildFile; fileRef = C0256B4C060DE2CA1A49B5F0 /* error_forbidden.json */; };
 		272DE0B94309B78AF5C9124F /* AnnouncementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EB7CB4A7D712AE0DD902F68 /* AnnouncementsView.swift */; };
 		2888E8ADFCCE4E3A51152324 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AEBC0CAA63B8307475D2BB1 /* DeepLink.swift */; };
 		2BCF88F338816D78787E2A65 /* ScreenshotUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7DE997E99D4FB2CB8CFE0FF /* ScreenshotUITests.swift */; };
@@ -23,6 +27,7 @@
 		3EB9E1D90CB75A3CBDF0E808 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6C3DB49ACFC65D61E42464 /* AppModel.swift */; };
 		405243F1A2BFA560DC22B4AA /* error.json in Resources */ = {isa = PBXBuildFile; fileRef = BF1D28521A6CB00EC19B208D /* error.json */; };
 		46BE50401ABF4747742B31A0 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08197B65E62B342525D1A5E2 /* ProfileView.swift */; };
+		47EF400D63D52FBA40722B0E /* config_hacklanta.json in Resources */ = {isa = PBXBuildFile; fileRef = 61E8E2E6DA4690219C71B656 /* config_hacklanta.json */; };
 		4CE98A2EF00326417729A044 /* staff_events.json in Resources */ = {isa = PBXBuildFile; fileRef = 186AB56AC202CF32BA9BA536 /* staff_events.json */; };
 		527DC83D5E410A1F97AF4C97 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94F474E7CAD56968ADF5C53 /* ModelDecodingTests.swift */; };
 		53BD5D67725E63910A9D846C /* HacklantaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B335FAA590AC0B8F6EF68678 /* HacklantaStore.swift */; };
@@ -32,11 +37,13 @@
 		5C1D96E750F8ACA4CFFED740 /* DiskCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF3F597F197FD10A06DB852 /* DiskCache.swift */; };
 		5F17D0DEEABD923DF20C9F90 /* roster.json in Resources */ = {isa = PBXBuildFile; fileRef = AA3777BED8CF9371B0F4C8C6 /* roster.json */; };
 		6264D738456DBDCC1E668ECB /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D6B3BD0AC6EA70DA109CFA1 /* Theme.swift */; };
+		65E8797EEA6467D10C336D0B /* events_anon.json in Resources */ = {isa = PBXBuildFile; fileRef = 117AA45ED39A35A198469E88 /* events_anon.json */; };
 		6AC73CF69EC6F3D1D7E1FF7F /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB925EE83FFE9133FF24269 /* HomeView.swift */; };
 		6B456F6B38B7E8EA081CE410 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 84FC49252CB47A2CE5C6AB78 /* Supabase */; };
 		6D88B2A92FE23ADC954C77E7 /* PointsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F55775FA295CE5F120C2E49 /* PointsView.swift */; };
 		76815F43D548D3D7B9E6E692 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE95A9E59C9CF91CB61C527 /* Components.swift */; };
 		7C2CDBF8AB2A4E87CC61BF5D /* pass.json in Resources */ = {isa = PBXBuildFile; fileRef = 8D724F97AF3D9EF56C6E1E14 /* pass.json */; };
+		89A9D6864C48019C59490765 /* error_not_found.json in Resources */ = {isa = PBXBuildFile; fileRef = 0B75AEFEF0F22A35FA7A01F5 /* error_not_found.json */; };
 		8A9EAF6FE35D11056D3090E0 /* hacklanta.json in Resources */ = {isa = PBXBuildFile; fileRef = 63EAE1F6BB6B515041F26EDF /* hacklanta.json */; };
 		8B8FBBEBB987FD1DA29FEACA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C9A47F34C02FA67E15DDAB1F /* Assets.xcassets */; };
 		8E45569CBCCE1D5F08E08580 /* HacklantaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C00DB3A3B602CBF395737AE /* HacklantaView.swift */; };
@@ -47,7 +54,9 @@
 		A54D1DEC55BD3DC7CA54185D /* EventsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B472AA9DF94AA5DE7644A032 /* EventsView.swift */; };
 		A6A5B95256D7C40A108568A1 /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C39E6ACE349B68D8B8FE7F4 /* EventDetailView.swift */; };
 		B11D21F5841434083525A39A /* announcements.json in Resources */ = {isa = PBXBuildFile; fileRef = 31CE0A262667BE65489AA2B0 /* announcements.json */; };
+		B2DF57757A71549E22049019 /* rsvp.json in Resources */ = {isa = PBXBuildFile; fileRef = 6DFBBCDEFDBEF87DAA276229 /* rsvp.json */; };
 		BCD4691D74D8F1DFFF1A7BC4 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD628754D87802D00FB09281 /* OnboardingFlow.swift */; };
+		BF9DFA81795E1727174931B1 /* event_detail_anon.json in Resources */ = {isa = PBXBuildFile; fileRef = D4FD789CB7BCD891F77F0103 /* event_detail_anon.json */; };
 		C057101B2F488B6D982007BA /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 27EE2CDA5854625E5B9C2A28 /* README.md */; };
 		C4271A8DBB6DD0A78DFEEE04 /* CalendarAndWallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B988093EE92F3EAC2B153F1 /* CalendarAndWallet.swift */; };
 		C7761A3C4DEAE20DF5EAF152 /* JSONCoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8378181C0880D3E1BB30DB5E /* JSONCoding.swift */; };
@@ -55,13 +64,17 @@
 		CBE2A17C734FDAAD47EB2156 /* hacklanta-ii-schedule.json in Resources */ = {isa = PBXBuildFile; fileRef = 3CA909F4C5BA135E2ECFC998 /* hacklanta-ii-schedule.json */; };
 		D59630C23E208B80EE33610B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56502F5F24B60D9D53EC9F4E /* PrivacyInfo.xcprivacy */; };
 		D70D33D1D2A1F79C4D3447CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 578D51B850BB3EAD643D84E0 /* APIClient.swift */; };
+		DBDEEF5C99E1817DF3071D5B /* me_delete.json in Resources */ = {isa = PBXBuildFile; fileRef = 3AF4FF587D65D5B7274E526E /* me_delete.json */; };
 		E1DAFCE228231C314E98F0B2 /* QRScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C0E0EA448567AA0A099BBE /* QRScanner.swift */; };
 		E48C033BFC7588A34D3FD812 /* QRCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0853AB4CB9DD64E6CFEBB3F /* QRCode.swift */; };
+		E4D4013CC4CC8904E0CE027E /* me_not_onboarded.json in Resources */ = {isa = PBXBuildFile; fileRef = D295A60CDEFDFE050936D279 /* me_not_onboarded.json */; };
 		EDBCE8E67E08551002A093AB /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = D09B8F2118707B1593E1121C /* config.json */; };
 		F30170012F2C781D7A4E40D0 /* ProgsuAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23CAA23BF212CF6A2C20459 /* ProgsuAPI.swift */; };
 		F42FC40F6357DD27F65C0822 /* ProgsuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31032AB9484515EE0F68E3CE /* ProgsuApp.swift */; };
+		F83DBD4C9363B6C9438AF738 /* staff_scan_checked_in.json in Resources */ = {isa = PBXBuildFile; fileRef = 98B205E2823A548B7B9C9E64 /* staff_scan_checked_in.json */; };
 		F982782063F9FC3346E68831 /* LogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D25850B33478E517A7CC2BE /* LogicTests.swift */; };
 		F9D75D89944C71BC08AF587B /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953C5E4AC3371B17C7B1D11B /* API.swift */; };
+		FECEB6155A6D08876BD2064A /* LocalE2EUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 432AB9061E0C7766E6F46CAF /* LocalE2EUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +99,8 @@
 		08197B65E62B342525D1A5E2 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		0A1827CDF8EC1ED0BAAC9B51 /* my_events.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = my_events.json; sourceTree = "<group>"; };
 		0AA1DC710EC658E19132834A /* Progsu.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Progsu.entitlements; sourceTree = "<group>"; };
+		0B75AEFEF0F22A35FA7A01F5 /* error_not_found.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = error_not_found.json; sourceTree = "<group>"; };
+		117AA45ED39A35A198469E88 /* events_anon.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = events_anon.json; sourceTree = "<group>"; };
 		186AB56AC202CF32BA9BA536 /* staff_events.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = staff_events.json; sourceTree = "<group>"; };
 		1D25850B33478E517A7CC2BE /* LogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogicTests.swift; sourceTree = "<group>"; };
 		1F55775FA295CE5F120C2E49 /* PointsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointsView.swift; sourceTree = "<group>"; };
@@ -95,22 +110,28 @@
 		27EE2CDA5854625E5B9C2A28 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		29DAD9E9D515A1CDE7A2F924 /* HacklantaTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HacklantaTheme.swift; sourceTree = "<group>"; };
 		2C00DB3A3B602CBF395737AE /* HacklantaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HacklantaView.swift; sourceTree = "<group>"; };
+		2C12F4C4A427661F39E33B06 /* staff_scan_invalid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = staff_scan_invalid.json; sourceTree = "<group>"; };
 		2EF3F597F197FD10A06DB852 /* DiskCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskCache.swift; sourceTree = "<group>"; };
 		31032AB9484515EE0F68E3CE /* ProgsuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgsuApp.swift; sourceTree = "<group>"; };
 		31CE0A262667BE65489AA2B0 /* announcements.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = announcements.json; sourceTree = "<group>"; };
 		3913717683E3C72F81A7BCEE /* events.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = events.json; sourceTree = "<group>"; };
+		3AF4FF587D65D5B7274E526E /* me_delete.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = me_delete.json; sourceTree = "<group>"; };
 		3CA909F4C5BA135E2ECFC998 /* hacklanta-ii-schedule.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "hacklanta-ii-schedule.json"; sourceTree = "<group>"; };
 		3CD9A1D97C9ADC64120CEFCB /* event_detail.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = event_detail.json; sourceTree = "<group>"; };
 		3EA6C9DAC965E8743E37E21D /* SignInPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInPanel.swift; sourceTree = "<group>"; };
+		432AB9061E0C7766E6F46CAF /* LocalE2EUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalE2EUITests.swift; sourceTree = "<group>"; };
 		4BE95A9E59C9CF91CB61C527 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		55E19C3681C63EBE7B4603BA /* bookmarks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = bookmarks.json; sourceTree = "<group>"; };
 		56502F5F24B60D9D53EC9F4E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		578D51B850BB3EAD643D84E0 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5A6759EA31644E3B512D9F80 /* ProgsuTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ProgsuTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B988093EE92F3EAC2B153F1 /* CalendarAndWallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarAndWallet.swift; sourceTree = "<group>"; };
+		61E8E2E6DA4690219C71B656 /* config_hacklanta.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config_hacklanta.json; sourceTree = "<group>"; };
 		63EAE1F6BB6B515041F26EDF /* hacklanta.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = hacklanta.json; sourceTree = "<group>"; };
 		652F78B211559F51DD708A96 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		6A94CF6ADF5B5FA2B3E47532 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		6C39E6ACE349B68D8B8FE7F4 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
+		6DFBBCDEFDBEF87DAA276229 /* rsvp.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = rsvp.json; sourceTree = "<group>"; };
 		79DD9FE0BFFB7DDDE095EA10 /* MyQRView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyQRView.swift; sourceTree = "<group>"; };
 		7A6C3DB49ACFC65D61E42464 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		7AEBC0CAA63B8307475D2BB1 /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
@@ -121,7 +142,9 @@
 		9678015E0798DA57E1B48E5E /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		9752D503F11DAF8AB6710367 /* Nonce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nonce.swift; sourceTree = "<group>"; };
 		981BC262D57BDE0F6A98AC56 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		98B205E2823A548B7B9C9E64 /* staff_scan_checked_in.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = staff_scan_checked_in.json; sourceTree = "<group>"; };
 		9CC00EC651DAD52C9B2CBDF4 /* SmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeUITests.swift; sourceTree = "<group>"; };
+		9E1B5CB2D2F7FA69C19A1469 /* error_unavailable.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = error_unavailable.json; sourceTree = "<group>"; };
 		9EB7CB4A7D712AE0DD902F68 /* AnnouncementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnouncementsView.swift; sourceTree = "<group>"; };
 		A23CAA23BF212CF6A2C20459 /* ProgsuAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgsuAPI.swift; sourceTree = "<group>"; };
 		AA3777BED8CF9371B0F4C8C6 /* roster.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = roster.json; sourceTree = "<group>"; };
@@ -130,12 +153,15 @@
 		B472AA9DF94AA5DE7644A032 /* EventsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventsView.swift; sourceTree = "<group>"; };
 		BD628754D87802D00FB09281 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		BF1D28521A6CB00EC19B208D /* error.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = error.json; sourceTree = "<group>"; };
+		C0256B4C060DE2CA1A49B5F0 /* error_forbidden.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = error_forbidden.json; sourceTree = "<group>"; };
 		C7E75C40F8C7CA13C785F890 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C846134A36E2A59331B3921A /* points.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = points.json; sourceTree = "<group>"; };
 		C94F474E7CAD56968ADF5C53 /* ModelDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDecodingTests.swift; sourceTree = "<group>"; };
 		C9A47F34C02FA67E15DDAB1F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D09B8F2118707B1593E1121C /* config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config.json; sourceTree = "<group>"; };
 		D0C0E0EA448567AA0A099BBE /* QRScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanner.swift; sourceTree = "<group>"; };
+		D295A60CDEFDFE050936D279 /* me_not_onboarded.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = me_not_onboarded.json; sourceTree = "<group>"; };
+		D4FD789CB7BCD891F77F0103 /* event_detail_anon.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = event_detail_anon.json; sourceTree = "<group>"; };
 		D897AF33F335709187280B6B /* staff_scan.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = staff_scan.json; sourceTree = "<group>"; };
 		DAB925EE83FFE9133FF24269 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E67B710D7020066B6580A246 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
@@ -249,6 +275,7 @@
 		72D8207D60E210AF8FDD3BAC /* ProgsuUITests */ = {
 			isa = PBXGroup;
 			children = (
+				432AB9061E0C7766E6F46CAF /* LocalE2EUITests.swift */,
 				E7DE997E99D4FB2CB8CFE0FF /* ScreenshotUITests.swift */,
 				9CC00EC651DAD52C9B2CBDF4 /* SmokeUITests.swift */,
 			);
@@ -372,20 +399,32 @@
 			isa = PBXGroup;
 			children = (
 				31CE0A262667BE65489AA2B0 /* announcements.json */,
+				55E19C3681C63EBE7B4603BA /* bookmarks.json */,
+				61E8E2E6DA4690219C71B656 /* config_hacklanta.json */,
 				D09B8F2118707B1593E1121C /* config.json */,
+				C0256B4C060DE2CA1A49B5F0 /* error_forbidden.json */,
+				0B75AEFEF0F22A35FA7A01F5 /* error_not_found.json */,
+				9E1B5CB2D2F7FA69C19A1469 /* error_unavailable.json */,
 				BF1D28521A6CB00EC19B208D /* error.json */,
+				D4FD789CB7BCD891F77F0103 /* event_detail_anon.json */,
 				3CD9A1D97C9ADC64120CEFCB /* event_detail.json */,
+				117AA45ED39A35A198469E88 /* events_anon.json */,
 				3913717683E3C72F81A7BCEE /* events.json */,
 				1F616448C1ABF85455C0D13B /* hacklanta_me.json */,
 				3CA909F4C5BA135E2ECFC998 /* hacklanta-ii-schedule.json */,
 				63EAE1F6BB6B515041F26EDF /* hacklanta.json */,
+				3AF4FF587D65D5B7274E526E /* me_delete.json */,
+				D295A60CDEFDFE050936D279 /* me_not_onboarded.json */,
 				25CEB43558CB2339B1C79DFD /* me.json */,
 				0A1827CDF8EC1ED0BAAC9B51 /* my_events.json */,
 				8D724F97AF3D9EF56C6E1E14 /* pass.json */,
 				C846134A36E2A59331B3921A /* points.json */,
 				27EE2CDA5854625E5B9C2A28 /* README.md */,
 				AA3777BED8CF9371B0F4C8C6 /* roster.json */,
+				6DFBBCDEFDBEF87DAA276229 /* rsvp.json */,
 				186AB56AC202CF32BA9BA536 /* staff_events.json */,
+				98B205E2823A548B7B9C9E64 /* staff_scan_checked_in.json */,
+				2C12F4C4A427661F39E33B06 /* staff_scan_invalid.json */,
 				D897AF33F335709187280B6B /* staff_scan.json */,
 			);
 			path = Fixtures;
@@ -546,20 +585,32 @@
 			files = (
 				C057101B2F488B6D982007BA /* README.md in Resources */,
 				B11D21F5841434083525A39A /* announcements.json in Resources */,
+				094F071CAAA7496A7D8FBE71 /* bookmarks.json in Resources */,
 				EDBCE8E67E08551002A093AB /* config.json in Resources */,
+				47EF400D63D52FBA40722B0E /* config_hacklanta.json in Resources */,
 				405243F1A2BFA560DC22B4AA /* error.json in Resources */,
+				2719BE40CD71218C2E792770 /* error_forbidden.json in Resources */,
+				89A9D6864C48019C59490765 /* error_not_found.json in Resources */,
+				052B8C8B98EE3F20A76C42FD /* error_unavailable.json in Resources */,
 				0971579F195022B7AA25AF65 /* event_detail.json in Resources */,
+				BF9DFA81795E1727174931B1 /* event_detail_anon.json in Resources */,
 				197E53D64ECEEC5CCA9FB607 /* events.json in Resources */,
+				65E8797EEA6467D10C336D0B /* events_anon.json in Resources */,
 				CBE2A17C734FDAAD47EB2156 /* hacklanta-ii-schedule.json in Resources */,
 				8A9EAF6FE35D11056D3090E0 /* hacklanta.json in Resources */,
 				0AA119F413DD842CF2E0BACD /* hacklanta_me.json in Resources */,
 				8F54800009EBFDA0D22A8EA9 /* me.json in Resources */,
+				DBDEEF5C99E1817DF3071D5B /* me_delete.json in Resources */,
+				E4D4013CC4CC8904E0CE027E /* me_not_onboarded.json in Resources */,
 				30B56C433694C747FEFD47C9 /* my_events.json in Resources */,
 				7C2CDBF8AB2A4E87CC61BF5D /* pass.json in Resources */,
 				9487AC43FB9469469369BA39 /* points.json in Resources */,
 				5F17D0DEEABD923DF20C9F90 /* roster.json in Resources */,
+				B2DF57757A71549E22049019 /* rsvp.json in Resources */,
 				4CE98A2EF00326417729A044 /* staff_events.json in Resources */,
 				57BAD371C0115A3B9F4F35F4 /* staff_scan.json in Resources */,
+				F83DBD4C9363B6C9438AF738 /* staff_scan_checked_in.json in Resources */,
+				1B24D0D8C7ECFF764E7D5038 /* staff_scan_invalid.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -618,6 +669,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FECEB6155A6D08876BD2064A /* LocalE2EUITests.swift in Sources */,
 				2BCF88F338816D78787E2A65 /* ScreenshotUITests.swift in Sources */,
 				33CFEBCAA9230B0F4B4C0A59 /* SmokeUITests.swift in Sources */,
 			);

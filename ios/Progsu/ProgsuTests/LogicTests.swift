@@ -116,6 +116,7 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(p("progsu://announcement/a1"), .announcement(id: "a1"))
         XCTAssertEqual(p("progsu://hacklanta/session/opening"), .hacklantaSession(id: "opening"))
         XCTAssertEqual(p("progsu://pass"), .myQR)
+        XCTAssertNil(p("https://members.progsu.com/checkin"), "AASA never claims /checkin")
         if case .authCallback = p("progsu://auth-callback?code=x") {} else { XCTFail() }
     }
     func testUniversalLinks() {
@@ -157,8 +158,9 @@ final class APIErrorTests: XCTestCase {
         XCTAssertEqual(StubProtocol.requests.count, 2)
         XCTAssertEqual(StubProtocol.requests[0].value(forHTTPHeaderField: "Authorization"), "Bearer tok")
 
+        // Same envelope lib/mobile/http.ts errorResponse() emits for not_onboarded (HTTP 403).
         StubProtocol.reset()
-        StubProtocol.responses = [(403, String(data: try fixture("error"), encoding: .utf8)!)]
+        StubProtocol.responses = [(403, #"{"ok":false,"error":{"code":"not_onboarded","message":"Finish onboarding first."},"requestId":"r"}"#)]
         do {
             let _: Me = try await client.get("me", auth: .required)
             XCTFail("expected error")
@@ -166,6 +168,18 @@ final class APIErrorTests: XCTestCase {
             XCTAssertEqual(e, .notOnboarded("Finish onboarding first."))
         }
         XCTAssertEqual(StubProtocol.requests.count, 1, "4xx must not retry")
+
+        // Real captured 401: the client refreshes the token exactly once, then surfaces it.
+        let unauth = String(data: try fixture("error"), encoding: .utf8)!
+        StubProtocol.reset()
+        StubProtocol.responses = [(401, unauth), (401, unauth)]
+        do {
+            let _: Me = try await client.get("me", auth: .required)
+            XCTFail("expected error")
+        } catch let e as APIError {
+            XCTAssertEqual(e, .unauthenticated("Sign in required."))
+        }
+        XCTAssertEqual(StubProtocol.requests.count, 2, "one forced refresh, no retries")
     }
 
     func testPostWithoutIdempotencyKeyDoesNotRetry() async throws {

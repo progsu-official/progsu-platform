@@ -83,6 +83,14 @@ actor AuthService {
         }
     }
 
+    #if DEBUG
+    /// Local-stack testing only. Never compiled into Release; production has no password accounts.
+    func debugSignInWithPassword(email: String, password: String) async throws {
+        guard let auth = client?.auth else { throw AuthServiceError.notConfigured }
+        _ = try await auth.signIn(email: email, password: password)
+    }
+    #endif
+
     /// Handles progsu://auth-callback if it arrives via `onOpenURL` rather than the web auth session.
     nonisolated func handle(url: URL) {
         client?.auth.handle(url)

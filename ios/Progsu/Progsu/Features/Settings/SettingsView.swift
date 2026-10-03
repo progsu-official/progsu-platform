@@ -70,6 +70,7 @@ struct DeleteAccountView: View {
     @State private var typed = ""
     @State private var busy = false
     @State private var error: String?
+    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -78,10 +79,13 @@ struct DeleteAccountView: View {
                     Label("Your profile, RSVPs, check-in history and points are deleted.", systemImage: "trash")
                     Label("Your check-in code stops working immediately.", systemImage: "qrcode")
                     Label("If you signed in with Apple, we revoke Progsu's access to your Apple ID.", systemImage: "apple.logo")
-                    Label("This can't be undone. Records we must keep by law, like audit entries, are retained without your profile.", systemImage: "exclamationmark.triangle")
+                    Label("This can't be undone. Audit log entries remain, with your profile detached.", systemImage: "exclamationmark.triangle")
                 }
                 Section("Type DELETE to confirm") {
                     TextField("DELETE", text: $typed).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                        .focused($fieldFocused)
+                        .submitLabel(.done)
+                        .onSubmit { fieldFocused = false }
                         .accessibilityIdentifier("delete-confirm-field")
                 }
                 Section {
@@ -91,6 +95,8 @@ struct DeleteAccountView: View {
                     if let error { Label(error, systemImage: "exclamationmark.circle").foregroundStyle(theme.destructive).font(.footnote) }
                 }.listRowBackground(Color.clear)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: typed) { _, new in if new == "DELETE" { fieldFocused = false } }
             .navigationTitle("Delete account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }

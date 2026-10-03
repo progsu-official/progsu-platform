@@ -21,47 +21,85 @@ final class ModelDecodingTests: XCTestCase {
         let c = try decode(AppConfig.self, "config")
         XCTAssertEqual(c.hacklanta?.slug, "hacklanta-ii")
         XCTAssertEqual(c.hacklanta?.themeOverride, .auto)
-        XCTAssertEqual(c.hacklanta?.scheduleTentative, true)
+        XCTAssertGreaterThanOrEqual(c.minSupportedBuild, 1)
         XCTAssertFalse(c.features.wallet)
     }
 
     func testMe() throws {
         let me = try decode(Me.self, "me")
-        XCTAssertTrue(me.isStaff)
-        XCTAssertEqual(me.affiliation, .gsuStudent)
-        XCTAssertEqual(me.onboarding.nextStep, "consent")
-        XCTAssertFalse(me.onboarding.fullyOnboarded)
-        XCTAssertEqual(me.consentVersions["privacy_policy"], "v8")
-        XCTAssertEqual(me.nameForDisplay, "Pat Lee")
+        XCTAssertTrue(me.onboarding.fullyOnboarded)
+        XCTAssertNil(me.onboarding.nextStep, "a fully onboarded member has no next step")
+        XCTAssertEqual(me.isStaff, !me.staffAssignments.isEmpty)
+        XCTAssertNotEqual(me.affiliation, .unknown)
+        XCTAssertNotNil(me.consentVersions["privacy_policy"])
+        XCTAssertFalse(me.nameForDisplay.isEmpty)
+        XCTAssertNotEqual(me.nameForDisplay, me.email, "first/last name should win over email")
+
+        let fresh = try decode(Me.self, "me_not_onboarded")
+        XCTAssertFalse(fresh.onboarding.fullyOnboarded)
+        XCTAssertNotNil(fresh.onboarding.nextStep)
+        XCTAssertFalse(fresh.isStaff)
     }
 
     func testEvents() throws {
         let page = try decode(Page<EventSummary>.self, "events")
-        XCTAssertEqual(page.items.count, 1)
-        XCTAssertNotNil(page.nextCursor)
+        XCTAssertFalse(page.items.isEmpty)
+        XCTAssertEqual(Set(page.items.map(\.id)).count, page.items.count)
+        XCTAssertEqual(page.items.map(\.startsAt), page.items.map(\.startsAt).sorted(), "upcoming list is chronological")
+        for e in page.items { XCTAssertNotNil(TimeZone(identifier: e.timeZone)) }
+        XCTAssertFalse(try decode(Page<EventSummary>.self, "events_anon").items.isEmpty)
+
         let detail = try decode(EventDetail.self, "event_detail")
-        XCTAssertEqual(detail.viewer?.rsvpStatus, .going)
-        XCTAssertEqual(detail.startsAt, JSONCoding.parseISO8601("2026-10-15T22:00:00Z"))
-        XCTAssertTrue(detail.rsvpOpen(now: JSONCoding.parseISO8601("2026-10-01T00:00:00Z")!))
-        XCTAssertFalse(detail.rsvpOpen(now: JSONCoding.parseISO8601("2026-10-17T00:00:00Z")!))
-        XCTAssertEqual(try decode(ItemList<MyEvent>.self, "my_events").items.first?.rsvpStatus, .going)
+        XCTAssertNotNil(detail.viewer, "authenticated detail carries a viewer block")
+        XCTAssertNotNil(detail.viewer?.rsvpStatus)
+        XCTAssertLessThan(detail.startsAt, detail.endsAt)
+        XCTAssertTrue(detail.rsvpOpen(now: detail.startsAt.addingTimeInterval(-3600)))
+        XCTAssertFalse(detail.rsvpOpen(now: detail.endsAt.addingTimeInterval(60)))
+        XCTAssertNil(try decode(EventDetail.self, "event_detail_anon").viewer, "anonymous detail has no viewer")
+
+        let mine = try decode(ItemList<MyEvent>.self, "my_events").items
+        XCTAssertFalse(mine.isEmpty)
+        XCTAssertTrue(mine.allSatisfy { $0.rsvpStatus != nil })
+        XCTAssertNotNil(try decode(RSVPResult.self, "rsvp").effectiveStatus)
     }
 
     func testPassPointsAnnouncements() throws {
-        XCTAssertEqual(try decode(CheckInPass.self, "pass").shortCode, "SYNTHETI")
+        let pass = try decode(CheckInPass.self, "pass")
+        XCTAssertFalse(pass.qrPayload.isEmpty)
+        XCTAssertEqual(pass.shortCode.count, 8)
+        XCTAssertEqual(pass.shortCode, pass.shortCode.uppercased())
+
         let p = try decode(PointsSummary.self, "points")
-        XCTAssertEqual(p.items.map(\.amount), [5, -5])
-        XCTAssertEqual(p.items[0].label, "Intro to Swift")
-        XCTAssertEqual(p.items[1].label, "Duplicate")
-        let a = try decode(Page<Announcement>.self, "announcements").items[0]
-        XCTAssertEqual(a.read, false)
-        XCTAssertTrue(a.isImportant)
+        XCTAssertFalse(p.items.isEmpty)
+        XCTAssertEqual(p.balance, p.items.map(\.amount).reduce(0, +), "single-page ledger sums to the balance")
+        XCTAssertTrue(p.items.allSatisfy { !$0.label.isEmpty })
+
+        let items = try decode(Page<Announcement>.self, "announcements").items
+        XCTAssertFalse(items.isEmpty)
+        XCTAssertEqual(items.map(\.publishedAt), items.map(\.publishedAt).sorted(by: >), "feed is newest first")
+        for a in items { XCTAssertEqual(a.isImportant, a.priority == "important") }
     }
 
     func testStaff() throws {
-        XCTAssertEqual(try decode(ItemList<StaffEvent>.self, "staff_events").items[0].checkedInCount, 3)
-        XCTAssertEqual(try decode(ScanResponse.self, "staff_scan").result, .alreadyCheckedIn)
-        XCTAssertEqual(try decode(ItemList<RosterEntry>.self, "roster").items[1].rsvpStatus, .waitlisted)
+        let events = try decode(ItemList<StaffEvent>.self, "staff_events").items
+        XCTAssertFalse(events.isEmpty)
+        for e in events { XCTAssertGreaterThanOrEqual(e.checkedInCount, 0); XCTAssertGreaterThanOrEqual(e.goingCount, 0) }
+
+        let first = try decode(ScanResponse.self, "staff_scan_checked_in")
+        XCTAssertEqual(first.result, .checkedIn)
+        XCTAssertNotNil(first.attendee)
+        XCTAssertNotNil(first.checkedInAt)
+        XCTAssertGreaterThan(first.pointsAwarded, 0)
+        let repeatScan = try decode(ScanResponse.self, "staff_scan")
+        XCTAssertEqual(repeatScan.result, .alreadyCheckedIn)
+        XCTAssertEqual(repeatScan.pointsAwarded, 0, "a repeat scan never re-awards")
+        let invalid = try decode(ScanResponse.self, "staff_scan_invalid")
+        XCTAssertEqual(invalid.result, .invalidCode)
+        XCTAssertNil(invalid.attendee)
+
+        let roster = try decode(ItemList<RosterEntry>.self, "roster").items
+        XCTAssertFalse(roster.isEmpty)
+        for r in roster { XCTAssertEqual(r.checkedIn, r.checkedInAt != nil); XCTAssertNotEqual(r.rsvpStatus, .unknown) }
         let unknown = #"{"userId":"u","displayName":"X","rsvpStatus":"brand_new","checkedIn":false,"checkedInAt":null}"#
         XCTAssertEqual(try decoder.decode(RosterEntry.self, from: Data(unknown.utf8)).rsvpStatus, .unknown)
     }
@@ -77,7 +115,23 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(Set(g.roomLabels).count, g.roomLabels.count)
         let days = ScheduleGrouping.days(g.sessions, timeZone: TimeZone(identifier: g.edition.timeZone)!)
         XCTAssertEqual(days.map(\.id), ["2026-10-09", "2026-10-10", "2026-10-11"])
-        XCTAssertEqual(try decode(HacklantaMe.self, "hacklanta_me").application?.team?.memberFirstNames, ["Pat", "Sam"])
+
+        let me = try decode(HacklantaMe.self, "hacklanta_me")
+        XCTAssertFalse(me.linked)
+        XCTAssertNil(me.application, "unlinked state carries no application")
+    }
+
+    func testDeletionAndErrorEnvelopes() throws {
+        XCTAssertEqual(try decode(DeleteAccountResult.self, "me_delete").status, "completed")
+        struct E: Decodable { let ok: Bool; let error: APIEnvelopeError; let requestId: String }
+        let expected = ["error": "unauthenticated", "error_forbidden": "forbidden", "error_not_found": "not_found", "error_unavailable": "unavailable"]
+        for (name, code) in expected {
+            let e = try decoder.decode(E.self, from: fixture(name))
+            XCTAssertFalse(e.ok)
+            XCTAssertEqual(e.error.code, code)
+            XCTAssertFalse(e.error.message.isEmpty)
+            XCTAssertFalse(e.requestId.isEmpty)
+        }
     }
 
     func testAllScanResultsDecode() throws {

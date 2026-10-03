@@ -27,8 +27,16 @@ targets:
     dependencies:
       - package: Supabase
         product: Supabase
+    # xcodegen rewrites the .entitlements file from these properties on every generate;
+    # edit here, not in the plist. aps-environment comes from Debug/Release xcconfig.
     entitlements:
       path: Progsu/Resources/Progsu.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        com.apple.developer.associated-domains:
+          - applinks:members.progsu.com
+          - webcredentials:members.progsu.com
+        aps-environment: $(APS_ENVIRONMENT)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PROGSU_BUNDLE_ID)

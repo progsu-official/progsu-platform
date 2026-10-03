@@ -172,6 +172,14 @@ final class AppModel {
         }
     }
 
+    #if DEBUG
+    func debugSignIn(email: String, password: String) async {
+        signInError = nil
+        do { try await auth.debugSignInWithPassword(email: email, password: password) }
+        catch { signInError = error.localizedDescription }
+    }
+    #endif
+
     /// Apple shares the name only on first authorization; write it only where the profile is still blank
     /// so a later Apple sign-in can never clobber a name the member edited.
     private func completeApplePostSignIn() async {
