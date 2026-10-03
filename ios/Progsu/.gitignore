@@ -1,0 +1,7 @@
+Config/Signing.xcconfig
+Config/Local.xcconfig
+xcuserdata/
+DerivedData/
+*.xcuserstate
+build/
+Screenshots/

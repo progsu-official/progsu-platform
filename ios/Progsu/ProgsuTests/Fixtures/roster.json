@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "userId": "a92f9fe0-6101-48e8-b5c4-8603f1af4590",
+        "displayName": "alice Smoke",
+        "rsvpStatus": "going",
+        "checkedIn": true,
+        "checkedInAt": "2026-10-03T20:27:35.941Z"
+      }
+    ]
+  }
+}

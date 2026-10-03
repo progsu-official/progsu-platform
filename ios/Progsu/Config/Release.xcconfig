@@ -1,0 +1,10 @@
+#include "Shared.xcconfig"
+// Fill SUPABASE_URL / SUPABASE_ANON_KEY for the production project in
+// Config/Local.xcconfig (gitignored) or CI; the app refuses to start auth
+// against an empty URL rather than silently pointing at localhost.
+SUPABASE_URL =
+SUPABASE_ANON_KEY =
+API_BASE_URL = https:/$()/members.progsu.com
+UNIVERSAL_LINK_HOST = members.progsu.com
+APS_ENVIRONMENT = production
+#include? "Local.xcconfig"

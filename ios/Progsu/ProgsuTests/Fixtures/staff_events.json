@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "31538f5c-a1f0-4d2a-bb3d-40aa0da82ebc",
+        "slug": "smoke-mobile-musufporjgir",
+        "title": "Smoke public build night",
+        "startsAt": "2026-10-03T20:57:34.730Z",
+        "endsAt": "2026-10-03T22:57:34.730Z",
+        "status": "published",
+        "assignmentExpiresAt": null,
+        "goingCount": 1,
+        "checkedInCount": 0
+      }
+    ]
+  }
+}

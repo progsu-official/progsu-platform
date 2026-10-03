@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "data": {
+    "result": "checked_in",
+    "attendee": {
+      "displayName": "alice S.",
+      "kind": "member"
+    },
+    "pointsAwarded": 5,
+    "checkedInAt": "2026-10-03T20:27:35.941Z"
+  }
+}

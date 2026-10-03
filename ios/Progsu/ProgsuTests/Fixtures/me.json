@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "data": {
+    "id": "a92f9fe0-6101-48e8-b5c4-8603f1af4590",
+    "email": "smoke-alice-musufpd0u9iq@example.com",
+    "firstName": "alice",
+    "lastName": "Smoke",
+    "preferredName": null,
+    "avatarUrl": null,
+    "phoneNumber": "404-555-0100",
+    "affiliation": "gsu_student",
+    "institutionName": null,
+    "school": "Georgia State University",
+    "major": "computer_science",
+    "majorOtherText": null,
+    "studentEmail": null,
+    "studentEmailVerified": false,
+    "verifiedGsu": false,
+    "isAdmin": false,
+    "onboarding": {
+      "fullyOnboarded": true,
+      "nextStep": null,
+      "profileFieldsComplete": true,
+      "requiredConsentsCurrent": true,
+      "studentEmailVerified": false,
+      "hasCurrentResume": false
+    },
+    "consentVersions": {
+      "terms_of_service": "v1",
+      "recruiter_resume_sharing": "v1",
+      "email_marketing": "v1",
+      "sms_marketing": "v1",
+      "age_confirmation": "v1",
+      "privacy_policy": "v8"
+    },
+    "staffAssignments": [],
+    "pointsBalance": 0
+  }
+}

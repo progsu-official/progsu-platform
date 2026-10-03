@@ -1,0 +1,80 @@
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "ad81ec5d-de66-4818-b7a8-0a34ae47d5bb",
+        "title": "Smoke rsvps",
+        "body": "Smoke rsvps body",
+        "audience": "event_rsvps",
+        "eventId": "31538f5c-a1f0-4d2a-bb3d-40aa0da82ebc",
+        "priority": "normal",
+        "deepLink": null,
+        "publishedAt": "2026-10-03T20:27:36.230Z",
+        "expiresAt": null,
+        "read": false
+      },
+      {
+        "id": "9a1169a9-862d-466c-bbbd-3b405a9d9dd1",
+        "title": "Smoke all",
+        "body": "Smoke all body",
+        "audience": "all",
+        "eventId": null,
+        "priority": "normal",
+        "deepLink": null,
+        "publishedAt": "2026-10-03T20:27:36.224Z",
+        "expiresAt": null,
+        "read": false
+      },
+      {
+        "id": "35ca9098-053b-437d-976d-7278b3a49a74",
+        "title": "Smoke all",
+        "body": "Smoke all body",
+        "audience": "all",
+        "eventId": null,
+        "priority": "normal",
+        "deepLink": null,
+        "publishedAt": "2026-10-03T20:27:23.939Z",
+        "expiresAt": null,
+        "read": false
+      },
+      {
+        "id": "e4229419-71ca-4ad3-b382-e259b6529d2f",
+        "title": "Smoke all",
+        "body": "Smoke all body",
+        "audience": "all",
+        "eventId": null,
+        "priority": "normal",
+        "deepLink": null,
+        "publishedAt": "2026-10-03T20:26:50.358Z",
+        "expiresAt": null,
+        "read": false
+      },
+      {
+        "id": "58c01361-75cc-4566-9c0e-b916ea74a48d",
+        "title": "Smoke all",
+        "body": "Smoke all body",
+        "audience": "all",
+        "eventId": null,
+        "priority": "normal",
+        "deepLink": null,
+        "publishedAt": "2026-10-03T20:26:15.185Z",
+        "expiresAt": null,
+        "read": false
+      },
+      {
+        "id": "92794177-5aa3-451c-bfbf-329da9dde9b3",
+        "title": "Smoke all",
+        "body": "Smoke all body",
+        "audience": "all",
+        "eventId": null,
+        "priority": "normal",
+        "deepLink": null,
+        "publishedAt": "2026-10-03T20:26:04.509Z",
+        "expiresAt": null,
+        "read": false
+      }
+    ],
+    "nextCursor": null
+  }
+}

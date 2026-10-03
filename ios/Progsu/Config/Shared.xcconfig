@@ -1,0 +1,6 @@
+// Shared settings. Values here are public by design: the Supabase anon key is
+// shipped in every client and protected by RLS, not by secrecy.
+PROGSU_BUNDLE_ID = com.progsu.app
+DEVELOPMENT_TEAM =
+// Local, gitignored override for signing (copy Signing.example.xcconfig).
+#include? "Signing.xcconfig"

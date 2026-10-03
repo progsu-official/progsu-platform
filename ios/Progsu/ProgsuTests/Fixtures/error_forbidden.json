@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "error": {
+    "code": "forbidden",
+    "message": "not event staff"
+  },
+  "requestId": "c7256183-7bc6-4dc6-809d-fb6705fe1bd0"
+}

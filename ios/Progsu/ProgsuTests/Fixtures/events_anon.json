@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "31538f5c-a1f0-4d2a-bb3d-40aa0da82ebc",
+        "slug": "smoke-mobile-musufporjgir",
+        "title": "Smoke public build night",
+        "startsAt": "2026-10-03T20:57:34.730Z",
+        "endsAt": "2026-10-03T22:57:34.730Z",
+        "timeZone": "America/New_York",
+        "locationText": null,
+        "coverImageUrl": null,
+        "capacity": null,
+        "goingCount": 0,
+        "waitlistEnabled": false,
+        "externalUrl": null,
+        "pinned": false
+      }
+    ],
+    "nextCursor": null
+  }
+}

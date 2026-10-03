@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "data": {
+    "id": "9d373816-1478-4bba-8e60-05077791ffdc",
+    "email": "smoke-fresh-musufpl21u60@example.com",
+    "firstName": "fresh",
+    "lastName": "Smoke",
+    "preferredName": null,
+    "avatarUrl": null,
+    "phoneNumber": null,
+    "affiliation": "unknown",
+    "institutionName": null,
+    "school": null,
+    "major": null,
+    "majorOtherText": null,
+    "studentEmail": null,
+    "studentEmailVerified": false,
+    "verifiedGsu": false,
+    "isAdmin": false,
+    "onboarding": {
+      "fullyOnboarded": false,
+      "nextStep": "profile",
+      "profileFieldsComplete": false,
+      "requiredConsentsCurrent": false,
+      "studentEmailVerified": false,
+      "hasCurrentResume": false
+    },
+    "consentVersions": {
+      "terms_of_service": "v1",
+      "recruiter_resume_sharing": "v1",
+      "email_marketing": "v1",
+      "sms_marketing": "v1",
+      "age_confirmation": "v1",
+      "privacy_policy": "v8"
+    },
+    "staffAssignments": [],
+    "pointsBalance": 0
+  }
+}

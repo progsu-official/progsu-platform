@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "error": {
+    "code": "unauthenticated",
+    "message": "Sign in required."
+  },
+  "requestId": "921acb44-8601-484d-9fc7-b3471b265f1d"
+}

@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "data": {
+    "result": "already_checked_in",
+    "attendee": {
+      "displayName": "alice S.",
+      "kind": "member"
+    },
+    "pointsAwarded": 0,
+    "checkedInAt": "2026-10-03T20:27:35.941Z"
+  }
+}

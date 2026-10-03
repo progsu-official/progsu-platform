@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "error": {
+    "code": "not_found",
+    "message": "Event not found."
+  },
+  "requestId": "a4836d4c-b11f-4870-8b19-265cacbcf832"
+}

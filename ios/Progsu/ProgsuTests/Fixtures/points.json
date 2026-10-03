@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "data": {
+    "balance": 5,
+    "items": [
+      {
+        "id": "3dd54bc3-bdbd-4fff-b44f-110a1b7be93a",
+        "amount": 5,
+        "kind": "award",
+        "eventId": "31538f5c-a1f0-4d2a-bb3d-40aa0da82ebc",
+        "eventTitle": "Smoke public build night",
+        "reason": null,
+        "createdAt": "2026-10-03T20:27:35.941Z"
+      }
+    ],
+    "nextCursor": null
+  }
+}

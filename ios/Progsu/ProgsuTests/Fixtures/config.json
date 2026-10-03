@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "data": {
+    "minSupportedBuild": 1,
+    "features": {
+      "events": true,
+      "hacklanta": true,
+      "wallet": false,
+      "push": false,
+      "appleRevocation": false
+    },
+    "hacklanta": {
+      "slug": "hacklanta-ii",
+      "name": "Hacklanta II",
+      "startsAt": "2026-10-09T19:00:00.000Z",
+      "endsAt": "2026-10-11T17:45:00.000Z",
+      "timeZone": "America/New_York",
+      "themeOverride": "auto",
+      "themeActive": true,
+      "theme": {},
+      "scheduleTentative": true
+    }
+  }
+}

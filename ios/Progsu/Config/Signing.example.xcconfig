@@ -1,0 +1,3 @@
+// Copy to Signing.xcconfig (gitignored) and set your Apple team.
+DEVELOPMENT_TEAM = ABCDE12345
+// PROGSU_BUNDLE_ID = com.progsu.app

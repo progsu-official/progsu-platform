@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "error": {
+    "code": "unavailable",
+    "message": "Wallet passes are not available yet."
+  },
+  "requestId": "1a859e6c-974a-447a-8953-2fcff738ab22"
+}

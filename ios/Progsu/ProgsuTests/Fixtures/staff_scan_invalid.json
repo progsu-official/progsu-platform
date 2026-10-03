@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "data": {
+    "result": "invalid_code",
+    "attendee": null,
+    "pointsAwarded": 0,
+    "checkedInAt": null
+  }
+}
