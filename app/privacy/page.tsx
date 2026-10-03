@@ -129,7 +129,7 @@ export default function PrivacyPage() {
             settings
           </Link>
           . When it&apos;s on, other progsu members can visit{" "}
-          <span className="font-mono text-xs">progsu.app/members/&lt;your-slug&gt;</span>{" "}
+          <span className="font-mono text-xs">members.progsu.com/members/&lt;your-slug&gt;</span>{" "}
           and see a sanitized view of your profile.
         </p>
         <p>

@@ -7,7 +7,7 @@ export default function TermsPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v1
+          Draft · v2
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
         <p className="text-sm text-muted-foreground">
@@ -18,15 +18,16 @@ export default function TermsPage() {
       <article className="prose prose-sm max-w-none space-y-4 text-sm leading-6">
         <h2 className="text-lg font-semibold">Who can use Progsu</h2>
         <p>
-          The Progsu member platform is for students 18 or older at an
-          allowlisted school. If you&apos;re under 18 or not a student, please
-          don&apos;t sign up. Admins may remove accounts that don&apos;t meet
-          these criteria.
+          The Progsu member platform is for people 18 or older. You don&apos;t
+          need to be a Georgia State student: students at other schools and
+          non-students are welcome. If you&apos;re under 18, please don&apos;t
+          sign up. Admins may remove accounts that don&apos;t meet these
+          criteria.
         </p>
 
         <h2 className="text-lg font-semibold">Your account</h2>
         <p>
-          You&apos;re responsible for keeping your Google login secure and for
+          You&apos;re responsible for keeping your Apple or Google sign-in secure and for
           the accuracy of the information on your profile. Don&apos;t create
           more than one account; don&apos;t impersonate anyone else.
         </p>
