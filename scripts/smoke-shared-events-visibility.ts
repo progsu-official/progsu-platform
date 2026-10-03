@@ -71,6 +71,7 @@ async function main() {
           grad_term: "Spring 2027",
           interested_roles: ["software_engineering"],
           phone_number: "555-555-5555",
+          affiliation: "gsu_student",
           is_admin: isAdmin,
         })
         .eq("id", uid);

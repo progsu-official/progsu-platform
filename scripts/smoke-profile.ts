@@ -65,6 +65,7 @@ async function main() {
         // is_fully_onboarded() requires a phone; without one this user is
         // routed back into the funnel and every assertion below fails.
         phone_number: "(404) 555-0175",
+        affiliation: "gsu_student",
       })
       .eq("id", userId);
 

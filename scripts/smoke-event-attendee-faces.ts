@@ -67,6 +67,7 @@ async function main() {
         first_name: label,
         last_name: "Smoke",
         phone_number: "555-555-5555",
+        affiliation: "gsu_student",
         school: "Georgia State University",
         major: "CS",
         class_standing: "junior",

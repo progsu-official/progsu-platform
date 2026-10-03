@@ -88,6 +88,7 @@ async function seedEligibleMember(
       github_url: "https://github.com/eligible",
       open_to_recruiters: true,
       phone_number: "+14045551234",
+      affiliation: "gsu_student",
     })
     .eq("id", userId);
   await profilesUpdate;

@@ -51,6 +51,7 @@ async function main() {
     const profileUpdate: Record<string, unknown> = {
       is_admin: isAdmin,
       phone_number: "555-555-5555",
+      affiliation: "gsu_student",
     };
     if (onboarded) {
       Object.assign(profileUpdate, {

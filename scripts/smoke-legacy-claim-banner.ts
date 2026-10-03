@@ -39,6 +39,7 @@ async function main() {
       last_name: "Banner",
       personal_email: email,
       phone_number: "+14045558888",
+      affiliation: "gsu_student",
       sms_interest: true,
       source: "smoke_test",
     });

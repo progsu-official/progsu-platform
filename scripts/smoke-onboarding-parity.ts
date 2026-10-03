@@ -66,6 +66,7 @@ async function main() {
         school: "Georgia State University",
         major: "computer_science",
         phone_number: "555-555-5555",
+        affiliation: "gsu_student",
       })
       .eq("id", userId);
     if (error) throw new Error(`fillCompleteProfile: ${error.message}`);
@@ -178,6 +179,7 @@ async function main() {
             major: "other",
             major_other_text: "Cognitive Science",
             phone_number: "555-555-5555",
+            affiliation: "other_student",
           })
           .eq("id", uid);
         await addAllRequiredConsentsCurrent(uid);
@@ -234,6 +236,45 @@ async function main() {
       setup: async (a, uid) => {
         await fillCompleteProfile(uid);
         await a.from("profiles").update({ school: null }).eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 7b. Affiliation still 'unknown' (20261003100000) → blocked.
+    {
+      name: "affiliation unknown → blocked",
+      expected: false,
+      setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
+        await a.from("profiles").update({ affiliation: "unknown" }).eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 7c. Nonstudent with no school/major → passes.
+    {
+      name: "nonstudent without school/major",
+      expected: true,
+      setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
+        await a
+          .from("profiles")
+          .update({ affiliation: "nonstudent", school: null, major: null })
+          .eq("id", uid);
+        await addAllRequiredConsentsCurrent(uid);
+      },
+    },
+
+    // 7d. other_student without school → blocked.
+    {
+      name: "other_student missing school",
+      expected: false,
+      setup: async (a, uid) => {
+        await fillCompleteProfile(uid);
+        await a
+          .from("profiles")
+          .update({ affiliation: "other_student", school: null })
+          .eq("id", uid);
         await addAllRequiredConsentsCurrent(uid);
       },
     },
