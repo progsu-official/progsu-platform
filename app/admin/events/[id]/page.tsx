@@ -20,6 +20,7 @@ import { AnalyticsTab } from "./analytics-tab";
 import { ActivityTab } from "./activity-tab";
 import { LinksTab } from "./links-tab";
 import { TabNav } from "./tab-nav";
+import { MobileTab } from "./mobile-tab";
 import type { EventRecord, GuestRsvpRow, RosterRow } from "./types";
 
 const fullDateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -45,13 +46,14 @@ export const dynamic = "force-dynamic";
 // Access (invite-by-email) and Notifications (email toggles) were folded in
 // here and into the Details composer respectively — see guests-tab.tsx and
 // event-form.tsx.
-type TabKey = "details" | "attendees" | "analytics" | "links" | "activity";
+type TabKey = "details" | "attendees" | "analytics" | "links" | "mobile" | "activity";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "details", label: "Details" },
   { key: "attendees", label: "Attendees" },
   { key: "analytics", label: "Analytics" },
   { key: "links", label: "Links" },
+  { key: "mobile", label: "App" },
   { key: "activity", label: "Activity" },
 ];
 
@@ -60,7 +62,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // a hand-typed ?tab=links falls back to Details rather than rendering a
 // surface the kill switch is meant to have closed.
 function visibleTabs(): Array<{ key: TabKey; label: string }> {
-  return TABS.filter((t) => t.key !== "links" || env.FEATURE_REFERRAL_LINKS);
+  return TABS.filter(
+    (t) =>
+      (t.key !== "links" || env.FEATURE_REFERRAL_LINKS) &&
+      (t.key !== "mobile" || env.FEATURE_MOBILE_API)
+  );
 }
 
 function resolveTab(raw: string | undefined): TabKey {
@@ -72,9 +78,9 @@ export default async function AdminEventDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; msg?: string; error?: string }>;
 }) {
-  const [{ id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
+  const [{ id }, { tab: rawTab, msg, error: tabError }] = await Promise.all([params, searchParams]);
   const tab = resolveTab(rawTab);
 
   const admin = createAdminClient();
@@ -372,6 +378,7 @@ export default async function AdminEventDetailPage({
           {tab === "attendees" ? <GuestsTabServer eventId={ev.id} event={ev} /> : null}
           {tab === "analytics" ? <AnalyticsTabServer eventId={ev.id} /> : null}
           {tab === "links" ? <LinksTabServer eventId={ev.id} /> : null}
+          {tab === "mobile" ? <MobileTab eventId={ev.id} msg={msg} error={tabError} /> : null}
           {tab === "activity" ? <ActivityTabServer eventId={ev.id} /> : null}
         </section>
       </div>

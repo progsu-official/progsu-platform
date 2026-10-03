@@ -19,6 +19,8 @@ type ProfileRow = {
   major_other_text: string | null;
   minor: string | null;
   phone_number: string | null;
+  affiliation: "gsu_student" | "other_student" | "nonstudent" | "unknown";
+  institution_name: string | null;
 };
 
 type MajorRow = { slug: string; label: string };
@@ -42,7 +44,7 @@ export default async function OnboardingProfilePage() {
       supabase
         .from("profiles")
         .select(
-          "first_name, last_name, preferred_name, school, student_email_verified, major, major_other_text, minor, phone_number"
+          "first_name, last_name, preferred_name, school, student_email_verified, major, major_other_text, minor, phone_number, affiliation, institution_name"
         )
         .eq("id", user.id)
         .single<ProfileRow>(),
@@ -97,6 +99,13 @@ export default async function OnboardingProfilePage() {
           lastName:
             profile?.last_name || (env.ONBOARDING_TEST_MODE ? "Student" : ""),
           preferredName: profile?.preferred_name ?? "",
+          affiliation:
+            profile?.affiliation && profile.affiliation !== "unknown"
+              ? profile.affiliation
+              : env.ONBOARDING_TEST_MODE
+                ? "gsu_student"
+                : "",
+          institutionName: profile?.institution_name ?? "",
           school:
             profile?.school ||
             (env.ONBOARDING_TEST_MODE ? schoolOptions[0] ?? "" : ""),

@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <header className="mb-8 space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Draft · v7
+          Draft · v8
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -29,13 +29,14 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">What we collect</h2>
         <p>When you sign up, we collect:</p>
         <ul className="list-disc pl-6">
-          <li>Your Google identity (email, name, avatar) for login.</li>
-          <li>A student email at an allowlisted school domain, which we verify with a 6-digit code.</li>
-          <li>Profile information you enter: name, school, major, class standing, graduation term, and up to six role interests.</li>
-          <li>Optional contact info: phone, LinkedIn, GitHub, portfolio URL.</li>
+          <li>Your Google or Apple identity (email, name, avatar) for login. If you use Sign in with Apple and hide your email, we store the relay address Apple gives us.</li>
+          <li>Optionally, a student email at an allowlisted school domain, which we verify with a 6-digit code.</li>
+          <li>Profile information you enter: name, phone number (required), how you are connected to progsu (GSU student, student elsewhere, or not a student), school and major if you are a student, class standing, graduation term, and up to six role interests.</li>
+          <li>Optional contact info: LinkedIn, GitHub, portfolio URL.</li>
           <li>Your resume PDF, if you upload one.</li>
           <li>Your consent choices (privacy, terms, age, recruiter sharing, email, SMS), with version and timestamp.</li>
           <li>Your event activity: RSVPs, waitlist entries, and check-ins for events you choose to engage with.</li>
+          <li>If you use the progsu iOS app: a push notification token for your device, and the points you earn.</li>
         </ul>
         <p>We do not collect date of birth, SSN, home address, GPA, gender, or race.</p>
 
@@ -303,6 +304,84 @@ export default function PrivacyPage() {
           rows of past views are retained so admins can investigate abuse.
         </p>
 
+        <h2 className="text-lg font-semibold">
+          New in v8: affiliation, check-in records, and points
+        </h2>
+        <p>
+          We ask how you are connected to progsu: GSU student, student at
+          another school, or not a student. That answer is what you tell us.
+          We only treat you as a <em>verified</em> GSU student if you have
+          verified a student.gsu.edu email address.
+        </p>
+        <p>
+          When you are checked in to an event, we save a snapshot of that
+          answer, whether your GSU email was verified, and the school or
+          organization you named, as they were at that moment. We use these
+          snapshots to report how many GSU students, other students, and
+          non-students came to an event (for example, to the university or a
+          sponsor, as totals, never as a list of names). An officer can
+          correct a snapshot, and every correction is logged with a reason.
+        </p>
+        <p>
+          Some events award points for attending. Points are recorded in a
+          ledger: each award, each reversal (if a check-in is removed), and
+          each manual adjustment by an officer, with the officer and reason.
+          Your balance and history are visible to you and to progsu admins,
+          not to other members.
+        </p>
+
+        <h2 className="text-lg font-semibold">Door staff using the app</h2>
+        <p>
+          Progsu can give specific members temporary staff access to a single
+          event. Staff scan your check-in code with their own account, so the
+          check-in records who scanned you. While scanning, staff see your
+          first name and last initial and whether you RSVP&apos;d. The staff
+          roster lists the names of people who RSVP&apos;d with their RSVP and
+          check-in status only, never email, phone, or profile details. Staff access ends when the event&apos;s
+          assignment expires or is revoked.
+        </p>
+
+        <h2 className="text-lg font-semibold">Announcements and push notifications</h2>
+        <p>
+          The app shows announcements from progsu officers. Some go to
+          everyone, some only to people who RSVP&apos;d to a specific event,
+          and some only to members who linked a Hacklanta application. We
+          record which announcements you have opened so the app can mark them
+          read.
+        </p>
+        <p>
+          If you allow notifications, we store your device&apos;s push token
+          to deliver announcements through Apple&apos;s push service. Apple
+          receives the notification text and the token, not your profile. We
+          delete the token when you sign out of the app, when Apple tells us
+          it is no longer valid, or when you delete your account. You can turn
+          notifications off at any time in iOS Settings.
+        </p>
+
+        <h2 className="text-lg font-semibold">Apple Wallet passes</h2>
+        <p>
+          You can add an event ticket to Apple Wallet. The barcode on the pass
+          is a random code that only means something to our check-in system;
+          it does not contain your name, email, or account ID. The pass shows
+          the event and your first name. Downloading the pass again replaces
+          the old one and retires its code.
+        </p>
+
+        <h2 className="text-lg font-semibold">Hacklanta</h2>
+        <p>
+          The app includes a guide for Hacklanta (schedule, rooms, and maps),
+          which anyone can read. Hacklanta applications are stored by the
+          Hacklanta organizers in a separate system. If you choose to link
+          your application, we email a 6-digit code to the address on the
+          application, and once you enter it we store the link between your
+          progsu account and that application. The app then shows you your
+          own application status and the first names of your teammates. We
+          never show you anyone else&apos;s application, and an application
+          can only be linked to one progsu account. Bookmarks you save in the
+          Hacklanta schedule are stored on your account and are visible only
+          to you.
+        </p>
+
         <h2 className="text-lg font-semibold">Recruiter sharing</h2>
         <p>
           If you opt in, the recruiter CSV can include your name, preferred name,
@@ -326,14 +405,25 @@ export default function PrivacyPage() {
           <li>Resumes live in a private storage bucket; download links are short-lived signed URLs.</li>
           <li>Admin exports are recorded in an audit log with the acting admin, the export ID, and row count.</li>
           <li>OTP codes are hashed (bcrypt) before storage and never logged.</li>
+          <li>If you use Sign in with Apple, the token we keep so we can revoke Apple&apos;s access when you delete your account is encrypted at rest.</li>
         </ul>
 
         <h2 className="text-lg font-semibold">Retention and deletion</h2>
         <p>
-          We keep your data while you&apos;re an active member. If you request
-          deletion, progsu will process it within 30 days. Consent rows are
-          retained (with name and email redacted) so we can prove what you
-          agreed to at what time.
+          We keep your data while you&apos;re an active member. You can delete
+          your account yourself from the iOS app (Settings, Delete account),
+          or ask progsu leadership and we will process it within 30 days.
+        </p>
+        <p>
+          Deleting your account deletes your profile, consent records, RSVPs,
+          check-ins and their affiliation snapshots, points ledger, resume and
+          images, push tokens, Wallet pass codes, Hacklanta link, and
+          bookmarks, and revokes Sign in with Apple access if you used it. We
+          keep a record that a deletion happened (an internal account ID and
+          the date, no name or email), and audit-log entries about actions
+          you took stay with the person removed from them. Data already
+          shared before deletion, such as a recruiter CSV you opted into or a
+          Discord announcement, is outside our control.
         </p>
 
         <h2 className="text-lg font-semibold">Your rights</h2>

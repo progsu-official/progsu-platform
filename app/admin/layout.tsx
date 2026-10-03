@@ -63,6 +63,7 @@ export default async function AdminLayout({
             showEvents={env.FEATURE_EVENTS}
             showLinks={env.FEATURE_REFERRAL_LINKS}
             showSms={env.FEATURE_SMS}
+            showMobile={env.FEATURE_MOBILE_API}
           />
 
           <AdminAvatarMenu

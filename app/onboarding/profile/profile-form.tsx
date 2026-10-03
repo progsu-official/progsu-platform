@@ -27,6 +27,7 @@ import { usePreview } from "../_components/preview";
 const FIELD_ERROR_HEADINGS: Record<string, string> = {
   firstName: "First name is required",
   lastName: "Last name is required",
+  affiliation: "How are you connected?",
   school: "Pick your school",
   phoneNumber: "A phone number is required",
   major: "Pick a major",
@@ -40,15 +41,26 @@ const FIELD_IDS: Record<string, string> = {
   firstName: "onboarding-first-name",
   lastName: "onboarding-last-name",
   phoneNumber: "onboarding-phone",
+  affiliation: "onboarding-affiliation",
   school: "onboarding-school",
   major: "onboarding-major",
   majorOtherText: "onboarding-major-other",
 };
 
+type AffiliationChoice = "" | "gsu_student" | "other_student" | "nonstudent";
+
+const AFFILIATION_OPTIONS: Array<{ value: AffiliationChoice; label: string }> = [
+  { value: "gsu_student", label: "Georgia State student" },
+  { value: "other_student", label: "Student at another school" },
+  { value: "nonstudent", label: "Not a student" },
+];
+
 type Initial = {
   firstName: string;
   lastName: string;
   preferredName: string;
+  affiliation: AffiliationChoice;
+  institutionName: string;
   school: string;
   schoolOtherText: string;
   phoneNumber: string;
@@ -102,8 +114,9 @@ export function ProfileForm({
   const nameStarted =
     state.firstName.trim().length > 0 || state.lastName.trim().length > 0;
 
-  const isOther = state.major === "other";
-  const isSchoolOther = state.school === SCHOOL_OTHER;
+  const isNonstudent = state.affiliation === "nonstudent";
+  const isOther = !isNonstudent && state.major === "other";
+  const isSchoolOther = !isNonstudent && state.school === SCHOOL_OTHER;
 
   function setField<K extends keyof Initial>(key: K, value: Initial[K]) {
     setState((s) => ({ ...s, [key]: value }));
@@ -135,9 +148,15 @@ export function ProfileForm({
         firstName: state.firstName,
         lastName: state.lastName,
         preferredName: state.preferredName || null,
-        school: isSchoolOther ? state.schoolOtherText.trim() : state.school,
+        affiliation: (state.affiliation || undefined) as Exclude<AffiliationChoice, "">,
+        institutionName: isNonstudent ? state.institutionName.trim() || null : null,
+        school: isNonstudent
+          ? null
+          : isSchoolOther
+            ? state.schoolOtherText.trim()
+            : state.school,
         phoneNumber: state.phoneNumber,
-        major: state.major,
+        major: isNonstudent ? null : state.major,
         majorOtherText: isOther ? state.majorOtherText : null,
         minor: state.minor || null,
       });
@@ -280,6 +299,36 @@ export function ProfileForm({
               />
             </Field>
             <Field
+              label="How are you connected?"
+              required
+              htmlFor="onboarding-affiliation"
+              error={error?.field === "affiliation" ? error.message : null}
+            >
+              <Select
+                id="onboarding-affiliation"
+                value={state.affiliation}
+                onChange={(v) => setField("affiliation", v as AffiliationChoice)}
+                options={AFFILIATION_OPTIONS}
+                placeholder="Pick one"
+                invalid={error?.field === "affiliation"}
+                disabled={pending}
+              />
+            </Field>
+            {isNonstudent ? (
+              <Field label="Where do you work? (optional)" htmlFor="onboarding-institution">
+                <Input
+                  id="onboarding-institution"
+                  value={state.institutionName}
+                  onChange={(e) => setField("institutionName", e.target.value)}
+                  maxLength={150}
+                  disabled={pending}
+                  className={inputClasses}
+                />
+              </Field>
+            ) : null}
+            {isNonstudent ? null : (
+            <>
+            <Field
               label="School"
               required
               htmlFor="onboarding-school"
@@ -317,6 +366,8 @@ export function ProfileForm({
                 disabled={pending}
               />
             </Field>
+            </>
+            )}
 
             {isSchoolOther ? (
               <div className="sm:col-span-2">

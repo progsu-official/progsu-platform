@@ -47,6 +47,8 @@ const EMPTY_PROFILE = {
   firstName: "",
   lastName: "",
   preferredName: "",
+  affiliation: "" as const,
+  institutionName: "",
   school: "",
   schoolOtherText: "",
   phoneNumber: "",
@@ -57,6 +59,7 @@ const EMPTY_PROFILE = {
 
 const FILLED_PROFILE = {
   ...EMPTY_PROFILE,
+  affiliation: "gsu_student" as const,
   firstName: "Joey",
   lastName: "Zhang",
   school: "Georgia State University",

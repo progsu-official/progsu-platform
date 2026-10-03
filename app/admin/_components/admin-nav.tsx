@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LayoutDashboard, Link2, MessageSquare, Users } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Link2, Map, Megaphone, MessageSquare, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; exact?: boolean };
@@ -17,6 +17,8 @@ const ITEMS: Item[] = [
   { href: "/admin/links", label: "Links", icon: Link2 },
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/sms", label: "Texts", icon: MessageSquare },
+  { href: "/admin/announcements", label: "Announce", icon: Megaphone },
+  { href: "/admin/hacklanta", label: "Hacklanta", icon: Map },
 ];
 
 // One horizontal strip for every screen size, top bar only (no more sidebar)
@@ -26,15 +28,18 @@ export function AdminNav({
   showEvents,
   showLinks,
   showSms,
+  showMobile,
 }: {
   showEvents: boolean;
   showLinks: boolean;
   showSms: boolean;
+  showMobile: boolean;
 }) {
   const pathname = usePathname() ?? "";
   const items = ITEMS.filter((i) => {
     if (i.href === "/admin/events") return showEvents;
     if (i.href === "/admin/sms") return showSms;
+    if (i.href === "/admin/announcements" || i.href === "/admin/hacklanta") return showMobile;
     // Campaign links live on events, so the tab is meaningless without them —
     // either flag being off hides it, matching the route's own notFound().
     if (i.href === "/admin/links") return showLinks && showEvents;
