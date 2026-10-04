@@ -646,15 +646,13 @@ function dayLabels(day: Date, now: Date): [string, string] {
 
 // Groups items by calendar day (preserving incoming order) and renders the
 // Luma-style rail: day labels on the left, dotted spine, cards on the right.
-// Pinned items skip the rail entirely — they're not "next in line", they're
-// promoted, so they render as their own hero(es) above it instead of a
-// ribbon bolted onto a regular row (see 2026-08-23 design pass).
+// Pinned items also get their own hero above it, as an ad; the event itself
+// still sits in the rail on its day like any other.
 function EventTimeline({ items }: { items: TimelineItem[] }) {
   const pinnedItems = items.filter((item) => item.pinned);
-  const restItems = items.filter((item) => !item.pinned);
   const now = new Date();
   const groups: Array<{ dayKey: string; day: Date; items: TimelineItem[] }> = [];
-  for (const item of restItems) {
+  for (const item of items) {
     const day = new Date(item.startsAt);
     const dayKey = zonedDayKey(day);
     const last = groups[groups.length - 1];

@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { env } from "@/lib/env";
 import { listReferralLinks } from "@/lib/actions/referrals";
 import { resolveCoverUrl } from "@/lib/events/cover-url";
@@ -82,7 +83,7 @@ export default async function AdminEventDetailPage({
   const { data: event } = await admin
     .from("events")
     .select(
-      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, send_sms_reminder, sms_reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned"
+      "id, slug, title, description_md, status, visibility, starts_at, ends_at, location_text, location_url, capacity, waitlist_enabled, is_sensitive, cover_image_path, send_rsvp_email, send_reminder_email, reminder_sent_at, send_sms_reminder, sms_reminder_sent_at, cancellation_reason, cancelled_at, published_at, archived_at, created_at, updated_at, import_source, external_url, pinned, display_going_offset"
     )
     .eq("id", id)
     .maybeSingle();
@@ -166,6 +167,9 @@ export default async function AdminEventDetailPage({
   ]);
   const goingCount =
     (liveGoingCount ?? 0) + (historicalGoingCount ?? 0) + (guestGoingCount ?? 0);
+  // Public pages add events.display_going_offset (20261003120000); admin
+  // shows both so nobody mistakes the public number for real registrations.
+  const displayOffset = (event.display_going_offset as number | null) ?? 0;
 
   const startDate = new Date(ev.starts_at);
 
@@ -290,7 +294,9 @@ export default async function AdminEventDetailPage({
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <Users size={13} strokeWidth={1.75} aria-hidden />
-                  {goingCount ?? 0} going
+                  {displayOffset > 0
+                    ? `${goingCount + displayOffset} going publicly (${goingCount} real)`
+                    : `${goingCount} going`}
                   {ev.waitlist_enabled && (waitlistedCount ?? 0) > 0
                     ? ` · ${waitlistedCount} waitlisted`
                     : ""}
@@ -416,7 +422,15 @@ async function GuestsTabServer({
   const supabase = await createClient();
   const [{ data, error }, { data: invites }, { data: guestRsvpData }] =
     await Promise.all([
-      supabase.rpc("admin_event_roster_for", { p_event_id: eventId }),
+      // (user_id, legacy_member_id) is unique per roster row; the table
+      // re-sorts by name client-side, so this order is only for paging.
+      fetchAll((from, to) =>
+        supabase
+          .rpc("admin_event_roster_for", { p_event_id: eventId })
+          .order("user_id")
+          .order("legacy_member_id")
+          .range(from, to)
+      ),
       admin
         .from("event_invites")
         .select(
@@ -425,7 +439,12 @@ async function GuestsTabServer({
         .eq("event_id", eventId)
         .order("invited_at", { ascending: false }),
       // Same admin-only RPC pattern as admin_event_roster_for above.
-      supabase.rpc("admin_event_guest_rsvps_for", { p_event_id: eventId }),
+      fetchAll((from, to) =>
+        supabase
+          .rpc("admin_event_guest_rsvps_for", { p_event_id: eventId })
+          .order("id")
+          .range(from, to)
+      ),
     ]);
   if (error) {
     return (

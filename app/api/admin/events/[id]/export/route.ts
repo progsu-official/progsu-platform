@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -113,9 +114,18 @@ export async function GET(
     return new NextResponse("not found", { status: 404 });
   }
 
-  const { data, error } = await supabase.rpc("admin_event_export_for", {
-    p_event_id: id,
-  });
+  // Same order the RPC sorts by (attendee_type, full_name), plus email/id
+  // tiebreaks so paging past the 1000 row cap is stable.
+  const { data, error } = await fetchAll((from, to) =>
+    supabase
+      .rpc("admin_event_export_for", { p_event_id: id })
+      .order("attendee_type")
+      .order("full_name", { nullsFirst: false })
+      .order("google_email", { nullsFirst: false })
+      .order("school_email", { nullsFirst: false })
+      .order("profile_id", { nullsFirst: false })
+      .range(from, to)
+  );
   if (error) {
     log.error("admin event CSV export failed", {
       action: "admin_export_event_csv",
